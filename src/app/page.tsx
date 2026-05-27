@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,6 +75,7 @@ const featureCardClassName =
 export default function Home() {
   return (
     <div className="dark min-h-full bg-background text-foreground">
+      <SiteNav />
       <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-12 px-10 py-14 lg:gap-16 lg:px-14 lg:py-20">
         <header className="flex flex-col gap-5 border-b border-border/60 pb-10">
           <div className="flex items-center gap-3">

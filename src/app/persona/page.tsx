@@ -13,6 +13,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { memo } from "react";
 
+import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -330,6 +331,7 @@ const legend = [
 export default function PersonaPage() {
   return (
     <div className="dark min-h-full bg-background text-foreground">
+      <SiteNav />
       <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-8 px-10 py-14 lg:px-14 lg:py-16">
         <header className="flex flex-col gap-4 border-b border-border/60 pb-8">
           <span className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
