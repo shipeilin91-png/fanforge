@@ -3,10 +3,12 @@
 import {
   ArrowRight,
   BookOpen,
+  BookOpenText,
   ChevronRight,
+  Database,
   GitBranch,
-  Layers,
   PenLine,
+  Settings,
   ShieldAlert,
   Users,
   type LucideIcon,
@@ -17,82 +19,107 @@ import { useRouter } from "next/navigation";
 
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 
-const features: {
+const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
+
+const demoPath = [
+  "登录",
+  "原作理解",
+  "Canon 证据",
+  "人格建模",
+  "情绪切片",
+  "多 Agent 审稿",
+  "反馈看板",
+] as const;
+
+const modules: {
   title: string;
   description: string;
-  label: string;
+  status: string;
+  href: string;
   icon: LucideIcon;
-  href?: string;
 }[] = [
   {
     title: "原作理解包",
-    description:
-      "帮助新手快速理解原作世界观、主线故事和 Canon 硬设定，让每一次续写都站在可靠的语境之上。",
-    label: "Canon",
-    icon: BookOpen,
+    description: "帮助新手快速补齐世界观、主线时间线和 Canon 硬设定。",
+    status: "MVP Demo",
     href: "/origin",
+    icon: BookOpen,
+  },
+  {
+    title: "Canon 证据引擎",
+    description: "从原作文档中抽取硬设定和风格证据，为生成与审稿提供约束。",
+    status: "RAG 预留",
+    href: "/canon",
+    icon: Database,
   },
   {
     title: "角色人格思维导图",
-    description:
-      "把角色拆成核心人格内核、人生阶段、关键事件与伏笔暗线，形成可检索、可引用的写作参照。",
-    label: "Character",
-    icon: GitBranch,
+    description: "把角色人格、人生阶段、关系模式和 OOC 边界结构化沉淀。",
+    status: "可交互",
     href: "/persona",
+    icon: GitBranch,
   },
   {
     title: "关系情绪切片生成器",
-    description:
-      "根据关系瞬间、情绪张力、文学气质和禁止项，生成高张力片段，供你挑选、拼接与润色。",
-    label: "Scene",
-    icon: PenLine,
+    description: "用关系阶段、情绪张力和风格卡生成可反馈的高张力片段。",
+    status: "真实模型 / Demo 回退",
     href: "/slice",
+    icon: PenLine,
+  },
+  {
+    title: "章节写作",
+    description: "用于长文、章节续写和连载规划，区别于情绪切片的短片段生成。",
+    status: "Context Engine / 长文模式 / MVP Demo",
+    href: "/write",
+    icon: BookOpenText,
   },
   {
     title: "多 Agent 审稿台",
-    description:
-      "Writer、Reviewer、Criticizer 分工完成生成、审稿与修订，让同人创作兼顾灵感与一致性。",
-    label: "Review",
-    icon: Users,
+    description: "Writer、Reviewer、Criticizer 分工完成生成、审稿与修订。",
+    status: "Mock API",
     href: "/agents",
+    icon: Users,
+  },
+  {
+    title: "反馈数据看板",
+    description: "读取本地反馈记录，动态判断 OOC、情绪、风格和 Canon 问题。",
+    status: "反馈闭环",
+    href: "/feedback",
+    icon: ShieldAlert,
+  },
+  {
+    title: "模型设置",
+    description: "展示平台额度、用户自带 Key 和多模型供应商的产品策略。",
+    status: "BYOK 预留",
+    href: "/settings",
+    icon: Settings,
   },
 ];
 
-const demoSteps = [
-  "原作理解",
-  "角色人格建模",
-  "情绪切片生成",
-  "多 Agent 审稿",
-  "模型设置",
-] as const;
-
-const painPoints = [
+const differentiators = [
   "普通 AI 写作容易 OOC",
-  "长线设定容易遗忘",
   "新手缺少原作理解",
+  "长线设定容易遗忘",
   "单一 AI 自写自评不可靠",
+  "缺少用户反馈闭环",
 ] as const;
 
-const solutions = [
-  "Canon 基础库",
-  "人格时间树",
-  "情绪切片参数化生成",
-  "Writer / Reviewer / Criticizer 多 Agent 协作",
+const mvpBoundaries = [
+  "当前是作品集 MVP，用于展示产品思路、信息架构和关键交互链路。",
+  "部分 AI 能力使用 mock API，重点呈现 Writer / Reviewer / Criticizer 的协作逻辑。",
+  "真实模型、数据库、向量检索、正式登录属于后续迭代。",
+  "后台数据分析属于管理员端能力，不展示在普通用户工作台中。",
 ] as const;
 
-const featureCardClassName =
-  "group cursor-pointer border-border/80 bg-card/80 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-md hover:ring-1 hover:ring-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-
-const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
+const moduleCardClassName =
+  "group h-full cursor-pointer border-border/80 bg-card/80 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-md hover:ring-1 hover:ring-foreground/10";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -118,109 +145,42 @@ export default function DashboardPage() {
   return (
     <div className="dark min-h-full bg-background text-foreground">
       <SiteNav />
-      <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-12 px-10 py-14 lg:gap-16 lg:px-14 lg:py-20">
-        <header className="flex flex-col gap-5 border-b border-border/60 pb-10">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
-              Fan Fiction · AI Co-writing
-            </span>
-          </div>
+      <main className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-10 px-10 py-14 lg:px-14 lg:py-16">
+        <header className="flex flex-col gap-4 border-b border-border/60 pb-8">
+          <span className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
+            Dashboard · Portfolio Demo
+          </span>
           <div className="flex flex-col gap-3">
-            <h1 className="text-4xl font-semibold tracking-tight text-foreground lg:text-5xl">
-              FanForge
+            <h1 className="text-3xl font-semibold tracking-tight lg:text-4xl">
+              FanForge 创作工作台
             </h1>
-            <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground">
-              面向同人创作者的原著一致性 AI 共写平台
+            <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground lg:text-base">
+              从原作理解、Canon 证据、角色人格，到情绪切片与多 Agent
+              审稿的一站式同人 AI 共写流程。
             </p>
-          </div>
-          <p className="max-w-3xl text-sm leading-7 text-muted-foreground/90">
-            从理解原作到塑造角色、生成情绪切片，再到多 Agent
-            审稿——在同一工作流里完成设定沉淀与正文打磨。
-          </p>
-          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
-            <Button size="lg" className="h-11 px-6">
-              开始创建项目
-            </Button>
-            <Button size="lg" variant="outline" className="h-11 px-6">
-              查看 Demo 流程
-            </Button>
           </div>
         </header>
 
-        <section className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          {features.map((feature) => {
-            const Icon = feature.icon;
-            const card = (
-              <Card
-                className={featureCardClassName}
-                {...(!feature.href && { tabIndex: 0, role: "button" })}
-              >
-                <CardHeader className="gap-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted/40 transition-colors group-hover:border-foreground/20 group-hover:bg-muted/60">
-                      <Icon className="size-4.5 text-muted-foreground transition-colors group-hover:text-foreground" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant="outline"
-                        className="text-muted-foreground"
-                      >
-                        {feature.label}
-                      </Badge>
-                      <ChevronRight className="size-4 text-muted-foreground/0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
-                    </div>
-                  </div>
-                  <CardTitle className="text-lg font-medium tracking-tight transition-colors group-hover:text-foreground">
-                    {feature.title}
-                  </CardTitle>
-                  <CardDescription className="text-sm leading-relaxed">
-                    {feature.description}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            );
-
-            if (feature.href) {
-              return (
-                <Link
-                  key={feature.title}
-                  href={feature.href}
-                  className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {card}
-                </Link>
-              );
-            }
-
-            return <div key={feature.title}>{card}</div>;
-          })}
-        </section>
-
-        <section className="flex flex-col gap-5">
+        <section className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <h2 className="text-sm font-medium tracking-wide text-foreground">
-              工作流总览
+              推荐演示路径
             </h2>
-            <p className="text-sm text-muted-foreground">
-              从理解原作到模型策略的完整产品闭环
+            <p className="text-xs text-muted-foreground">
+              面试或作品集讲解时，可以按这条路径展示完整产品闭环。
             </p>
           </div>
-          <Card className="border-border/80 bg-card/60 py-5">
+          <Card className="border-border/80 bg-card/70 py-5">
             <div className="flex flex-wrap items-center gap-x-1 gap-y-3 px-6">
-              {demoSteps.map((step, index) => (
+              {demoPath.map((step, index) => (
                 <div key={step} className="flex items-center gap-1">
-                  <div
-                    className={cn(
-                      "flex items-center gap-2 rounded-md border border-border/80 bg-muted/30 px-3 py-2 text-sm text-foreground/90",
-                      index === 0 && "border-foreground/15 bg-muted/50",
-                    )}
-                  >
+                  <div className="flex items-center gap-2 rounded-md border border-border/80 bg-muted/30 px-3 py-2 text-sm text-foreground/90">
                     <span className="font-mono text-xs text-muted-foreground">
                       {String(index + 1).padStart(2, "0")}
                     </span>
                     <span className="whitespace-nowrap">{step}</span>
                   </div>
-                  {index < demoSteps.length - 1 && (
+                  {index < demoPath.length - 1 && (
                     <ArrowRight
                       className="mx-0.5 size-3.5 shrink-0 text-muted-foreground/50"
                       aria-hidden
@@ -232,6 +192,55 @@ export default function DashboardPage() {
           </Card>
         </section>
 
+        <section className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-sm font-medium tracking-wide text-foreground">
+              核心模块入口
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              每个模块对应一个同人创作中的具体风险点或效率瓶颈。
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {modules.map((module) => {
+              const Icon = module.icon;
+
+              return (
+                <Link
+                  key={module.title}
+                  href={module.href}
+                  className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Card className={moduleCardClassName}>
+                    <CardHeader className="gap-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted/40 transition-colors group-hover:border-foreground/20 group-hover:bg-muted/60">
+                          <Icon className="size-4.5 text-muted-foreground transition-colors group-hover:text-foreground" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className="text-muted-foreground"
+                          >
+                            {module.status}
+                          </Badge>
+                          <ChevronRight className="size-4 text-muted-foreground/0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
+                        </div>
+                      </div>
+                      <CardTitle className="text-lg font-medium tracking-tight">
+                        {module.title}
+                      </CardTitle>
+                      <CardDescription className="text-sm leading-relaxed">
+                        {module.description}
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
         <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <Card className="border-border/80 bg-card/70">
             <CardHeader className="gap-4">
@@ -241,15 +250,15 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <CardTitle className="text-base font-medium">
-                    为什么不是普通 AI 写作工具
+                    为什么 FanForge 不是普通 AI 写作工具
                   </CardTitle>
                   <CardDescription className="text-sm leading-relaxed">
-                    同人创作的难点不只是写得像，而是长期保持设定、人格和关系推进一致。
+                    FanForge 把同人创作拆成可检索、可约束、可审稿、可反馈的产品链路。
                   </CardDescription>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {painPoints.map((item, index) => (
+                {differentiators.map((item, index) => (
                   <div
                     key={item}
                     className="rounded-md border border-border/50 bg-muted/15 px-3 py-2 text-sm text-muted-foreground"
@@ -268,22 +277,22 @@ export default function DashboardPage() {
             <CardHeader className="gap-4">
               <div className="flex items-start gap-3">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted/30">
-                  <Layers className="size-4 text-muted-foreground" />
+                  <Settings className="size-4 text-muted-foreground" />
                 </div>
                 <div className="flex flex-col gap-1">
                   <CardTitle className="text-base font-medium">
-                    FanForge 的解决方式
+                    当前 MVP 边界
                   </CardTitle>
                   <CardDescription className="text-sm leading-relaxed">
-                    把灵感生成拆成可审稿、可约束、可复用的产品工作流，而不是一次性续写。
+                    这里明确区分已实现 Demo、mock 能力和后续工程化迭代范围。
                   </CardDescription>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {solutions.map((item, index) => (
+              <div className="flex flex-col gap-2">
+                {mvpBoundaries.map((item, index) => (
                   <div
                     key={item}
-                    className="rounded-md border border-border/50 bg-muted/15 px-3 py-2 text-sm text-foreground/90"
+                    className="rounded-md border border-border/50 bg-muted/15 px-3 py-2 text-sm leading-relaxed text-foreground/90"
                   >
                     <span className="mr-2 font-mono text-xs text-muted-foreground/70">
                       {String(index + 1).padStart(2, "0")}
@@ -295,7 +304,7 @@ export default function DashboardPage() {
             </CardHeader>
           </Card>
         </section>
-      </div>
+      </main>
     </div>
   );
 }
