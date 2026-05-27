@@ -33,6 +33,7 @@ const features: {
       "帮助新手快速理解原作世界观、主线故事和 Canon 硬设定，让每一次续写都站在可靠的语境之上。",
     label: "Canon",
     icon: BookOpen,
+    href: "/origin",
   },
   {
     title: "角色人格思维导图",
