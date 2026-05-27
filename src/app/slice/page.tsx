@@ -71,6 +71,8 @@ const FEEDBACK_TAGS = [
   "想要更克制",
 ] as const;
 
+const FEEDBACK_STORAGE_KEY = "fanforge-feedback-records";
+
 type SliceParams = {
   relation: (typeof RELATION_TYPES)[number];
   moment: (typeof MOMENTS)[number];
@@ -93,6 +95,17 @@ type SlicePreview = {
   fragment: string;
   structure: string[];
   constraints: string[];
+};
+
+type FeedbackRecord = {
+  id: string;
+  createdAt: string;
+  scenarioText: string;
+  targetLength: string;
+  styleRequirement: string;
+  selectedTags: string[];
+  comment: string;
+  generatedPreview: string;
 };
 
 function buildMockPreview(p: SliceParams, runIndex: number): SlicePreview {
@@ -201,6 +214,9 @@ export default function SlicePage() {
     (typeof FEEDBACK_TAGS)[number][]
   >([]);
   const [feedbackText, setFeedbackText] = useState("");
+  const [savedFeedback, setSavedFeedback] = useState<FeedbackRecord | null>(
+    null,
+  );
 
   const [demoRun, setDemoRun] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -215,10 +231,52 @@ export default function SlicePage() {
     );
   }
 
-  function toggleFeedbackTag(item: (typeof FEEDBACK_TAGS)[number]) {
-    setFeedbackTags((prev) =>
-      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item],
+  function getTargetLength() {
+    return wordCount === "自定义" ? customWordCount || "自定义" : wordCount;
+  }
+
+  function saveFeedbackRecord(
+    tags: string[] = feedbackTags,
+    comment = feedbackText,
+  ) {
+    if (typeof window === "undefined") return;
+    if (tags.length === 0 && comment.trim() === "") return;
+
+    const record: FeedbackRecord = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: new Date().toISOString(),
+      scenarioText: sceneDescription,
+      targetLength: getTargetLength(),
+      styleRequirement,
+      selectedTags: tags,
+      comment,
+      generatedPreview: preview.fragment.replace(/\s+/g, " ").slice(0, 80),
+    };
+
+    const raw = window.localStorage.getItem(FEEDBACK_STORAGE_KEY);
+    let existing: FeedbackRecord[] = [];
+
+    try {
+      const parsed = raw ? JSON.parse(raw) : [];
+      existing = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      existing = [];
+    }
+
+    window.localStorage.setItem(
+      FEEDBACK_STORAGE_KEY,
+      JSON.stringify([record, ...existing]),
     );
+    setSavedFeedback(record);
+  }
+
+  function toggleFeedbackTag(item: (typeof FEEDBACK_TAGS)[number]) {
+    const next = feedbackTags.includes(item)
+      ? feedbackTags.filter((x) => x !== item)
+      : [...feedbackTags, item];
+
+    setFeedbackTags(next);
+    saveFeedbackRecord(next, feedbackText);
   }
 
   async function handleGenerate() {
@@ -610,21 +668,29 @@ export default function SlicePage() {
                   placeholder="可以写下你觉得哪里不像角色、哪里情绪不够、哪里需要修改……"
                   className="min-h-24 resize-none bg-background/40 text-sm leading-relaxed"
                 />
-                {(feedbackTags.length > 0 || feedbackText.trim()) && (
+                <Button
+                  variant="outline"
+                  className="h-10 w-full sm:w-fit"
+                  onClick={() => saveFeedbackRecord()}
+                  disabled={feedbackTags.length === 0 && !feedbackText.trim()}
+                >
+                  记录本轮反馈
+                </Button>
+                {savedFeedback ? (
                   <div className="rounded-md border border-dashed border-foreground/10 bg-card/40 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
                     <p className="font-medium text-foreground/80">
                       已记录本轮反馈
                     </p>
-                    {feedbackTags.length > 0 ? (
+                    {(savedFeedback?.selectedTags.length ?? 0) > 0 ? (
                       <p className="mt-2">
-                        反馈标签：{feedbackTags.join("、")}
+                        反馈标签：{savedFeedback?.selectedTags.join("、")}
                       </p>
                     ) : null}
-                    {feedbackText.trim() ? (
-                      <p className="mt-2">文字反馈：{feedbackText}</p>
+                    {savedFeedback?.comment.trim() ? (
+                      <p className="mt-2">文字反馈：{savedFeedback.comment}</p>
                     ) : null}
                   </div>
-                )}
+                ) : null}
               </section>
             </CardContent>
           </Card>
