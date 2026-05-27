@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +73,7 @@ const FEEDBACK_TAGS = [
 ] as const;
 
 const FEEDBACK_STORAGE_KEY = "fanforge-feedback-records";
+const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
 
 type SliceParams = {
   relation: (typeof RELATION_TYPES)[number];
@@ -192,6 +194,7 @@ function FieldLabel({ children }: { children: ReactNode }) {
 }
 
 export default function SlicePage() {
+  const router = useRouter();
   const [relation, setRelation] =
     useState<SliceParams["relation"]>(defaultParams.relation);
   const [moment, setMoment] = useState<SliceParams["moment"]>(
@@ -224,6 +227,24 @@ export default function SlicePage() {
   const [preview, setPreview] = useState<SlicePreview>(() =>
     buildMockPreview(defaultParams, 1),
   );
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    if (!window.localStorage.getItem(DEMO_USER_STORAGE_KEY)) {
+      router.replace("/");
+      return;
+    }
+
+    setIsCheckingAuth(false);
+  }, [router]);
+
+  if (isCheckingAuth) {
+    return (
+      <div className="dark flex min-h-full items-center justify-center bg-background text-sm text-muted-foreground">
+        正在检查登录状态……
+      </div>
+    );
+  }
 
   function toggleForbidden(item: (typeof FORBIDDEN)[number]) {
     setForbiddens((prev) =>

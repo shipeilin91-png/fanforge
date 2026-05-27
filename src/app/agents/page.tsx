@@ -2,6 +2,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,7 @@ const pipeline = [
 ] as const;
 
 const STAGE_DELAY_MS = 800;
+const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
 
 type WorkflowPhase = "idle" | "writer" | "reviewer" | "criticizer" | "done";
 
@@ -179,6 +181,7 @@ function getPipelineStepIndex(phase: WorkflowPhase): number {
 }
 
 export default function AgentsPage() {
+  const router = useRouter();
   const [phase, setPhase] = useState<WorkflowPhase>("idle");
   const [isRunning, setIsRunning] = useState(false);
   const [reviewerResult, setReviewerResult] = useState<ReviewerResult | null>(
@@ -188,6 +191,7 @@ export default function AgentsPage() {
   const [criticizerResult, setCriticizerResult] =
     useState<CriticizerResult | null>(null);
   const [criticizerError, setCriticizerError] = useState<string | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const timeoutsRef = useRef<number[]>([]);
 
   const writerStatus = getWriterStatus(phase);
@@ -318,8 +322,25 @@ export default function AgentsPage() {
   }
 
   useEffect(() => {
+    if (!window.localStorage.getItem(DEMO_USER_STORAGE_KEY)) {
+      router.replace("/");
+      return;
+    }
+
+    setIsCheckingAuth(false);
+  }, [router]);
+
+  useEffect(() => {
     return () => clearScheduledTimeouts();
   }, []);
+
+  if (isCheckingAuth) {
+    return (
+      <div className="dark flex min-h-full items-center justify-center bg-background text-sm text-muted-foreground">
+        正在检查登录状态……
+      </div>
+    );
+  }
 
   return (
     <div className="dark min-h-full bg-background text-foreground">

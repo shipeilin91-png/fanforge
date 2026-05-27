@@ -1,3 +1,5 @@
+"use client";
+
 import {
   ArrowRight,
   BookOpen,
@@ -10,6 +12,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
@@ -88,7 +92,29 @@ const solutions = [
 const featureCardClassName =
   "group cursor-pointer border-border/80 bg-card/80 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-md hover:ring-1 hover:ring-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
+const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
+
 export default function DashboardPage() {
+  const router = useRouter();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    if (!window.localStorage.getItem(DEMO_USER_STORAGE_KEY)) {
+      router.replace("/");
+      return;
+    }
+
+    setIsCheckingAuth(false);
+  }, [router]);
+
+  if (isCheckingAuth) {
+    return (
+      <div className="dark flex min-h-full items-center justify-center bg-background text-sm text-muted-foreground">
+        正在检查登录状态……
+      </div>
+    );
+  }
+
   return (
     <div className="dark min-h-full bg-background text-foreground">
       <SiteNav />

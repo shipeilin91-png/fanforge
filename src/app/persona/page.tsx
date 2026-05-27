@@ -11,7 +11,8 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { memo, useState, type ReactNode } from "react";
+import { memo, useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
@@ -410,6 +411,8 @@ const foreshadowSuggestions = [
   "盟友在关键时刻选择公开保护中心角色，但事后要求他交出王室旧证。",
 ] as const;
 
+const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
+
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
     <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
@@ -419,6 +422,8 @@ function FieldLabel({ children }: { children: ReactNode }) {
 }
 
 export default function PersonaPage() {
+  const router = useRouter();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [form, setForm] = useState<PersonaForm>(defaultPersona);
   const [nodes, setNodes] = useState<Node<PersonaNodeData>[]>(() =>
     createPersonaNodes(defaultPersona),
@@ -439,6 +444,23 @@ export default function PersonaPage() {
     relationshipPeople.find((person) => person.id === selectedPersonId) ??
     relationshipPeople[0];
   const relationshipCenterName = form.name.trim() || defaultPersona.name;
+
+  useEffect(() => {
+    if (!window.localStorage.getItem(DEMO_USER_STORAGE_KEY)) {
+      router.replace("/");
+      return;
+    }
+
+    setIsCheckingAuth(false);
+  }, [router]);
+
+  if (isCheckingAuth) {
+    return (
+      <div className="dark flex min-h-full items-center justify-center bg-background text-sm text-muted-foreground">
+        正在检查登录状态……
+      </div>
+    );
+  }
 
   function updateField(field: keyof PersonaForm, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));

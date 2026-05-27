@@ -2,6 +2,7 @@
 
 import { ArrowRight, BarChart3, ClipboardList, GitBranch } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/card";
 
 const FEEDBACK_STORAGE_KEY = "fanforge-feedback-records";
+const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
 
 type FeedbackRecord = {
   id: string;
@@ -98,7 +100,18 @@ function normalizeRecords(value: unknown): FeedbackRecord[] {
 }
 
 export default function FeedbackPage() {
+  const router = useRouter();
   const [records, setRecords] = useState<FeedbackRecord[]>([]);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    if (!window.localStorage.getItem(DEMO_USER_STORAGE_KEY)) {
+      router.replace("/");
+      return;
+    }
+
+    setIsCheckingAuth(false);
+  }, [router]);
 
   useEffect(() => {
     const raw = window.localStorage.getItem(FEEDBACK_STORAGE_KEY);
@@ -180,6 +193,14 @@ export default function FeedbackPage() {
   function handleClearRecords() {
     window.localStorage.removeItem(FEEDBACK_STORAGE_KEY);
     setRecords([]);
+  }
+
+  if (isCheckingAuth) {
+    return (
+      <div className="dark flex min-h-full items-center justify-center bg-background text-sm text-muted-foreground">
+        正在检查登录状态……
+      </div>
+    );
   }
 
   return (
