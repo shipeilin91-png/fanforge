@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,17 @@ const pipeline = [
   "Reviewer 审稿",
   "Criticizer 修订",
 ] as const;
+
+const STAGE_DELAY_MS = 800;
+
+type WorkflowPhase = "idle" | "writer" | "reviewer" | "criticizer" | "done";
+
+type AgentStatus =
+  | "Waiting"
+  | "Generating"
+  | "Reviewing"
+  | "Revising"
+  | "Done";
 
 const writerFragment = `雨线把巷口的路灯揉成一团湿冷的光。她站在檐下，袖口还留着没干透的水痕；他停在两步之外，像刻意把距离维持在一个「不会被误读」的长度。
 
@@ -69,6 +81,34 @@ const criticizer = {
 雨声很大。她伸手去接斜过来的雨，指尖擦过他袖口，又很快收回。`,
 };
 
+function getWriterStatus(phase: WorkflowPhase): AgentStatus {
+  if (phase === "idle") return "Waiting";
+  if (phase === "writer") return "Generating";
+  return "Done";
+}
+
+function getReviewerStatus(phase: WorkflowPhase): AgentStatus {
+  if (phase === "idle" || phase === "writer") return "Waiting";
+  if (phase === "reviewer") return "Reviewing";
+  return "Done";
+}
+
+function getCriticizerStatus(phase: WorkflowPhase): AgentStatus {
+  if (phase === "idle" || phase === "writer" || phase === "reviewer") {
+    return "Waiting";
+  }
+  if (phase === "criticizer") return "Revising";
+  return "Done";
+}
+
+function statusBadgeVariant(
+  status: AgentStatus,
+): "default" | "secondary" | "outline" {
+  if (status === "Waiting") return "outline";
+  if (status === "Done") return "secondary";
+  return "default";
+}
+
 function ScoreBar({ score }: { score: number }) {
   const pct = Math.min(100, Math.max(0, score * 10));
   return (
@@ -81,21 +121,78 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
-function AgentStatusBadge({
-  status,
-  variant = "outline",
-}: {
-  status: string;
-  variant?: "default" | "secondary" | "outline";
-}) {
+function AgentStatusBadge({ status }: { status: AgentStatus }) {
   return (
-    <Badge variant={variant} className="text-[10px] tracking-wide uppercase">
+    <Badge
+      variant={statusBadgeVariant(status)}
+      className="text-[10px] tracking-wide uppercase"
+    >
       {status}
     </Badge>
   );
 }
 
+function AgentPlaceholder({ message }: { message: string }) {
+  return (
+    <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+      {message}
+    </div>
+  );
+}
+
+function getPipelineStepIndex(phase: WorkflowPhase): number {
+  if (phase === "idle") return 0;
+  if (phase === "writer") return 1;
+  if (phase === "reviewer") return 2;
+  if (phase === "criticizer" || phase === "done") return 3;
+  return 0;
+}
+
 export default function AgentsPage() {
+  const [phase, setPhase] = useState<WorkflowPhase>("idle");
+  const [isRunning, setIsRunning] = useState(false);
+  const timeoutsRef = useRef<number[]>([]);
+
+  const writerStatus = getWriterStatus(phase);
+  const reviewerStatus = getReviewerStatus(phase);
+  const criticizerStatus = getCriticizerStatus(phase);
+
+  const showWriterContent =
+    phase === "reviewer" || phase === "criticizer" || phase === "done";
+  const showReviewerContent = phase === "criticizer" || phase === "done";
+  const showCriticizerContent = phase === "done";
+
+  const activePipelineIndex = getPipelineStepIndex(phase);
+
+  function clearScheduledTimeouts() {
+    timeoutsRef.current.forEach((id) => window.clearTimeout(id));
+    timeoutsRef.current = [];
+  }
+
+  function schedule(fn: () => void, delay: number) {
+    const id = window.setTimeout(fn, delay);
+    timeoutsRef.current.push(id);
+  }
+
+  function handleStartReview() {
+    if (isRunning) return;
+
+    clearScheduledTimeouts();
+    setIsRunning(true);
+    setPhase("writer");
+
+    schedule(() => setPhase("reviewer"), STAGE_DELAY_MS);
+    schedule(() => setPhase("criticizer"), STAGE_DELAY_MS * 2);
+    schedule(() => {
+      setPhase("done");
+      setIsRunning(false);
+    }, STAGE_DELAY_MS * 3);
+  }
+
+  useEffect(() => {
+    return () => clearScheduledTimeouts();
+  }, []);
+
   return (
     <div className="dark min-h-full bg-background text-foreground">
       <SiteNav />
@@ -104,27 +201,40 @@ export default function AgentsPage() {
           <span className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
             Multi-Agent · Review Desk
           </span>
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-semibold tracking-tight lg:text-4xl">
-              多 Agent 审稿台
-            </h1>
-            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground lg:text-base">
-              Writer、Reviewer、Criticizer
-              分工完成生成、审稿与修订，避免单一 AI 自写自评。
-            </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex flex-col gap-2">
+              <h1 className="text-3xl font-semibold tracking-tight lg:text-4xl">
+                多 Agent 审稿台
+              </h1>
+              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground lg:text-base">
+                Writer、Reviewer、Criticizer
+                分工完成生成、审稿与修订，避免单一 AI 自写自评。
+              </p>
+            </div>
+            <Button
+              size="lg"
+              className="h-11 shrink-0 px-6"
+              onClick={handleStartReview}
+              disabled={isRunning}
+            >
+              {isRunning ? "审稿进行中..." : "开始多 Agent 审稿"}
+            </Button>
           </div>
         </header>
 
         <section className="flex flex-col gap-3">
-          <p className="text-xs text-muted-foreground">审稿流程（静态演示）</p>
+          <p className="text-xs text-muted-foreground">
+            审稿流程（半动态演示 · 每阶段约 {STAGE_DELAY_MS}ms）
+          </p>
           <Card className="border-border/80 bg-card/60 py-4">
             <div className="flex flex-wrap items-center gap-x-1 gap-y-3 px-6">
               {pipeline.map((step, index) => (
                 <div key={step} className="flex items-center gap-1">
                   <div
                     className={cn(
-                      "flex items-center gap-2 rounded-md border border-border/80 bg-muted/30 px-3 py-2 text-sm text-foreground/90",
-                      index === 0 && "border-foreground/15 bg-muted/50",
+                      "flex items-center gap-2 rounded-md border border-border/80 bg-muted/30 px-3 py-2 text-sm text-foreground/90 transition-colors",
+                      index <= activePipelineIndex &&
+                        "border-foreground/15 bg-muted/50",
                     )}
                   >
                     <span className="font-mono text-xs text-muted-foreground">
@@ -145,7 +255,12 @@ export default function AgentsPage() {
         </section>
 
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-5">
-          <Card className="flex flex-col border-border/80 bg-card/80">
+          <Card
+            className={cn(
+              "flex flex-col border-border/80 bg-card/80 transition-shadow",
+              phase === "writer" && "ring-1 ring-foreground/15",
+            )}
+          >
             <CardHeader className="border-border/60 gap-3 border-b pb-5">
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -154,24 +269,37 @@ export default function AgentsPage() {
                     关系情绪切片 · 初稿生成
                   </CardDescription>
                 </div>
-                <AgentStatusBadge status="Generated" variant="secondary" />
+                <AgentStatusBadge status={writerStatus} />
               </div>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col gap-4 pt-5">
-              <div className="rounded-lg border border-border/60 bg-background/40 px-4 py-4 text-sm leading-8 text-foreground/90">
-                {writerFragment.split("\n\n").map((para, i) => (
-                  <p key={i} className="mb-4 last:mb-0">
-                    {para}
+              {phase === "writer" ? (
+                <AgentPlaceholder message="Writer 正在生成关系情绪切片初稿…" />
+              ) : showWriterContent ? (
+                <>
+                  <div className="rounded-lg border border-border/60 bg-background/40 px-4 py-4 text-sm leading-8 text-foreground/90">
+                    {writerFragment.split("\n\n").map((para, i) => (
+                      <p key={i} className="mb-4 last:mb-0">
+                        {para}
+                      </p>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    输入摘要：CP · 雨夜重逢 · 分离后重逢 · 克制 · 疏离克制
                   </p>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                输入摘要：CP · 雨夜重逢 · 分离后重逢 · 克制 · 疏离克制
-              </p>
+                </>
+              ) : (
+                <AgentPlaceholder message="等待开始 · Writer 将首先生成初稿" />
+              )}
             </CardContent>
           </Card>
 
-          <Card className="flex flex-col border-border/80 bg-card/80">
+          <Card
+            className={cn(
+              "flex flex-col border-border/80 bg-card/80 transition-shadow",
+              phase === "reviewer" && "ring-1 ring-foreground/15",
+            )}
+          >
             <CardHeader className="border-border/60 gap-3 border-b pb-5">
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -180,33 +308,46 @@ export default function AgentsPage() {
                     一致性评分 · 维度审稿
                   </CardDescription>
                 </div>
-                <AgentStatusBadge status="Reviewed" />
+                <AgentStatusBadge status={reviewerStatus} />
               </div>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col gap-5 pt-5">
-              {reviewScores.map((item) => (
-                <div key={item.label} className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-foreground">
-                      {item.label}
-                    </span>
-                    <span className="font-mono text-sm text-muted-foreground">
-                      {item.score.toFixed(1)}
-                    </span>
+              {phase === "reviewer" ? (
+                <AgentPlaceholder message="Reviewer 正在对照 Canon 与人格约束审稿…" />
+              ) : showReviewerContent ? (
+                <>
+                  {reviewScores.map((item) => (
+                    <div key={item.label} className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium text-foreground">
+                          {item.label}
+                        </span>
+                        <span className="font-mono text-sm text-muted-foreground">
+                          {item.score.toFixed(1)}
+                        </span>
+                      </div>
+                      <ScoreBar score={item.score} />
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        {item.note}
+                      </p>
+                    </div>
+                  ))}
+                  <div className="mt-auto rounded-md border border-dashed border-foreground/10 bg-muted/15 px-3 py-2 text-xs text-muted-foreground">
+                    综合建议：保留距离感与物象收束，弱化解释性旁白后可进入修订。
                   </div>
-                  <ScoreBar score={item.score} />
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    {item.note}
-                  </p>
-                </div>
-              ))}
-              <div className="mt-auto rounded-md border border-dashed border-foreground/10 bg-muted/15 px-3 py-2 text-xs text-muted-foreground">
-                综合建议：保留距离感与物象收束，弱化解释性旁白后可进入修订。
-              </div>
+                </>
+              ) : (
+                <AgentPlaceholder message="等待 Writer 完成 · 随后进入审稿" />
+              )}
             </CardContent>
           </Card>
 
-          <Card className="flex flex-col border-border/80 bg-card/80">
+          <Card
+            className={cn(
+              "flex flex-col border-border/80 bg-card/80 transition-shadow",
+              phase === "criticizer" && "ring-1 ring-foreground/15",
+            )}
+          >
             <CardHeader className="border-border/60 gap-3 border-b pb-5">
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -215,82 +356,90 @@ export default function AgentsPage() {
                     批评 · 策略 · 修订稿
                   </CardDescription>
                 </div>
-                <AgentStatusBadge status="Revised" variant="secondary" />
+                <AgentStatusBadge status={criticizerStatus} />
               </div>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col pt-5">
-              <Tabs defaultValue="criticism" className="flex flex-1 flex-col">
-                <TabsList className="grid h-auto w-full grid-cols-3 bg-muted/50 p-1">
-                  <TabsTrigger value="criticism" className="px-1 py-2 text-xs">
-                    核心批评
-                  </TabsTrigger>
-                  <TabsTrigger value="strategy" className="px-1 py-2 text-xs">
-                    修改策略
-                  </TabsTrigger>
-                  <TabsTrigger value="revised" className="px-1 py-2 text-xs">
-                    修订版片段
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent
-                  value="criticism"
-                  className="mt-4 flex-1 outline-none"
-                >
-                  <ul className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-                    {criticizer.criticism.map((line, i) => (
-                      <li
-                        key={i}
-                        className="flex gap-2 rounded-md border border-border/40 bg-muted/15 px-3 py-2"
-                      >
-                        <span className="font-mono text-xs text-muted-foreground/70">
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                        <span>{line}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </TabsContent>
-                <TabsContent
-                  value="strategy"
-                  className="mt-4 flex-1 outline-none"
-                >
-                  <ul className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-                    {criticizer.strategy.map((line, i) => (
-                      <li
-                        key={i}
-                        className="flex gap-2 rounded-md border border-border/40 bg-muted/15 px-3 py-2"
-                      >
-                        <span className="font-mono text-xs text-muted-foreground/70">
-                          →
-                        </span>
-                        <span>{line}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </TabsContent>
-                <TabsContent
-                  value="revised"
-                  className="mt-4 flex-1 outline-none"
-                >
-                  <div className="rounded-lg border border-border/60 bg-background/40 px-4 py-4 text-sm leading-8 text-foreground/90">
-                    {criticizer.revised.split("\n\n").map((para, i) => (
-                      <p key={i} className="mb-4 last:mb-0">
-                        {para}
-                      </p>
-                    ))}
-                  </div>
-                </TabsContent>
-              </Tabs>
+              {phase === "criticizer" ? (
+                <AgentPlaceholder message="Criticizer 正在整理批评意见并输出修订稿…" />
+              ) : showCriticizerContent ? (
+                <Tabs defaultValue="criticism" className="flex flex-1 flex-col">
+                  <TabsList className="grid h-auto w-full grid-cols-3 bg-muted/50 p-1">
+                    <TabsTrigger
+                      value="criticism"
+                      className="px-1 py-2 text-xs"
+                    >
+                      核心批评
+                    </TabsTrigger>
+                    <TabsTrigger value="strategy" className="px-1 py-2 text-xs">
+                      修改策略
+                    </TabsTrigger>
+                    <TabsTrigger value="revised" className="px-1 py-2 text-xs">
+                      修订版片段
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent
+                    value="criticism"
+                    className="mt-4 flex-1 outline-none"
+                  >
+                    <ul className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+                      {criticizer.criticism.map((line, i) => (
+                        <li
+                          key={i}
+                          className="flex gap-2 rounded-md border border-border/40 bg-muted/15 px-3 py-2"
+                        >
+                          <span className="font-mono text-xs text-muted-foreground/70">
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                          <span>{line}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </TabsContent>
+                  <TabsContent
+                    value="strategy"
+                    className="mt-4 flex-1 outline-none"
+                  >
+                    <ul className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+                      {criticizer.strategy.map((line, i) => (
+                        <li
+                          key={i}
+                          className="flex gap-2 rounded-md border border-border/40 bg-muted/15 px-3 py-2"
+                        >
+                          <span className="font-mono text-xs text-muted-foreground/70">
+                            →
+                          </span>
+                          <span>{line}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </TabsContent>
+                  <TabsContent
+                    value="revised"
+                    className="mt-4 flex-1 outline-none"
+                  >
+                    <div className="rounded-lg border border-border/60 bg-background/40 px-4 py-4 text-sm leading-8 text-foreground/90">
+                      {criticizer.revised.split("\n\n").map((para, i) => (
+                        <p key={i} className="mb-4 last:mb-0">
+                          {para}
+                        </p>
+                      ))}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                <AgentPlaceholder message="等待 Reviewer 完成 · 随后进入修订" />
+              )}
             </CardContent>
           </Card>
         </section>
 
-        <footer className="flex flex-col gap-4 border-t border-border/60 pt-8">
+        <footer className="border-t border-border/60 pt-8">
           <p className="text-xs text-muted-foreground">
-            当前为静态演示链路；真实环境将按项目设定与人格约束自动串联三个 Agent。
+            {phase === "done"
+              ? "本轮审稿已完成。可再次点击顶部按钮重新模拟三 Agent 串联流程（仍非真实模型调用）。"
+              : "点击「开始多 Agent 审稿」后，Writer → Reviewer → Criticizer 将依次进入工作状态。"}
           </p>
-          <Button size="lg" variant="outline" className="h-11 max-w-xs" disabled>
-            重新运行审稿（即将推出）
-          </Button>
         </footer>
       </div>
     </div>
