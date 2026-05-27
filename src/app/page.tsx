@@ -3,7 +3,9 @@ import {
   BookOpen,
   ChevronRight,
   GitBranch,
+  Layers,
   PenLine,
+  ShieldAlert,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -63,11 +65,24 @@ const features: {
 
 const demoSteps = [
   "原作理解",
-  "人格思维导图",
-  "关系情绪切片",
-  "Writer 生成",
-  "Reviewer 审稿",
-  "Criticizer 修订",
+  "角色人格建模",
+  "情绪切片生成",
+  "多 Agent 审稿",
+  "模型设置",
+] as const;
+
+const painPoints = [
+  "普通 AI 写作容易 OOC",
+  "长线设定容易遗忘",
+  "新手缺少原作理解",
+  "单一 AI 自写自评不可靠",
+] as const;
+
+const solutions = [
+  "Canon 基础库",
+  "人格时间树",
+  "情绪切片参数化生成",
+  "Writer / Reviewer / Criticizer 多 Agent 协作",
 ] as const;
 
 const featureCardClassName =
@@ -158,10 +173,10 @@ export default function Home() {
         <section className="flex flex-col gap-5">
           <div className="flex flex-col gap-1">
             <h2 className="text-sm font-medium tracking-wide text-foreground">
-              Demo 主流程
+              工作流总览
             </h2>
             <p className="text-sm text-muted-foreground">
-              从原作理解到多 Agent 修订的完整共写路径
+              从理解原作到模型策略的完整产品闭环
             </p>
           </div>
           <Card className="border-border/80 bg-card/60 py-5">
@@ -171,7 +186,7 @@ export default function Home() {
                   <div
                     className={cn(
                       "flex items-center gap-2 rounded-md border border-border/80 bg-muted/30 px-3 py-2 text-sm text-foreground/90",
-                      index === 0 && "border-foreground/15 bg-muted/50"
+                      index === 0 && "border-foreground/15 bg-muted/50",
                     )}
                   >
                     <span className="font-mono text-xs text-muted-foreground">
@@ -188,6 +203,70 @@ export default function Home() {
                 </div>
               ))}
             </div>
+          </Card>
+        </section>
+
+        <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <Card className="border-border/80 bg-card/70">
+            <CardHeader className="gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted/30">
+                  <ShieldAlert className="size-4 text-muted-foreground" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <CardTitle className="text-base font-medium">
+                    为什么不是普通 AI 写作工具
+                  </CardTitle>
+                  <CardDescription className="text-sm leading-relaxed">
+                    同人创作的难点不只是写得像，而是长期保持设定、人格和关系推进一致。
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {painPoints.map((item, index) => (
+                  <div
+                    key={item}
+                    className="rounded-md border border-border/50 bg-muted/15 px-3 py-2 text-sm text-muted-foreground"
+                  >
+                    <span className="mr-2 font-mono text-xs text-muted-foreground/70">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </CardHeader>
+          </Card>
+
+          <Card className="border-border/80 bg-card/70">
+            <CardHeader className="gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted/30">
+                  <Layers className="size-4 text-muted-foreground" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <CardTitle className="text-base font-medium">
+                    FanForge 的解决方式
+                  </CardTitle>
+                  <CardDescription className="text-sm leading-relaxed">
+                    把灵感生成拆成可审稿、可约束、可复用的产品工作流，而不是一次性续写。
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {solutions.map((item, index) => (
+                  <div
+                    key={item}
+                    className="rounded-md border border-border/50 bg-muted/15 px-3 py-2 text-sm text-foreground/90"
+                  >
+                    <span className="mr-2 font-mono text-xs text-muted-foreground/70">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </CardHeader>
           </Card>
         </section>
       </div>
