@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -20,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 const RELATION_TYPES = [
@@ -56,6 +58,17 @@ const FORBIDDEN = [
   "禁止亲吻",
   "禁止心理解释",
   "禁止过度甜腻",
+] as const;
+
+const WORD_COUNTS = ["300 字", "500 字", "800 字", "自定义"] as const;
+
+const FEEDBACK_TAGS = [
+  "满意",
+  "OOC",
+  "情绪不够",
+  "风格不对",
+  "Canon 冲突",
+  "想要更克制",
 ] as const;
 
 type SliceParams = {
@@ -179,6 +192,15 @@ export default function SlicePage() {
   const [forbiddens, setForbiddens] = useState<
     SliceParams["forbiddens"]
   >(defaultParams.forbiddens);
+  const [sceneDescription, setSceneDescription] = useState("");
+  const [wordCount, setWordCount] =
+    useState<(typeof WORD_COUNTS)[number]>("500 字");
+  const [customWordCount, setCustomWordCount] = useState("");
+  const [styleRequirement, setStyleRequirement] = useState("");
+  const [feedbackTags, setFeedbackTags] = useState<
+    (typeof FEEDBACK_TAGS)[number][]
+  >([]);
+  const [feedbackText, setFeedbackText] = useState("");
 
   const [demoRun, setDemoRun] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -189,6 +211,12 @@ export default function SlicePage() {
 
   function toggleForbidden(item: (typeof FORBIDDEN)[number]) {
     setForbiddens((prev) =>
+      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item],
+    );
+  }
+
+  function toggleFeedbackTag(item: (typeof FEEDBACK_TAGS)[number]) {
+    setFeedbackTags((prev) =>
       prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item],
     );
   }
@@ -210,6 +238,10 @@ export default function SlicePage() {
           tension,
           styleCard: vibe,
           forbiddenItems: [...forbiddens],
+          sceneDescription,
+          expectedWordCount:
+            wordCount === "自定义" ? customWordCount || "自定义" : wordCount,
+          styleRequirement,
         }),
       });
 
@@ -232,7 +264,7 @@ export default function SlicePage() {
       });
       setDemoRun((n) => n + 1);
     } catch {
-      setErrorMsg("生成失败，请稍后重试");
+      setErrorMsg("真实模型暂时不可用，已保留 Demo 生成结果用于演示。");
     } finally {
       setIsGenerating(false);
     }
@@ -261,10 +293,20 @@ export default function SlicePage() {
             <CardHeader className="border-border/60 border-b pb-6">
               <CardTitle className="text-base">参数配置</CardTitle>
               <CardDescription className="text-xs leading-relaxed">
-                下拉选择即刻写入表单；勾选禁止项将作为约束汇入预览区（演示数据）。
+                结构化参数负责约束角色边界，自由描述负责补充具体场景意图。
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-6 pt-6">
+              <div className="flex flex-col gap-2">
+                <FieldLabel>自由场景描述</FieldLabel>
+                <Textarea
+                  value={sceneDescription}
+                  onChange={(event) => setSceneDescription(event.target.value)}
+                  placeholder="例如：我想写他们在大雪夜重逢，但两个人都假装不认识对方；角色 A 明明担心 B，却只用刻薄的话掩饰。"
+                  className="min-h-28 resize-none bg-background/40 text-sm leading-relaxed"
+                />
+              </div>
+
               <div className="flex flex-col gap-2">
                 <FieldLabel>关系类型</FieldLabel>
                 <Select
@@ -345,6 +387,37 @@ export default function SlicePage() {
                 </Select>
               </div>
 
+              <div className="flex flex-col gap-2">
+                <FieldLabel>期望字数</FieldLabel>
+                <Select
+                  value={wordCount}
+                  onValueChange={(v) =>
+                    setWordCount(v as (typeof WORD_COUNTS)[number])
+                  }
+                >
+                  <SelectTrigger className="w-full shadow-xs">
+                    <SelectValue placeholder="选择期望字数" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)]">
+                    {WORD_COUNTS.map((opt) => (
+                      <SelectItem key={opt} value={opt}>
+                        {opt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {wordCount === "自定义" ? (
+                  <Input
+                    value={customWordCount}
+                    onChange={(event) =>
+                      setCustomWordCount(event.target.value)
+                    }
+                    placeholder="例如：650 字"
+                    className="bg-background/40"
+                  />
+                ) : null}
+              </div>
+
               <div className="flex flex-col gap-3">
                 <FieldLabel>文学气质风格卡</FieldLabel>
                 <Tabs value={vibe} onValueChange={(v) => setVibe(v as SliceParams["vibe"])}>
@@ -406,6 +479,16 @@ export default function SlicePage() {
                     </Badge>
                   ))}
                 </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <FieldLabel>补充风格要求</FieldLabel>
+                <Textarea
+                  value={styleRequirement}
+                  onChange={(event) => setStyleRequirement(event.target.value)}
+                  placeholder="例如：少一点直白心理描写，多用动作和环境暗示；结尾留白，不要告白。"
+                  className="min-h-24 resize-none bg-background/40 text-sm leading-relaxed"
+                />
               </div>
             </CardContent>
           </Card>
@@ -493,13 +576,63 @@ export default function SlicePage() {
                   ))}
                 </div>
               </section>
+
+              <section className="flex flex-col gap-4 border-t border-border/60 pt-6">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    本次生成反馈
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    先用本地状态记录反馈，后续可接入修订 Agent 或用户偏好库。
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {FEEDBACK_TAGS.map((item) => (
+                    <Badge
+                      key={item}
+                      variant={
+                        feedbackTags.includes(item) ? "secondary" : "outline"
+                      }
+                      className={cn(
+                        "cursor-pointer px-3 py-1 text-xs font-normal transition-colors",
+                        feedbackTags.includes(item) &&
+                          "border-transparent bg-muted text-foreground",
+                      )}
+                      onClick={() => toggleFeedbackTag(item)}
+                    >
+                      {item}
+                    </Badge>
+                  ))}
+                </div>
+                <Textarea
+                  value={feedbackText}
+                  onChange={(event) => setFeedbackText(event.target.value)}
+                  placeholder="可以写下你觉得哪里不像角色、哪里情绪不够、哪里需要修改……"
+                  className="min-h-24 resize-none bg-background/40 text-sm leading-relaxed"
+                />
+                {(feedbackTags.length > 0 || feedbackText.trim()) && (
+                  <div className="rounded-md border border-dashed border-foreground/10 bg-card/40 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+                    <p className="font-medium text-foreground/80">
+                      已记录本轮反馈
+                    </p>
+                    {feedbackTags.length > 0 ? (
+                      <p className="mt-2">
+                        反馈标签：{feedbackTags.join("、")}
+                      </p>
+                    ) : null}
+                    {feedbackText.trim() ? (
+                      <p className="mt-2">文字反馈：{feedbackText}</p>
+                    ) : null}
+                  </div>
+                )}
+              </section>
             </CardContent>
           </Card>
         </div>
 
         <footer className="flex flex-col gap-4 border-t border-border/60 pt-8">
           <p className="text-xs text-muted-foreground">
-            点击下方按钮将调用 /api/writer，右侧预览会按当前参数刷新（mock 数据，未接真实模型）。
+            点击下方按钮将调用 /api/writer，右侧预览会按当前参数刷新。
           </p>
           {errorMsg && (
             <p className="text-sm text-destructive">{errorMsg}</p>
