@@ -53,6 +53,13 @@ type ReviewerResult = {
   summary: string;
 };
 
+type CriticizerResult = {
+  coreCritique: string;
+  revisionStrategy: string[];
+  revisedText: string;
+  editorNote: string;
+};
+
 const writerFragment = `雨线把巷口的路灯揉成一团湿冷的光。她站在檐下，袖口还留着没干透的水痕；他停在两步之外，像刻意把距离维持在一个「不会被误读」的长度。
 
 谁也没有先开口。风从两人之间穿过，带走一句险些成形的话。她只把视线落在对方指节上——那里有一道旧伤，颜色已经很淡，却仍能叫人想起某次来不及阻止的离开。
@@ -101,6 +108,7 @@ const criticizer = {
 风从两人之间穿过。她看向他的指节——旧伤淡得几乎看不见，指腹却在伞柄上收紧了一瞬，又慢慢松开。他什么都没说，只把伞沿往她那边倾了半寸；水痕顺着伞骨滑下去，滴在两人脚边同一块湿砖上。
 
 雨声很大。她伸手去接斜过来的雨，指尖擦过他袖口，又很快收回。`,
+  editorNote: "修订重点是删除解释性旁白，让关系判断落到动作和物象上。",
 };
 
 function getWriterStatus(phase: WorkflowPhase): AgentStatus {
@@ -177,6 +185,9 @@ export default function AgentsPage() {
     null,
   );
   const [reviewerError, setReviewerError] = useState<string | null>(null);
+  const [criticizerResult, setCriticizerResult] =
+    useState<CriticizerResult | null>(null);
+  const [criticizerError, setCriticizerError] = useState<string | null>(null);
   const timeoutsRef = useRef<number[]>([]);
 
   const writerStatus = getWriterStatus(phase);
@@ -213,6 +224,15 @@ export default function AgentsPage() {
         },
       ]
     : reviewScores;
+  const criticizerCriticism = criticizerResult
+    ? [criticizerResult.coreCritique]
+    : criticizer.criticism;
+  const criticizerStrategy =
+    criticizerResult?.revisionStrategy ?? criticizer.strategy;
+  const criticizerRevisedText =
+    criticizerResult?.revisedText ?? criticizer.revised;
+  const criticizerEditorNote =
+    criticizerResult?.editorNote ?? criticizer.editorNote;
 
   function clearScheduledTimeouts() {
     timeoutsRef.current.forEach((id) => window.clearTimeout(id));
@@ -244,8 +264,36 @@ export default function AgentsPage() {
 
       const result = (await response.json()) as ReviewerResult;
       setReviewerResult(result);
+      void fetchCriticizerResult(result);
     } catch {
       setReviewerError("Reviewer API 请求失败，已保留静态审稿结果。");
+    }
+  }
+
+  async function fetchCriticizerResult(result: ReviewerResult) {
+    try {
+      const response = await fetch("/api/criticizer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          writerText: writerFragment,
+          reviewerSummary: result.summary,
+          issues: result.issues,
+          scores: result.scores,
+          stage: "分离后重逢",
+          tension: "克制",
+          styleCard: "疏离克制",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Criticizer API request failed");
+      }
+
+      const criticizerResponse = (await response.json()) as CriticizerResult;
+      setCriticizerResult(criticizerResponse);
+    } catch {
+      setCriticizerError("Criticizer API 请求失败，已保留静态修订结果。");
     }
   }
 
@@ -255,6 +303,8 @@ export default function AgentsPage() {
     clearScheduledTimeouts();
     setReviewerResult(null);
     setReviewerError(null);
+    setCriticizerResult(null);
+    setCriticizerError(null);
     setIsRunning(true);
     setPhase("writer");
     void fetchReviewerResult();
@@ -487,8 +537,13 @@ export default function AgentsPage() {
                     value="criticism"
                     className="mt-4 flex-1 outline-none"
                   >
+                    {criticizerError ? (
+                      <div className="mb-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                        {criticizerError}
+                      </div>
+                    ) : null}
                     <ul className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-                      {criticizer.criticism.map((line, i) => (
+                      {criticizerCriticism.map((line, i) => (
                         <li
                           key={i}
                           className="flex gap-2 rounded-md border border-border/40 bg-muted/15 px-3 py-2"
@@ -500,13 +555,18 @@ export default function AgentsPage() {
                         </li>
                       ))}
                     </ul>
+                    {criticizerEditorNote ? (
+                      <div className="mt-3 rounded-md border border-dashed border-foreground/10 bg-muted/15 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                        编辑说明：{criticizerEditorNote}
+                      </div>
+                    ) : null}
                   </TabsContent>
                   <TabsContent
                     value="strategy"
                     className="mt-4 flex-1 outline-none"
                   >
                     <ul className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-                      {criticizer.strategy.map((line, i) => (
+                      {criticizerStrategy.map((line, i) => (
                         <li
                           key={i}
                           className="flex gap-2 rounded-md border border-border/40 bg-muted/15 px-3 py-2"
@@ -524,12 +584,19 @@ export default function AgentsPage() {
                     className="mt-4 flex-1 outline-none"
                   >
                     <div className="rounded-lg border border-border/60 bg-background/40 px-4 py-4 text-sm leading-8 text-foreground/90">
-                      {criticizer.revised.split("\n\n").map((para, i) => (
-                        <p key={i} className="mb-4 last:mb-0">
-                          {para}
-                        </p>
-                      ))}
+                      {criticizerRevisedText
+                        .split("\n\n")
+                        .map((para, i) => (
+                          <p key={i} className="mb-4 last:mb-0">
+                            {para}
+                          </p>
+                        ))}
                     </div>
+                    {criticizerEditorNote ? (
+                      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                        编辑说明：{criticizerEditorNote}
+                      </p>
+                    ) : null}
                   </TabsContent>
                 </Tabs>
               ) : (
