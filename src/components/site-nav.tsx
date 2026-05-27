@@ -5,6 +5,7 @@ const navLinks = [
   { label: "人格图", href: "/persona" },
   { label: "情绪切片", href: "/slice" },
   { label: "多 Agent", href: "/agents" },
+  { label: "模型设置", href: "/settings" },
 ] as const;
 
 const linkClassName =
