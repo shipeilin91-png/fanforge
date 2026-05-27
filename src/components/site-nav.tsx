@@ -8,6 +8,7 @@ const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
 
 const navLinks = [
   { label: "首页", href: "/dashboard" },
+  { label: "创作室", href: "/studio" },
   { label: "Canon 证据", href: "/canon" },
   { label: "章节写作", href: "/write" },
   { label: "人格图", href: "/persona" },

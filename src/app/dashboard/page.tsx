@@ -6,6 +6,7 @@ import {
   BookOpenText,
   ChevronRight,
   Database,
+  FolderKanban,
   GitBranch,
   PenLine,
   Settings,
@@ -51,6 +52,13 @@ const modules: {
     status: "MVP Demo",
     href: "/origin",
     icon: BookOpen,
+  },
+  {
+    title: "创作室",
+    description: "统一管理大纲、素材、文档和正文写作，是 FanForge 的主创作工作台。",
+    status: "Studio / Context Engine / MVP Demo",
+    href: "/studio",
+    icon: FolderKanban,
   },
   {
     title: "Canon 证据引擎",
