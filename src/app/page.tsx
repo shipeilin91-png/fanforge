@@ -1,65 +1,193 @@
-import Image from "next/image";
+import {
+  ArrowRight,
+  BookOpen,
+  ChevronRight,
+  GitBranch,
+  PenLine,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+import Link from "next/link";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+
+const features: {
+  title: string;
+  description: string;
+  label: string;
+  icon: LucideIcon;
+  href?: string;
+}[] = [
+  {
+    title: "原作理解包",
+    description:
+      "帮助新手快速理解原作世界观、主线故事和 Canon 硬设定，让每一次续写都站在可靠的语境之上。",
+    label: "Canon",
+    icon: BookOpen,
+  },
+  {
+    title: "角色人格思维导图",
+    description:
+      "把角色拆成核心人格内核、人生阶段、关键事件与伏笔暗线，形成可检索、可引用的写作参照。",
+    label: "Character",
+    icon: GitBranch,
+    href: "/persona",
+  },
+  {
+    title: "关系情绪切片生成器",
+    description:
+      "根据关系瞬间、情绪张力、文学气质和禁止项，生成高张力片段，供你挑选、拼接与润色。",
+    label: "Scene",
+    icon: PenLine,
+    href: "/slice",
+  },
+  {
+    title: "多 Agent 审稿台",
+    description:
+      "Writer、Reviewer、Criticizer 分工完成生成、审稿与修订，让同人创作兼顾灵感与一致性。",
+    label: "Review",
+    icon: Users,
+    href: "/agents",
+  },
+];
+
+const demoSteps = [
+  "原作理解",
+  "人格思维导图",
+  "关系情绪切片",
+  "Writer 生成",
+  "Reviewer 审稿",
+  "Criticizer 修订",
+] as const;
+
+const featureCardClassName =
+  "group cursor-pointer border-border/80 bg-card/80 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-md hover:ring-1 hover:ring-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="dark min-h-full bg-background text-foreground">
+      <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-12 px-10 py-14 lg:gap-16 lg:px-14 lg:py-20">
+        <header className="flex flex-col gap-5 border-b border-border/60 pb-10">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
+              Fan Fiction · AI Co-writing
+            </span>
+          </div>
+          <div className="flex flex-col gap-3">
+            <h1 className="text-4xl font-semibold tracking-tight text-foreground lg:text-5xl">
+              FanForge
+            </h1>
+            <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground">
+              面向同人创作者的原著一致性 AI 共写平台
+            </p>
+          </div>
+          <p className="max-w-3xl text-sm leading-7 text-muted-foreground/90">
+            从理解原作到塑造角色、生成情绪切片，再到多 Agent
+            审稿——在同一工作流里完成设定沉淀与正文打磨。
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
+            <Button size="lg" className="h-11 px-6">
+              开始创建项目
+            </Button>
+            <Button size="lg" variant="outline" className="h-11 px-6">
+              查看 Demo 流程
+            </Button>
+          </div>
+        </header>
+
+        <section className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          {features.map((feature) => {
+            const Icon = feature.icon;
+            const card = (
+              <Card
+                className={featureCardClassName}
+                {...(!feature.href && { tabIndex: 0, role: "button" })}
+              >
+                <CardHeader className="gap-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted/40 transition-colors group-hover:border-foreground/20 group-hover:bg-muted/60">
+                      <Icon className="size-4.5 text-muted-foreground transition-colors group-hover:text-foreground" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className="text-muted-foreground"
+                      >
+                        {feature.label}
+                      </Badge>
+                      <ChevronRight className="size-4 text-muted-foreground/0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
+                    </div>
+                  </div>
+                  <CardTitle className="text-lg font-medium tracking-tight transition-colors group-hover:text-foreground">
+                    {feature.title}
+                  </CardTitle>
+                  <CardDescription className="text-sm leading-relaxed">
+                    {feature.description}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            );
+
+            if (feature.href) {
+              return (
+                <Link
+                  key={feature.title}
+                  href={feature.href}
+                  className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {card}
+                </Link>
+              );
+            }
+
+            return <div key={feature.title}>{card}</div>;
+          })}
+        </section>
+
+        <section className="flex flex-col gap-5">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-sm font-medium tracking-wide text-foreground">
+              Demo 主流程
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              从原作理解到多 Agent 修订的完整共写路径
+            </p>
+          </div>
+          <Card className="border-border/80 bg-card/60 py-5">
+            <div className="flex flex-wrap items-center gap-x-1 gap-y-3 px-6">
+              {demoSteps.map((step, index) => (
+                <div key={step} className="flex items-center gap-1">
+                  <div
+                    className={cn(
+                      "flex items-center gap-2 rounded-md border border-border/80 bg-muted/30 px-3 py-2 text-sm text-foreground/90",
+                      index === 0 && "border-foreground/15 bg-muted/50"
+                    )}
+                  >
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="whitespace-nowrap">{step}</span>
+                  </div>
+                  {index < demoSteps.length - 1 && (
+                    <ArrowRight
+                      className="mx-0.5 size-3.5 shrink-0 text-muted-foreground/50"
+                      aria-hidden
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+        </section>
+      </div>
     </div>
   );
 }
