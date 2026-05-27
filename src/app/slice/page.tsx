@@ -182,6 +182,7 @@ export default function SlicePage() {
 
   const [demoRun, setDemoRun] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [preview, setPreview] = useState<SlicePreview>(() =>
     buildMockPreview(defaultParams, 1),
   );
@@ -192,28 +193,49 @@ export default function SlicePage() {
     );
   }
 
-  function handleGenerate() {
+  async function handleGenerate() {
     if (isGenerating) return;
 
-    const params: SliceParams = {
-      relation,
-      moment,
-      stage,
-      tension,
-      vibe,
-      forbiddens: [...forbiddens],
-    };
-
     setIsGenerating(true);
+    setErrorMsg(null);
 
-    window.setTimeout(() => {
-      setDemoRun((n) => {
-        const next = n + 1;
-        setPreview(buildMockPreview(params, next));
-        return next;
+    try {
+      const res = await fetch("/api/writer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          relationshipType: relation,
+          moment,
+          stage,
+          tension,
+          styleCard: vibe,
+          forbiddenItems: [...forbiddens],
+        }),
       });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = (await res.json()) as {
+        text: string;
+        emotionStructure: string;
+        characterConstraints: string;
+      };
+
+      setPreview({
+        fragment: data.text,
+        structure: data.emotionStructure
+          .split("\n")
+          .filter((l) => l.trim() !== ""),
+        constraints: data.characterConstraints
+          .split("\n")
+          .filter((l) => l.trim() !== ""),
+      });
+      setDemoRun((n) => n + 1);
+    } catch {
+      setErrorMsg("生成失败，请稍后重试");
+    } finally {
       setIsGenerating(false);
-    }, 1000);
+    }
   }
 
   return (
@@ -394,11 +416,11 @@ export default function SlicePage() {
                 <div>
                   <CardTitle className="text-base">生成结果预览</CardTitle>
                   <CardDescription className="text-xs">
-                    Writer Agent 输出（半动态演示）· 第 {demoRun} 次生成
+                    Writer Agent 输出 · 第 {demoRun} 次生成
                   </CardDescription>
                 </div>
                 <Badge variant="outline" className="text-muted-foreground">
-                  Demo
+                  /api/writer
                 </Badge>
               </div>
             </CardHeader>
@@ -477,8 +499,11 @@ export default function SlicePage() {
 
         <footer className="flex flex-col gap-4 border-t border-border/60 pt-8">
           <p className="text-xs text-muted-foreground">
-            点击下方按钮将模拟 Writer 生成（约 1 秒），右侧预览会按当前参数刷新（仍非真实模型调用）。
+            点击下方按钮将调用 /api/writer，右侧预览会按当前参数刷新（mock 数据，未接真实模型）。
           </p>
+          {errorMsg && (
+            <p className="text-sm text-destructive">{errorMsg}</p>
+          )}
           <Button
             size="lg"
             className="h-11 max-w-xs"
