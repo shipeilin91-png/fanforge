@@ -34,6 +34,25 @@ type AgentStatus =
   | "Revising"
   | "Done";
 
+type ReviewerIssue = {
+  type: string;
+  quote: string;
+  reason: string;
+  suggestion: string;
+};
+
+type ReviewerResult = {
+  scores: {
+    ooc: number;
+    canon: number;
+    relationshipStage: number;
+    emotionalTension: number;
+  };
+  riskLevel: string;
+  issues: ReviewerIssue[];
+  summary: string;
+};
+
 const writerFragment = `雨线把巷口的路灯揉成一团湿冷的光。她站在檐下，袖口还留着没干透的水痕；他停在两步之外，像刻意把距离维持在一个「不会被误读」的长度。
 
 谁也没有先开口。风从两人之间穿过，带走一句险些成形的话。她只把视线落在对方指节上——那里有一道旧伤，颜色已经很淡，却仍能叫人想起某次来不及阻止的离开。
@@ -62,6 +81,9 @@ const reviewScores = [
     note: "克制与酸涩并存，未滑向直白抒情。",
   },
 ] as const;
+
+const staticReviewSummary =
+  "综合建议：保留距离感与物象收束，弱化解释性旁白后可进入修订。";
 
 const criticizer = {
   criticism: [
@@ -151,6 +173,10 @@ function getPipelineStepIndex(phase: WorkflowPhase): number {
 export default function AgentsPage() {
   const [phase, setPhase] = useState<WorkflowPhase>("idle");
   const [isRunning, setIsRunning] = useState(false);
+  const [reviewerResult, setReviewerResult] = useState<ReviewerResult | null>(
+    null,
+  );
+  const [reviewerError, setReviewerError] = useState<string | null>(null);
   const timeoutsRef = useRef<number[]>([]);
 
   const writerStatus = getWriterStatus(phase);
@@ -163,6 +189,30 @@ export default function AgentsPage() {
   const showCriticizerContent = phase === "done";
 
   const activePipelineIndex = getPipelineStepIndex(phase);
+  const reviewerScores = reviewerResult
+    ? [
+        {
+          label: "OOC",
+          score: reviewerResult.scores.ooc,
+          note: "人物行为与性格约束的一致性评分。",
+        },
+        {
+          label: "Canon",
+          score: reviewerResult.scores.canon,
+          note: "原作设定与硬性约束风险评分。",
+        },
+        {
+          label: "关系阶段",
+          score: reviewerResult.scores.relationshipStage,
+          note: "当前关系推进是否符合阶段刻度。",
+        },
+        {
+          label: "情绪张力",
+          score: reviewerResult.scores.emotionalTension,
+          note: "情绪浓度、留白与克制感评分。",
+        },
+      ]
+    : reviewScores;
 
   function clearScheduledTimeouts() {
     timeoutsRef.current.forEach((id) => window.clearTimeout(id));
@@ -174,12 +224,40 @@ export default function AgentsPage() {
     timeoutsRef.current.push(id);
   }
 
+  async function fetchReviewerResult() {
+    try {
+      const response = await fetch("/api/reviewer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          writerText: writerFragment,
+          relationshipType: "CP",
+          stage: "分离后重逢",
+          tension: "克制",
+          styleCard: "疏离克制",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Reviewer API request failed");
+      }
+
+      const result = (await response.json()) as ReviewerResult;
+      setReviewerResult(result);
+    } catch {
+      setReviewerError("Reviewer API 请求失败，已保留静态审稿结果。");
+    }
+  }
+
   function handleStartReview() {
     if (isRunning) return;
 
     clearScheduledTimeouts();
+    setReviewerResult(null);
+    setReviewerError(null);
     setIsRunning(true);
     setPhase("writer");
+    void fetchReviewerResult();
 
     schedule(() => setPhase("reviewer"), STAGE_DELAY_MS);
     schedule(() => setPhase("criticizer"), STAGE_DELAY_MS * 2);
@@ -316,7 +394,12 @@ export default function AgentsPage() {
                 <AgentPlaceholder message="Reviewer 正在对照 Canon 与人格约束审稿…" />
               ) : showReviewerContent ? (
                 <>
-                  {reviewScores.map((item) => (
+                  {reviewerError ? (
+                    <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                      {reviewerError}
+                    </div>
+                  ) : null}
+                  {reviewerScores.map((item) => (
                     <div key={item.label} className="flex flex-col gap-2">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-medium text-foreground">
@@ -332,8 +415,30 @@ export default function AgentsPage() {
                       </p>
                     </div>
                   ))}
+                  {reviewerResult ? (
+                    <div className="flex flex-col gap-2 rounded-md border border-border/50 bg-muted/15 px-3 py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-foreground">
+                          Issues
+                        </span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {reviewerResult.riskLevel}
+                        </Badge>
+                      </div>
+                      <ul className="space-y-2 text-xs leading-relaxed text-muted-foreground">
+                        {reviewerResult.issues.map((issue, i) => (
+                          <li key={`${issue.type}-${i}`}>
+                            <span className="text-foreground/80">
+                              {issue.type}：
+                            </span>
+                            {issue.suggestion}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                   <div className="mt-auto rounded-md border border-dashed border-foreground/10 bg-muted/15 px-3 py-2 text-xs text-muted-foreground">
-                    综合建议：保留距离感与物象收束，弱化解释性旁白后可进入修订。
+                    {reviewerResult?.summary ?? staticReviewSummary}
                   </div>
                 </>
               ) : (
