@@ -296,7 +296,7 @@ export default function FeedbackPage() {
                         ))}
                       </div>
                       <p className="text-sm leading-relaxed text-foreground/90">
-                        {record.comment || "未填写文字反馈"}
+                        用户文字反馈：{record.comment || "未填写文字反馈"}
                       </p>
                       <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                         场景描述：{record.scenarioText || "未填写"}
