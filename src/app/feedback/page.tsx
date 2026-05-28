@@ -7,13 +7,7 @@ import { useRouter } from "next/navigation";
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 const FEEDBACK_STORAGE_KEY = "fanforge-feedback-records";
 const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
@@ -35,6 +29,37 @@ const loopSteps = [
   "问题归因",
   "Prompt / Agent / Context 优化",
   "再次生成验证",
+] as const;
+
+const rubricItems = [
+  "角色一致性 / OOC",
+  "Canon 一致性",
+  "情绪张力",
+  "风格匹配",
+  "关系阶段合理性",
+] as const;
+
+const standardItems = [
+  {
+    title: "满意率",
+    body: "用户明确标记满意的比例，用来判断当前 Prompt 与上下文组合是否值得扩大样本。",
+  },
+  {
+    title: "OOC 反馈率",
+    body: "角色不像原作或当前阶段时升高，优先回到 Persona Context Engine 排查人格边界。",
+  },
+  {
+    title: "情绪不足反馈率",
+    body: "用户认为不够酸涩、克制或有张力时升高，优先调整情绪切片 Prompt。",
+  },
+  {
+    title: "风格不匹配率",
+    body: "语言气质与预期不一致时升高，优先细化文学气质风格卡。",
+  },
+  {
+    title: "Canon 冲突率",
+    body: "设定、时间线或人物已知信息出错时升高，优先增强原作理解包与 Canon 检索。",
+  },
 ] as const;
 
 function getPercent(count: number, total: number) {
@@ -140,12 +165,12 @@ export default function FeedbackPage() {
       styleMismatch,
       canonConflict,
       metrics: [
-        { label: "总反馈数", value: String(total) },
-        { label: "满意率", value: getPercent(satisfied, total) },
-        { label: "OOC 反馈率", value: getPercent(ooc, total) },
-        { label: "情绪不足反馈率", value: getPercent(weakEmotion, total) },
-        { label: "风格不匹配率", value: getPercent(styleMismatch, total) },
-        { label: "Canon 冲突率", value: getPercent(canonConflict, total) },
+        { label: "总反馈数", value: String(total), count: total },
+        { label: "满意率", value: getPercent(satisfied, total), count: satisfied },
+        { label: "OOC 反馈率", value: getPercent(ooc, total), count: ooc },
+        { label: "情绪不足反馈率", value: getPercent(weakEmotion, total), count: weakEmotion },
+        { label: "风格不匹配率", value: getPercent(styleMismatch, total), count: styleMismatch },
+        { label: "Canon 冲突率", value: getPercent(canonConflict, total), count: canonConflict },
       ],
     };
   }, [records]);
@@ -170,7 +195,7 @@ export default function FeedbackPage() {
       {
         key: "Canon 冲突",
         count: stats.canonConflict,
-        advice: "Canon 冲突率最高：建议增强原作理解包与检索",
+        advice: "Canon 冲突率最高：建议增强原作理解包与 Canon 检索",
       },
       {
         key: "风格不对",
@@ -197,165 +222,285 @@ export default function FeedbackPage() {
 
   if (isCheckingAuth) {
     return (
-      <div className="dark flex min-h-full items-center justify-center bg-background text-sm text-muted-foreground">
+      <div className="flex min-h-full items-center justify-center bg-[#f3ead7] text-sm text-[#6f6759]">
         正在检查登录状态……
       </div>
     );
   }
 
   return (
-    <div className="dark min-h-full bg-background text-foreground">
+    <div className="min-h-full overflow-hidden bg-[#f4ecd9] text-[#191611]">
       <SiteNav />
-      <main className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-8 px-10 py-14 lg:gap-10 lg:px-14 lg:py-16">
-        <header className="flex flex-col gap-4 border-b border-border/60 pb-8">
-          <span className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
-            Feedback · Quality Signals
-          </span>
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-semibold tracking-tight lg:text-4xl">
-              反馈数据看板
+      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-10 px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+        <div className="pointer-events-none absolute left-[-8vw] top-28 hidden text-[13vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] lg:block">
+          FEEDBACK
+        </div>
+        <div className="pointer-events-none absolute right-[-8vw] top-[500px] hidden text-[12vw] font-serif font-semibold leading-none text-[#53613b]/[0.07] xl:block">
+          INSIGHT
+        </div>
+        <div className="pointer-events-none absolute bottom-8 left-[28%] hidden text-[12vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] xl:block">
+          QUALITY
+        </div>
+
+        <header className="relative border-b border-[#171410]/15 pb-8">
+          <div className="max-w-5xl">
+            <div className="mb-7 inline-flex border border-[#2d281f]/20 bg-[#fffaf0]/45 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
+              FEEDBACK LOOP · QUALITY INSIGHT
+            </div>
+            <h1 className="font-serif text-[clamp(4.5rem,12vw,11rem)] font-semibold leading-[0.82] tracking-[-0.045em] text-[#171410]">
+              Feedback Board
             </h1>
-            <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground lg:text-base">
-              通过用户对生成结果的反馈标签，判断 OOC、情绪张力、风格匹配和 Canon 一致性问题。
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="outline" className="w-fit text-xs">
-              当前为本地 MVP 数据，后续可接入真实登录、数据库、埋点和 A/B Test。
-            </Badge>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={handleClearRecords}
-              disabled={records.length === 0}
-            >
-              清空本地反馈数据
-            </Button>
+            <div className="mt-7 grid gap-6 lg:grid-cols-[0.9fr_1fr]">
+              <p className="max-w-2xl font-serif text-[clamp(1.85rem,3.2vw,4rem)] leading-[0.96] tracking-[-0.025em] text-[#211d17]">
+                用用户反馈和 Reviewer Rubric 判断生成质量，把 OOC、Canon、情绪张力和风格问题归因到具体模块。
+              </p>
+              <div className="flex max-w-2xl flex-col justify-end gap-4">
+                <p className="text-sm leading-7 text-[#5f5849] sm:text-base">
+                  当前读取浏览器 localStorage 中的 `fanforge-feedback-records`，用于演示 FanForge 的用户反馈闭环。
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge
+                    variant="outline"
+                    className="w-fit border-[#53613b]/35 bg-[#e7ead4] text-xs text-[#3f4b2f]"
+                  >
+                    本地 MVP 数据，后续可接入真实登录、数据库、埋点和 A/B Test。
+                  </Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 border-[#171410]/20 bg-[#fbf5e8] text-[#171410] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#e7ead4]"
+                    onClick={handleClearRecords}
+                    disabled={records.length === 0}
+                  >
+                    清空本地反馈数据
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </header>
 
         {records.length === 0 ? (
-          <Card className="border-border/80 bg-card/80">
-            <CardContent className="flex min-h-40 items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
-              暂无真实反馈记录。请先到情绪切片页面生成内容并提交反馈。
-            </CardContent>
-          </Card>
+          <section className="border border-dashed border-[#171410]/20 bg-[#fbf5e8]/80 px-6 py-12 text-center text-sm leading-7 text-[#7a705e]">
+            暂无真实反馈记录。请先到情绪切片页面生成内容并提交反馈。
+          </section>
         ) : (
           <>
             <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {stats.metrics.map((metric) => (
-                <Card
+              {stats.metrics.map((metric, index) => (
+                <MetricNote
                   key={metric.label}
-                  className="border-border/80 bg-card/80"
-                >
-                  <CardHeader className="gap-3 pb-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <CardDescription className="text-xs">
-                        {metric.label}
-                      </CardDescription>
-                      <BarChart3 className="size-4 text-muted-foreground" />
-                    </div>
-                    <CardTitle className="text-3xl font-semibold tracking-tight">
-                      {metric.value}
-                    </CardTitle>
-                  </CardHeader>
-                </Card>
+                  label={metric.label}
+                  value={metric.value}
+                  index={index}
+                  muted={metric.count === 0}
+                />
               ))}
             </section>
 
             <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.35fr_0.65fr]">
-              <Card className="border-border/80 bg-card/80">
-                <CardHeader className="gap-2 border-b border-border/60 pb-5">
-                  <div className="flex items-center gap-2">
-                    <ClipboardList className="size-4 text-muted-foreground" />
-                    <CardTitle className="text-base">最近反馈</CardTitle>
+              <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]">
+                <div className="mb-5 flex items-center gap-3 border-b border-[#171410]/12 pb-5">
+                  <ClipboardList className="size-4 text-[#53613b]" />
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+                      Reader / Editor Notes
+                    </p>
+                    <h2 className="mt-2 font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
+                      最近反馈
+                    </h2>
+                    <p className="mt-2 text-xs text-[#6f6759]">
+                      读取浏览器 localStorage 中最近 5 条反馈。
+                    </p>
                   </div>
-                  <CardDescription className="text-xs">
-                    读取浏览器 localStorage 中最近 5 条反馈
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-3 pt-5">
+                </div>
+                <div className="flex flex-col gap-3">
                   {recentRecords.map((record) => (
-                    <div
+                    <article
                       key={record.id}
-                      className="rounded-lg border border-border/50 bg-muted/15 px-4 py-3"
+                      className="border border-[#171410]/12 bg-[#fffaf0] px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#fff8ea]"
                     >
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-[#8a7c62]">
                           {formatTime(record.createdAt)}
                         </span>
                         {record.selectedTags.map((tag) => (
                           <Badge
                             key={tag}
-                            variant="secondary"
-                            className="text-[10px]"
+                            variant="outline"
+                            className="border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
                           >
                             {tag}
                           </Badge>
                         ))}
                       </div>
-                      <p className="text-sm leading-relaxed text-foreground/90">
+                      <p className="text-sm leading-7 text-[#332d24]">
                         用户文字反馈：{record.comment || "未填写文字反馈"}
                       </p>
-                      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                      <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
                         场景描述：{record.scenarioText || "未填写"}
                       </p>
-                      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                      <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
                         生成预览：{record.generatedPreview}
                       </p>
-                    </div>
+                    </article>
                   ))}
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
-              <Card className="border-border/80 bg-card/80">
-                <CardHeader className="gap-2 border-b border-border/60 pb-5">
-                  <CardTitle className="text-base">下一步优化判断</CardTitle>
-                  <CardDescription className="text-xs">
-                    根据当前最高反馈率动态给出建议
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-3 pt-5">
-                  <div className="rounded-md border border-dashed border-foreground/10 bg-muted/15 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
-                    {optimizationAdvice}
-                  </div>
-                </CardContent>
-              </Card>
+              <section className="border border-[#171410]/15 bg-[#efe2c7]/65 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
+                <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+                  Optimization Signal
+                </p>
+                <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
+                  下一步优化判断
+                </h2>
+                <div className="mt-5 border border-dashed border-[#53613b]/30 bg-[#f8f0df] px-4 py-4 text-sm leading-7 text-[#5f5849]">
+                  {optimizationAdvice}
+                </div>
+              </section>
             </section>
           </>
         )}
 
-        <Card className="border-border/80 bg-card/70">
-          <CardHeader className="gap-2 border-b border-border/60 pb-5">
-            <div className="flex items-center gap-2">
-              <GitBranch className="size-4 text-muted-foreground" />
-              <CardTitle className="text-base">MVP 数据闭环</CardTitle>
+        <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
+          <div className="mb-6 flex items-center gap-3">
+            <GitBranch className="size-4 text-[#53613b]" />
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+                MVP Feedback Loop
+              </p>
+              <h2 className="mt-2 font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
+                MVP 数据闭环
+              </h2>
+              <p className="mt-2 text-xs text-[#6f6759]">
+                用反馈持续校准 Prompt、Agent 分工和上下文工程。
+              </p>
             </div>
-            <CardDescription className="text-xs">
-              用反馈持续校准 Prompt、Agent 分工和上下文工程
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap items-center gap-x-1 gap-y-3 pt-5">
+          </div>
+          <div className="grid gap-0 md:grid-cols-5">
             {loopSteps.map((step, index) => (
-              <div key={step} className="flex items-center gap-1">
-                <div className="flex items-center gap-2 rounded-md border border-border/80 bg-muted/30 px-3 py-2 text-sm text-foreground/90">
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span className="whitespace-nowrap">{step}</span>
-                </div>
-                {index < loopSteps.length - 1 && (
-                  <ArrowRight
-                    className="mx-0.5 size-3.5 shrink-0 text-muted-foreground/50"
-                    aria-hidden
-                  />
-                )}
+              <div
+                key={step}
+                className="relative border-t border-[#171410]/25 px-0 pb-5 pt-8"
+              >
+                <span className="absolute -top-2 left-0 size-4 rounded-full border border-[#53613b]/45 bg-[#53613b]" />
+                <span className="block font-serif text-3xl leading-none text-[#171410]">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="mt-4 block pr-5 text-sm leading-6 text-[#5f5849]">
+                  {step}
+                </span>
+                {index < loopSteps.length - 1 ? (
+                  <ArrowRight className="mt-4 size-4 text-[#8a7c62] md:hidden" aria-hidden />
+                ) : null}
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+          <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
+            <div className="mb-5 flex items-center gap-3 border-b border-[#171410]/12 pb-5">
+              <BarChart3 className="size-4 text-[#53613b]" />
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+                  Evaluation Manual
+                </p>
+                <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
+                  评价标准说明
+                </h2>
+              </div>
+            </div>
+            <div className="grid gap-3">
+              {standardItems.map((item, index) => (
+                <div
+                  key={item.title}
+                  className="grid grid-cols-[42px_minmax(0,1fr)] gap-3 border border-[#171410]/12 bg-[#f8f0df] px-3 py-3 text-sm leading-7 text-[#5f5849]"
+                >
+                  <span className="font-serif text-2xl leading-none text-[#53613b]">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <div>
+                    <p className="font-medium text-[#171410]">{item.title}</p>
+                    <p className="mt-1 text-xs leading-6 text-[#6f6759]">{item.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="border border-[#171410]/15 bg-[#efe2c7]/65 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
+            <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+              Cold Start Validation
+            </p>
+            <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
+              AI 评价标准与冷启动验证
+            </h2>
+            <div className="mt-5 space-y-4 text-sm leading-7 text-[#5f5849]">
+              <p>
+                早期没有足够用户数据时，先使用人工小样本评测 + AI Reviewer 结构化评分。
+              </p>
+              <p>
+                用户数据积累后，再用真实反馈校准评分体系。
+              </p>
+              <p>
+                AI Reviewer 评分不是最终真理，它用于早期发现问题方向，最终需要用用户反馈、复制率、重新生成率、二次修改率等行为数据校准。
+              </p>
+            </div>
+            <div className="mt-6 border-t border-[#171410]/12 pt-5">
+              <h3 className="font-serif text-3xl leading-none tracking-[-0.02em] text-[#171410]">
+                Reviewer Rubric
+              </h3>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {rubricItems.map((item) => (
+                  <Badge
+                    key={item}
+                    variant="outline"
+                    className="border-[#53613b]/35 bg-[#e7ead4] px-3 py-1 text-xs text-[#3f4b2f]"
+                  >
+                    {item}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </section>
+        </section>
       </main>
     </div>
+  );
+}
+
+function MetricNote({
+  label,
+  value,
+  index,
+  muted,
+}: {
+  label: string;
+  value: string;
+  index: number;
+  muted: boolean;
+}) {
+  return (
+    <section
+      className={cn(
+        "group border border-[#171410]/15 bg-[#fbf5e8]/82 px-5 py-5 shadow-[0_14px_38px_rgba(49,39,24,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#fff8ea]",
+        muted && "opacity-75",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span className="font-serif text-3xl leading-none text-[#53613b]">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <BarChart3 className="size-4 text-[#8a7c62]" />
+      </div>
+      <p className="mt-6 text-xs uppercase tracking-[0.16em] text-[#8a7c62]">
+        {label}
+      </p>
+      <p className="mt-2 font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
+        {value}
+      </p>
+    </section>
   );
 }
