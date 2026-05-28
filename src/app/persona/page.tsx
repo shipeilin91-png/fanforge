@@ -17,13 +17,6 @@ import { useRouter } from "next/navigation";
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -40,18 +33,21 @@ type EventNode = Node<PersonaNodeData, "event">;
 type ThreadNode = Node<PersonaNodeData, "thread">;
 
 const handleClassName =
-  "!size-2 !border-border !bg-muted-foreground/40 !opacity-0";
+  "!size-2 !border-[#53613b]/45 !bg-[#53613b]/45 !opacity-0";
 
 function CoreNode({ data }: NodeProps<CoreNode>) {
   return (
-    <div className="w-[300px] rounded-xl border border-foreground/20 bg-card px-5 py-4 shadow-md ring-1 ring-foreground/10">
-      <Badge variant="outline" className="mb-2 text-[10px] tracking-widest uppercase">
+    <div className="w-[300px] border border-[#171410]/20 bg-[#fffaf0] px-5 py-4 shadow-[0_12px_34px_rgba(49,39,24,0.08)]">
+      <Badge
+        variant="outline"
+        className="mb-2 border-[#53613b]/35 bg-[#e7ead4] text-[10px] uppercase tracking-widest text-[#3f4b2f]"
+      >
         {data.tag ?? "Core"}
       </Badge>
-      <p className="text-base font-medium text-foreground">{data.title}</p>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        {data.body}
+      <p className="font-serif text-2xl leading-none tracking-[-0.02em] text-[#171410]">
+        {data.title}
       </p>
+      <p className="mt-3 text-sm leading-relaxed text-[#5f5849]">{data.body}</p>
       <Handle
         type="source"
         position={Position.Bottom}
@@ -63,12 +59,15 @@ function CoreNode({ data }: NodeProps<CoreNode>) {
 
 function StageNode({ data }: NodeProps<StageNode>) {
   return (
-    <div className="w-[220px] rounded-lg border border-border/80 bg-card/90 px-4 py-3 shadow-sm">
-      <Badge variant="secondary" className="mb-2 text-[10px]">
+    <div className="w-[220px] border border-[#53613b]/20 bg-[#fbf5e8] px-4 py-3 shadow-[0_8px_24px_rgba(49,39,24,0.06)]">
+      <Badge
+        variant="outline"
+        className="mb-2 border-[#171410]/15 bg-[#f0e4cc] text-[10px] text-[#6f6759]"
+      >
         {data.tag ?? "Stage"}
       </Badge>
-      <p className="text-sm font-medium text-foreground">{data.title}</p>
-      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+      <p className="text-sm font-semibold text-[#171410]">{data.title}</p>
+      <p className="mt-1.5 text-xs leading-relaxed text-[#6f6759]">
         {data.body}
       </p>
       <Handle
@@ -87,12 +86,15 @@ function StageNode({ data }: NodeProps<StageNode>) {
 
 function EventNode({ data }: NodeProps<EventNode>) {
   return (
-    <div className="w-[240px] rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
-      <Badge variant="outline" className="mb-2 text-[10px] text-muted-foreground">
+    <div className="w-[240px] border border-[#8a7c62]/30 bg-[#f8f0df] px-4 py-3">
+      <Badge
+        variant="outline"
+        className="mb-2 border-[#8a7c62]/30 bg-transparent text-[10px] text-[#8a7c62]"
+      >
         {data.tag ?? "Event"}
       </Badge>
-      <p className="text-sm font-medium text-foreground">{data.title}</p>
-      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+      <p className="text-sm font-semibold text-[#171410]">{data.title}</p>
+      <p className="mt-1.5 text-xs leading-relaxed text-[#6f6759]">
         {data.body}
       </p>
       <Handle
@@ -111,15 +113,15 @@ function EventNode({ data }: NodeProps<EventNode>) {
 
 function ThreadNode({ data }: NodeProps<ThreadNode>) {
   return (
-    <div className="w-[260px] rounded-lg border border-dashed border-foreground/15 bg-card/50 px-4 py-3">
+    <div className="w-[260px] border border-dashed border-[#53613b]/35 bg-[#e7ead4] px-4 py-3">
       <Badge
         variant="outline"
-        className="mb-2 border-dashed text-[10px] text-muted-foreground"
+        className="mb-2 border-dashed border-[#53613b]/45 text-[10px] text-[#3f4b2f]"
       >
         {data.tag ?? "Thread"}
       </Badge>
-      <p className="text-sm font-medium text-foreground/90">{data.title}</p>
-      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+      <p className="text-sm font-semibold text-[#171410]">{data.title}</p>
+      <p className="mt-1.5 text-xs leading-relaxed text-[#5f5849]">
         {data.body}
       </p>
       <Handle
@@ -175,9 +177,9 @@ const defaultPersona: PersonaForm = {
     "禁止突然热烈告白；禁止轻易示弱求安慰；禁止在关系未推进前主动拥抱或撒娇；禁止把责任完全推给他人。",
 };
 
-const edgeStyle = { stroke: "rgba(255,255,255,0.22)", strokeWidth: 1.5 };
+const edgeStyle = { stroke: "#8a7c62", strokeWidth: 1.5 };
 const threadEdgeStyle = {
-  stroke: "rgba(255,255,255,0.14)",
+  stroke: "#53613b",
   strokeWidth: 1.5,
   strokeDasharray: "6 4",
 };
@@ -321,10 +323,10 @@ const generatedEdges: Edge[] = [
 ];
 
 const legend = [
-  { label: "人格内核", className: "border-foreground/20 bg-card" },
-  { label: "人生阶段", className: "border-border/80 bg-card/90" },
-  { label: "关键事件", className: "border-border/60 bg-muted/30" },
-  { label: "伏笔 / 暗线", className: "border-dashed border-foreground/15 bg-card/50" },
+  { label: "人格内核", className: "border-[#171410]/20 bg-[#fffaf0]" },
+  { label: "人生阶段", className: "border-[#53613b]/20 bg-[#fbf5e8]" },
+  { label: "关键事件", className: "border-[#8a7c62]/30 bg-[#f8f0df]" },
+  { label: "伏笔 / 暗线", className: "border-dashed border-[#53613b]/35 bg-[#e7ead4]" },
 ] as const;
 
 type RelationshipPerson = {
@@ -415,7 +417,7 @@ const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
 
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
-    <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+    <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#6f6759]">
       {children}
     </span>
   );
@@ -456,7 +458,7 @@ export default function PersonaPage() {
 
   if (isCheckingAuth) {
     return (
-      <div className="dark flex min-h-full items-center justify-center bg-background text-sm text-muted-foreground">
+      <div className="flex min-h-full items-center justify-center bg-[#f3ead7] text-sm text-[#6f6759]">
         正在检查登录状态……
       </div>
     );
@@ -499,140 +501,158 @@ export default function PersonaPage() {
   }
 
   return (
-    <div className="dark min-h-full bg-background text-foreground">
+    <div className="min-h-full overflow-hidden bg-[#f4ecd9] text-[#191611]">
       <SiteNav />
-      <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-8 px-10 py-14 lg:px-14 lg:py-16">
-        <header className="flex flex-col gap-4 border-b border-border/60 pb-8">
-          <span className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
-            Character · Persona Map
-          </span>
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div className="flex flex-col gap-2">
-              <h1 className="text-3xl font-semibold tracking-tight lg:text-4xl">
-                角色人格思维导图
-              </h1>
-              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                将角色拆分为核心人格、人生阶段、关键事件与伏笔暗线，形成可检索的写作参照树。
-              </p>
+      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-10 px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+        <div className="pointer-events-none absolute left-[-8vw] top-28 hidden text-[14vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] lg:block">
+          PERSONA
+        </div>
+        <div className="pointer-events-none absolute right-[-8vw] top-[520px] hidden text-[12vw] font-serif font-semibold leading-none text-[#53613b]/[0.07] xl:block">
+          RELATION
+        </div>
+        <div className="pointer-events-none absolute bottom-12 left-[34%] hidden text-[12vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] xl:block">
+          OOC
+        </div>
+
+        <header className="relative border-b border-[#171410]/15 pb-8">
+          <div className="max-w-5xl">
+            <div className="mb-7 inline-flex border border-[#2d281f]/20 bg-[#fffaf0]/45 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
+              PERSONA MAP · OOC BOUNDARY
             </div>
-            <Badge variant="outline" className="text-sm">
-              当前角色 · {activeName}
-            </Badge>
+            <h1 className="font-serif text-[clamp(4.4rem,13vw,12rem)] font-semibold leading-[0.82] tracking-[-0.045em] text-[#171410]">
+              Persona Archive
+            </h1>
+            <div className="mt-7 grid gap-6 lg:grid-cols-[0.9fr_1fr]">
+              <p className="max-w-2xl font-serif text-[clamp(1.85rem,3.2vw,4rem)] leading-[0.96] tracking-[-0.025em] text-[#211d17]">
+                把角色人格、人生阶段、人物关系和写作禁区结构化，作为 Writer /
+                Reviewer 的上下文输入。
+              </p>
+              <div className="flex max-w-2xl flex-col justify-end gap-4">
+                <p className="text-sm leading-7 text-[#5f5849] sm:text-base">
+                  Persona 页面是深度编辑页，Studio 会轻量调用这里的角色人格和人物关系作为 Context Engine 输入。
+                </p>
+                <p className="text-sm leading-7 text-[#5f5849]">
+                  Persona Map 不是静态角色卡，而是用于约束 Writer 生成和 Reviewer OOC 检查的角色上下文结构。
+                </p>
+                <Badge
+                  variant="outline"
+                  className="w-fit border-[#53613b]/35 bg-[#e7ead4] text-sm text-[#3f4b2f]"
+                >
+                  当前角色 · {activeName}
+                </Badge>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-4 pt-1">
+          <div className="mt-7 flex flex-wrap gap-4">
             {legend.map((item) => (
               <div
                 key={item.label}
-                className="flex items-center gap-2 text-xs text-muted-foreground"
+                className="flex items-center gap-2 text-xs text-[#6f6759]"
               >
-                <span
-                  className={cn(
-                    "size-3 rounded-sm border",
-                    item.className
-                  )}
-                />
+                <span className={cn("size-3 border", item.className)} />
                 {item.label}
               </div>
             ))}
           </div>
         </header>
 
-        <Card className="border-border/80 bg-card/80">
-          <CardHeader className="border-border/60 border-b pb-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+        <section className="border border-[#171410]/15 bg-[#efe2c7]/72 p-4 shadow-[0_20px_60px_rgba(49,39,24,0.06)]">
+          <div className="border border-[#171410]/12 bg-[#fbf5e8]">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#171410]/12 px-5 py-4">
               <div>
-                <CardTitle className="text-base">角色信息输入区</CardTitle>
-                <CardDescription className="mt-1 text-xs leading-relaxed">
+                <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+                  Character Manuscript
+                </p>
+                <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
+                  角色信息输入区
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-7 text-[#6f6759]">
                   当前为 MVP Demo：人格图由结构化输入生成，后续可接入 LLM 自动抽取角色人格。
-                </CardDescription>
+                </p>
               </div>
               <Button
-                className="h-10 shrink-0"
+                className="h-10 shrink-0 bg-[#171410] px-5 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
                 onClick={handleGeneratePersonaMap}
               >
                 生成人格思维导图
               </Button>
             </div>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4 pt-5 md:grid-cols-2">
-            <div className="flex flex-col gap-2">
-              <FieldLabel>角色姓名</FieldLabel>
-              <Input
-                value={form.name}
-                onChange={(event) => updateField("name", event.target.value)}
-                placeholder="例如：苏砚"
-                className="bg-background/40"
-              />
+            <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <FieldLabel>角色姓名</FieldLabel>
+                <Input
+                  value={form.name}
+                  onChange={(event) => updateField("name", event.target.value)}
+                  placeholder="例如：苏砚"
+                  className="border-[#171410]/15 bg-[#fffaf0] text-[#211d17]"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <FieldLabel>原作身份 / 所属阵营</FieldLabel>
+                <Input
+                  value={form.identity}
+                  onChange={(event) =>
+                    updateField("identity", event.target.value)
+                  }
+                  placeholder="例如：没落帝国王子 / 流亡阵营"
+                  className="border-[#171410]/15 bg-[#fffaf0] text-[#211d17]"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <FieldLabel>核心人格描述</FieldLabel>
+                <PersonaTextarea
+                  value={form.corePersonality}
+                  onChange={(value) => updateField("corePersonality", value)}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <FieldLabel>关键人生阶段</FieldLabel>
+                <PersonaTextarea
+                  value={form.lifeStages}
+                  onChange={(value) => updateField("lifeStages", value)}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <FieldLabel>关键事件 / 创伤经历</FieldLabel>
+                <PersonaTextarea
+                  value={form.keyEvents}
+                  onChange={(value) => updateField("keyEvents", value)}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <FieldLabel>关系模式 / 防御机制</FieldLabel>
+                <PersonaTextarea
+                  value={form.relationshipPattern}
+                  onChange={(value) => updateField("relationshipPattern", value)}
+                />
+              </div>
+              <div className="flex flex-col gap-2 md:col-span-2">
+                <FieldLabel>禁止 OOC 点</FieldLabel>
+                <Textarea
+                  value={form.oocBoundaries}
+                  onChange={(event) =>
+                    updateField("oocBoundaries", event.target.value)
+                  }
+                  className="min-h-20 resize-none border-[#171410]/15 bg-[#fffaf0] text-sm leading-relaxed text-[#211d17]"
+                />
+              </div>
             </div>
-            <div className="flex flex-col gap-2">
-              <FieldLabel>原作身份 / 所属阵营</FieldLabel>
-              <Input
-                value={form.identity}
-                onChange={(event) =>
-                  updateField("identity", event.target.value)
-                }
-                placeholder="例如：没落帝国王子 / 流亡阵营"
-                className="bg-background/40"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <FieldLabel>核心人格描述</FieldLabel>
-              <Textarea
-                value={form.corePersonality}
-                onChange={(event) =>
-                  updateField("corePersonality", event.target.value)
-                }
-                className="min-h-24 resize-none bg-background/40 text-sm leading-relaxed"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <FieldLabel>关键人生阶段</FieldLabel>
-              <Textarea
-                value={form.lifeStages}
-                onChange={(event) =>
-                  updateField("lifeStages", event.target.value)
-                }
-                className="min-h-24 resize-none bg-background/40 text-sm leading-relaxed"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <FieldLabel>关键事件 / 创伤经历</FieldLabel>
-              <Textarea
-                value={form.keyEvents}
-                onChange={(event) =>
-                  updateField("keyEvents", event.target.value)
-                }
-                className="min-h-24 resize-none bg-background/40 text-sm leading-relaxed"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <FieldLabel>关系模式 / 防御机制</FieldLabel>
-              <Textarea
-                value={form.relationshipPattern}
-                onChange={(event) =>
-                  updateField("relationshipPattern", event.target.value)
-                }
-                className="min-h-24 resize-none bg-background/40 text-sm leading-relaxed"
-              />
-            </div>
-            <div className="flex flex-col gap-2 md:col-span-2">
-              <FieldLabel>禁止 OOC 点</FieldLabel>
-              <Textarea
-                value={form.oocBoundaries}
-                onChange={(event) =>
-                  updateField("oocBoundaries", event.target.value)
-                }
-                className="min-h-20 resize-none bg-background/40 text-sm leading-relaxed"
-              />
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        <section className="flex flex-1 flex-col gap-3">
-          <p className="text-xs text-muted-foreground">
-            自上而下：人格内核 → 原作身份 / 人生阶段 / 关系模式 → 关键事件 / OOC 边界 → 伏笔暗线。可拖拽画布、滚轮缩放。
-          </p>
-          <div className="h-[min(72vh,760px)] w-full overflow-hidden rounded-xl border border-border/80 bg-card/20 ring-1 ring-foreground/5">
+        <section className="flex flex-1 flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+              Persona Timeline Tree
+            </p>
+            <h2 className="font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
+              人格时间树
+            </h2>
+            <p className="max-w-4xl text-sm leading-7 text-[#6f6759]">
+              自上而下：人格内核 → 原作身份 / 人生阶段 / 关系模式 → 关键事件 / OOC 边界 → 伏笔暗线。可拖拽画布、滚轮缩放。
+            </p>
+          </div>
+          <div className="h-[min(72vh,760px)] w-full overflow-hidden border border-[#171410]/15 bg-[#fbf5e8] shadow-[0_18px_54px_rgba(49,39,24,0.06)]">
             <ReactFlow
               nodes={nodes}
               edges={edges}
@@ -649,38 +669,34 @@ export default function PersonaPage() {
               proOptions={{ hideAttribution: true }}
               className="bg-transparent"
             >
-              <Background
-                gap={24}
-                size={1}
-                color="rgba(255,255,255,0.06)"
-              />
+              <Background gap={24} size={1} color="rgba(83,97,59,0.16)" />
               <Controls
                 showInteractive={false}
-                className="!rounded-lg !border-border/80 !bg-card/90 !shadow-md [&>button]:!border-border/60 [&>button]:!bg-muted/40 [&>button]:!fill-muted-foreground [&>button:hover]:!bg-muted/70"
+                className="!border-[#171410]/15 !bg-[#fffaf0] !shadow-md [&>button]:!border-[#171410]/12 [&>button]:!bg-[#f8f0df] [&>button]:!fill-[#6f6759] [&>button:hover]:!bg-[#e7ead4]"
               />
             </ReactFlow>
           </div>
         </section>
 
-        <section className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-lg font-medium tracking-tight">
+        <section className="flex flex-col gap-5">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+              Editorial Relationship Map
+            </p>
+            <h2 className="mt-2 font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
               人物关系与伏笔图
             </h2>
-            <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              用于展示角色与关键人物之间的关系阶段、隐藏情绪、冲突点和可埋伏笔，帮助长线同人创作保持关系一致性。
-            </p>
-            <p className="max-w-3xl text-xs leading-relaxed text-muted-foreground">
-              复杂关系信息点击人物节点后查看，默认图谱保持简洁，便于长线创作时快速理解人物网络。
+            <p className="mt-3 max-w-4xl text-sm leading-7 text-[#6f6759]">
+              用于展示角色与关键人物之间的关系阶段、隐藏情绪、冲突点和可埋伏笔，帮助长线同人创作保持关系一致性。点击人物节点后查看关系详情。
             </p>
           </div>
 
-          <Card className="border-border/80 bg-card/70">
-            <CardContent className="grid grid-cols-1 gap-6 pt-6 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="relative min-h-[460px] overflow-hidden rounded-xl border border-border/70 bg-background/40 ring-1 ring-foreground/5">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_55%)]" />
-                <div className="absolute left-1/2 top-1/2 z-20 flex size-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-foreground/25 bg-card px-4 text-center shadow-md ring-1 ring-foreground/10">
-                  <span className="text-sm font-medium leading-snug text-foreground">
+          <div className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="relative min-h-[460px] overflow-hidden border border-[#171410]/12 bg-[#fffaf0]">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(83,97,59,0.12),transparent_55%)]" />
+                <div className="absolute left-1/2 top-1/2 z-20 flex size-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#171410]/20 bg-[#f8f0df] px-4 text-center shadow-[0_12px_30px_rgba(49,39,24,0.08)]">
+                  <span className="text-sm font-semibold leading-snug text-[#171410]">
                     {relationshipCenterName}
                   </span>
                 </div>
@@ -700,107 +716,135 @@ export default function PersonaPage() {
               {selectedPerson ? (
                 <RelationshipDetailCard person={selectedPerson} />
               ) : null}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card className="border-border/80 bg-card/80">
-            <CardHeader className="border-border/60 border-b pb-4">
-              <CardTitle className="text-base">添加人物关系</CardTitle>
-              <CardDescription className="text-xs">
-                先用前端状态维护关系图，后续可接入项目数据库和关系抽取 Agent
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-4 pt-5 md:grid-cols-2">
-              <RelationshipInput
-                label="人物姓名"
-                value={relationshipForm.name}
-                onChange={(value) => updateRelationshipField("name", value)}
-                placeholder="例如：林照"
-              />
-              <RelationshipInput
-                label="人物身份 / 基本信息"
-                value={relationshipForm.identity}
-                onChange={(value) => updateRelationshipField("identity", value)}
-                placeholder="例如：边境军医 / 主角旧识"
-              />
-              <RelationshipInput
-                label="关系标签"
-                value={relationshipForm.label}
-                onChange={(value) => updateRelationshipField("label", value)}
-                placeholder="例如：CP / 亲人 / 盟友"
-              />
-              <RelationshipInput
-                label="关系阶段"
-                value={relationshipForm.stage}
-                onChange={(value) => updateRelationshipField("stage", value)}
-                placeholder="例如：暧昧前期 / 冷战后重逢"
-              />
-              <RelationshipTextarea
-                label="与主角的基本联系"
-                value={relationshipForm.connection}
-                onChange={(value) =>
-                  updateRelationshipField("connection", value)
-                }
-              />
-              <RelationshipTextarea
-                label="隐藏情绪"
-                value={relationshipForm.hiddenEmotion}
-                onChange={(value) =>
-                  updateRelationshipField("hiddenEmotion", value)
-                }
-              />
-              <RelationshipTextarea
-                label="未解冲突"
-                value={relationshipForm.conflict}
-                onChange={(value) => updateRelationshipField("conflict", value)}
-              />
-              <RelationshipTextarea
-                label="可埋伏笔"
-                value={relationshipForm.foreshadow}
-                onChange={(value) =>
-                  updateRelationshipField("foreshadow", value)
-                }
-              />
-              <div className="flex flex-col gap-2 md:col-span-2">
-                <RelationshipTextarea
-                  label="写作禁区"
-                  value={relationshipForm.taboo}
-                  onChange={(value) => updateRelationshipField("taboo", value)}
-                />
-                <Button
-                  className="mt-2 h-10 w-full sm:w-fit"
-                  onClick={handleAddRelationshipPerson}
-                >
-                  添加到关系图
-                </Button>
+          <section className="border border-[#171410]/15 bg-[#efe2c7]/72 p-4 shadow-[0_20px_60px_rgba(49,39,24,0.05)]">
+            <div className="border border-[#171410]/12 bg-[#fbf5e8]">
+              <div className="border-b border-[#171410]/12 px-5 py-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+                  Relationship Intake
+                </p>
+                <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
+                  添加人物关系
+                </h2>
+                <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
+                  先用前端状态维护关系图，后续可接入项目数据库和关系抽取 Agent。
+                </p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
+                <RelationshipInput
+                  label="人物姓名"
+                  value={relationshipForm.name}
+                  onChange={(value) => updateRelationshipField("name", value)}
+                  placeholder="例如：林照"
+                />
+                <RelationshipInput
+                  label="人物身份 / 基本信息"
+                  value={relationshipForm.identity}
+                  onChange={(value) => updateRelationshipField("identity", value)}
+                  placeholder="例如：边境军医 / 主角旧识"
+                />
+                <RelationshipInput
+                  label="关系标签"
+                  value={relationshipForm.label}
+                  onChange={(value) => updateRelationshipField("label", value)}
+                  placeholder="例如：CP / 亲人 / 盟友"
+                />
+                <RelationshipInput
+                  label="关系阶段"
+                  value={relationshipForm.stage}
+                  onChange={(value) => updateRelationshipField("stage", value)}
+                  placeholder="例如：暧昧前期 / 冷战后重逢"
+                />
+                <RelationshipTextarea
+                  label="与主角的基本联系"
+                  value={relationshipForm.connection}
+                  onChange={(value) =>
+                    updateRelationshipField("connection", value)
+                  }
+                />
+                <RelationshipTextarea
+                  label="隐藏情绪"
+                  value={relationshipForm.hiddenEmotion}
+                  onChange={(value) =>
+                    updateRelationshipField("hiddenEmotion", value)
+                  }
+                />
+                <RelationshipTextarea
+                  label="未解冲突"
+                  value={relationshipForm.conflict}
+                  onChange={(value) => updateRelationshipField("conflict", value)}
+                />
+                <RelationshipTextarea
+                  label="可埋伏笔"
+                  value={relationshipForm.foreshadow}
+                  onChange={(value) =>
+                    updateRelationshipField("foreshadow", value)
+                  }
+                />
+                <div className="flex flex-col gap-2 md:col-span-2">
+                  <RelationshipTextarea
+                    label="写作禁区"
+                    value={relationshipForm.taboo}
+                    onChange={(value) => updateRelationshipField("taboo", value)}
+                  />
+                  <Button
+                    className="mt-2 h-10 w-full bg-[#171410] px-5 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f] sm:w-fit"
+                    onClick={handleAddRelationshipPerson}
+                  >
+                    添加到关系图
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
 
-          <Card className="border-border/80 bg-card/80">
-            <CardHeader className="border-border/60 border-b pb-4">
-              <CardTitle className="text-base">伏笔建议</CardTitle>
-              <CardDescription className="text-xs">
-                可直接作为后续章节的暗线提示
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-3 pt-5 md:grid-cols-3">
+          <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
+            <div className="mb-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+                Foreshadow Notes
+              </p>
+              <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
+                伏笔建议
+              </h2>
+              <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
+                可直接作为后续章节的暗线提示。
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               {foreshadowSuggestions.map((item, index) => (
                 <div
                   key={item}
-                  className="rounded-md border border-dashed border-foreground/10 bg-muted/15 px-3 py-3 text-xs leading-relaxed text-muted-foreground"
+                  className="border border-dashed border-[#53613b]/30 bg-[#f8f0df] px-3 py-3 text-xs leading-relaxed text-[#5f5849] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/55 hover:bg-[#fff8ea]"
                 >
-                  <span className="mb-2 block font-mono text-[10px] text-muted-foreground/70">
+                  <span className="mb-2 block font-serif text-2xl leading-none text-[#53613b]">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   {item}
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         </section>
-      </div>
+      </main>
     </div>
+  );
+}
+
+function PersonaTextarea({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Textarea
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className="min-h-24 resize-none border-[#171410]/15 bg-[#fffaf0] text-sm leading-relaxed text-[#211d17]"
+    />
   );
 }
 
@@ -827,14 +871,14 @@ function RelationshipNode({
   return (
     <>
       <div
-        className="absolute left-1/2 top-1/2 h-px origin-left bg-border/70"
+        className="absolute left-1/2 top-1/2 h-px origin-left bg-[#8a7c62]/45"
         style={{
           width: `${radius}px`,
           transform: `rotate(${angle}deg)`,
         }}
       />
       <div
-        className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-border/70 bg-background/80 px-2 py-1 text-[10px] text-muted-foreground"
+        className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#171410]/15 bg-[#f8f0df] px-2 py-1 text-[10px] text-[#6f6759]"
         style={{
           transform: `translate(calc(-50% + ${labelX}px), calc(-50% + ${labelY}px))`,
         }}
@@ -845,10 +889,10 @@ function RelationshipNode({
         type="button"
         onClick={onSelect}
         className={cn(
-          "absolute left-1/2 top-1/2 z-20 flex size-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-card px-3 text-center text-xs font-medium leading-snug text-foreground shadow-sm transition-all hover:border-foreground/30 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "absolute left-1/2 top-1/2 z-20 flex size-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-[#fbf5e8] px-3 text-center text-xs font-semibold leading-snug text-[#171410] shadow-[0_10px_24px_rgba(49,39,24,0.08)] transition-all duration-200 hover:border-[#53613b]/60 hover:bg-[#e7ead4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#53613b]",
           selected
-            ? "border-foreground/40 ring-2 ring-foreground/15"
-            : "border-border/80",
+            ? "border-[#53613b]/70 bg-[#e7ead4] ring-2 ring-[#53613b]/20"
+            : "border-[#171410]/15",
         )}
         style={{
           transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
@@ -862,19 +906,24 @@ function RelationshipNode({
 
 function RelationshipDetailCard({ person }: { person: RelationshipPerson }) {
   return (
-    <div className="rounded-xl border border-border/70 bg-muted/15 px-4 py-4">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <div className="border border-[#171410]/12 bg-[#f8f0df] px-4 py-4">
+      <div className="mb-4 flex items-start justify-between gap-3 border-b border-[#171410]/12 pb-4">
         <div>
-          <p className="text-base font-medium text-foreground">{person.name}</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          <p className="font-serif text-3xl leading-none tracking-[-0.02em] text-[#171410]">
+            {person.name}
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
             {person.identity}
           </p>
         </div>
-        <Badge variant="outline" className="text-[10px]">
+        <Badge
+          variant="outline"
+          className="border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
+        >
           {person.label}
         </Badge>
       </div>
-      <div className="grid gap-3 text-xs leading-relaxed text-muted-foreground">
+      <div className="grid gap-3 text-xs leading-relaxed text-[#5f5849]">
         <RelationLine label="与主角的基本联系" value={person.connection} />
         <RelationLine label="关系阶段" value={person.stage} />
         <RelationLine label="隐藏情绪" value={person.hiddenEmotion} />
@@ -904,7 +953,7 @@ function RelationshipInput({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="bg-background/40"
+        className="border-[#171410]/15 bg-[#fffaf0] text-[#211d17]"
       />
     </div>
   );
@@ -925,7 +974,7 @@ function RelationshipTextarea({
       <Textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-20 resize-none bg-background/40 text-sm leading-relaxed"
+        className="min-h-20 resize-none border-[#171410]/15 bg-[#fffaf0] text-sm leading-relaxed text-[#211d17]"
       />
     </div>
   );
@@ -934,7 +983,7 @@ function RelationshipTextarea({
 function RelationLine({ label, value }: { label: string; value: string }) {
   return (
     <p>
-      <span className="text-foreground/80">{label}：</span>
+      <span className="font-medium text-[#332d24]">{label}：</span>
       {value}
     </p>
   );
