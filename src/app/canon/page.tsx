@@ -12,15 +12,9 @@ import { useState } from "react";
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 type EvidenceType = "Hard Canon" | "Soft Canon";
 
@@ -83,7 +77,7 @@ const retrievalStrategies = [
     description: "语义相似检索，用于召回与当前创作场景情绪、关系和事件相近的证据。",
   },
   {
-    title: "Keyword/BM25 Search",
+    title: "Keyword / BM25 Search",
     description: "保留人名、地名、道具、称号等精确设定，避免语义检索漏掉硬约束。",
   },
   {
@@ -128,58 +122,128 @@ export default function CanonPage() {
   const softCanon = evidence.filter((item) => item.type === "Soft Canon");
 
   return (
-    <div className="dark min-h-full bg-background text-foreground">
+    <div className="min-h-full overflow-hidden bg-[#f4ecd9] text-[#191611]">
       <SiteNav />
-      <main className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-8 px-10 py-14 lg:gap-10 lg:px-14 lg:py-16">
-        <header className="flex flex-col gap-4 border-b border-border/60 pb-8">
-          <span className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
-            Canon Evidence · Retrieval Engine
-          </span>
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-semibold tracking-tight lg:text-4xl">
+      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-10 px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+        <div className="pointer-events-none absolute left-[-8vw] top-28 hidden text-[16vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] lg:block">
+          CANON
+        </div>
+        <div className="pointer-events-none absolute right-[-9vw] top-[430px] hidden text-[13vw] font-serif font-semibold leading-none text-[#53613b]/[0.07] xl:block">
+          EVIDENCE
+        </div>
+        <div className="pointer-events-none absolute bottom-12 left-[24%] hidden text-[12vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] xl:block">
+          ARCHIVE
+        </div>
+
+        <header className="relative border-b border-[#171410]/15 pb-8">
+          <div className="max-w-5xl">
+            <div className="mb-7 inline-flex border border-[#2d281f]/20 bg-[#fffaf0]/45 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
+              CANON EVIDENCE · RAG READY
+            </div>
+            <h1 className="font-serif text-[clamp(4rem,11vw,11rem)] font-semibold leading-[0.82] tracking-[-0.045em] text-[#171410]">
               Canon Evidence Engine
             </h1>
-            <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground lg:text-base">
-              上传或粘贴原作文档，提取世界观规则、时间线、角色经历和伏笔证据，用于降低 Canon 冲突。
-            </p>
+            <div className="mt-7 grid gap-6 lg:grid-cols-[0.85fr_1fr]">
+              <p className="max-w-xl font-serif text-[clamp(1.85rem,3.2vw,4rem)] leading-[0.96] tracking-[-0.025em] text-[#211d17]">
+                上传或粘贴原作文档，提取原作硬设定、时间线、角色经历和风格证据。
+              </p>
+              <div className="flex max-w-2xl flex-col justify-end gap-4">
+                <p className="text-sm leading-7 text-[#5f5849] sm:text-base">
+                  Canon 证据页是深度编辑页，Studio 会轻量调用这里的 Hard /
+                  Soft Canon 作为 Context Engine 输入。
+                </p>
+                <Badge
+                  variant="outline"
+                  className="w-fit border-[#171410]/20 bg-[#fbf5e8] text-xs text-[#6f6759]"
+                >
+                  MVP Demo，不接真实向量数据库、文件解析或 AI。
+                </Badge>
+              </div>
+            </div>
           </div>
-          <Badge variant="outline" className="w-fit text-xs">
-            当前为 MVP Demo，不接真实向量数据库、文件解析或 AI。
-          </Badge>
         </header>
 
-        <Card className="border-border/80 bg-card/80">
-          <CardHeader className="gap-2 border-b border-border/60 pb-5">
-            <div className="flex items-center gap-2">
-              <FileText className="size-4 text-muted-foreground" />
-              <CardTitle className="text-base">原作文档输入区</CardTitle>
-            </div>
-            <CardDescription className="text-xs">
-              粘贴片段或选择文件后，点击按钮生成 mock Canon 证据。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-5 pt-5">
-            <Textarea
-              value={sourceText}
-              onChange={(event) => setSourceText(event.target.value)}
-              placeholder="粘贴原作片段 / 世界观设定 / 角色资料"
-              className="min-h-36 resize-y bg-background/40 text-sm leading-relaxed"
-            />
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-center">
-              <Input
-                type="file"
-                accept=".txt,.md"
-                aria-label="上传 .txt 或 .md 原作文档"
-                className="bg-background/40"
-              />
-              <Button className="h-10" onClick={handleExtractEvidence}>
-                提取 Canon 证据
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <section className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="border border-[#171410]/15 bg-[#efe2c7]/72 p-4 shadow-[0_20px_60px_rgba(49,39,24,0.06)]">
+            <div className="border border-[#171410]/12 bg-[#fbf5e8]">
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#171410]/12 px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex size-10 items-center justify-center border border-[#171410]/15 bg-[#f0e4cc]">
+                    <FileText className="size-4 text-[#53613b]" />
+                  </span>
+                  <div>
+                    <h2 className="text-sm font-semibold text-[#171410]">
+                      原作文档输入区
+                    </h2>
+                    <p className="text-xs leading-relaxed text-[#6f6759]">
+                      档案录入台：粘贴片段或选择文件后，点击按钮生成 mock Canon 证据。
+                    </p>
+                  </div>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
+                >
+                  Archive Intake
+                </Badge>
+              </div>
 
-        <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="flex flex-col gap-5 p-5">
+                <Textarea
+                  value={sourceText}
+                  onChange={(event) => setSourceText(event.target.value)}
+                  placeholder="粘贴原作片段 / 世界观设定 / 角色资料"
+                  className="min-h-52 resize-y border-[#171410]/15 bg-[#fffaf0] px-5 py-5 font-serif text-[15px] leading-8 text-[#211d17] shadow-inner shadow-[#4d3f24]/5 placeholder:text-[#9a8f78] focus-visible:ring-[#53613b]"
+                />
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-center">
+                  <Input
+                    type="file"
+                    accept=".txt,.md"
+                    aria-label="上传 .txt 或 .md 原作文档"
+                    className="border-[#171410]/15 bg-[#f8f0df] text-[#5f5849] file:text-[#171410]"
+                  />
+                  <Button
+                    className="h-10 bg-[#171410] px-5 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
+                    onClick={handleExtractEvidence}
+                  >
+                    提取 Canon 证据
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex size-10 items-center justify-center border border-[#171410]/15 bg-[#f0e4cc]">
+                <ShieldCheck className="size-4 text-[#53613b]" />
+              </span>
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+                  Reviewer Standard
+                </p>
+                <h2 className="font-serif text-3xl leading-none tracking-[-0.02em] text-[#171410]">
+                  Canon 冲突判断标准
+                </h2>
+              </div>
+            </div>
+            <div className="mt-6 divide-y divide-[#171410]/12 border-y border-[#171410]/12">
+              {conflictRules.map((rule, index) => (
+                <div
+                  key={rule}
+                  className="grid grid-cols-[44px_minmax(0,1fr)] gap-3 py-4 text-sm text-[#332d24]"
+                >
+                  <span className="font-serif text-2xl leading-none text-[#53613b]">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span>{rule}</span>
+                </div>
+              ))}
+            </div>
+          </aside>
+        </section>
+
+        <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <EvidenceColumn
             title="Hard Canon"
             description="不可违反的硬设定，例如时间线、身份、世界观规则、已知信息。"
@@ -193,88 +257,88 @@ export default function CanonPage() {
         </section>
 
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <Card className="border-border/80 bg-card/80">
-            <CardHeader className="gap-2 border-b border-border/60 pb-5">
-              <div className="flex items-center gap-2">
-                <Search className="size-4 text-muted-foreground" />
-                <CardTitle className="text-base">RAG 检索策略</CardTitle>
+          <div className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]">
+            <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex size-10 items-center justify-center border border-[#171410]/15 bg-[#f0e4cc]">
+                  <Search className="size-4 text-[#53613b]" />
+                </span>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+                    Retrieval Method
+                  </p>
+                  <h2 className="font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
+                    RAG 检索策略
+                  </h2>
+                </div>
               </div>
-              <CardDescription className="text-xs">
-                用混合检索把 Canon 证据送入 Writer / Reviewer 上下文
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-3 pt-5 md:grid-cols-2">
-              {retrievalStrategies.map((strategy) => (
+              <Badge
+                variant="outline"
+                className="border-[#171410]/20 bg-[#f8f0df] text-xs text-[#6f6759]"
+              >
+                Writer / Reviewer Context
+              </Badge>
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {retrievalStrategies.map((strategy, index) => (
                 <div
                   key={strategy.title}
-                  className="rounded-lg border border-border/50 bg-muted/15 px-4 py-3"
+                  className="group border border-[#171410]/12 bg-[#f8f0df] px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#fff8ea]"
                 >
-                  <p className="text-sm font-medium text-foreground">
-                    {strategy.title}
-                  </p>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                    {strategy.description}
-                  </p>
+                  <div className="flex items-start gap-3">
+                    <span className="font-serif text-3xl leading-none text-[#53613b]">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-[#171410]">
+                        {strategy.title}
+                      </p>
+                      <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
+                        {strategy.description}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               ))}
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/80 bg-card/80">
-            <CardHeader className="gap-2 border-b border-border/60 pb-5">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="size-4 text-muted-foreground" />
-                <CardTitle className="text-base">Canon 冲突判断标准</CardTitle>
-              </div>
-              <CardDescription className="text-xs">
-                Reviewer Canon Check 的基础分类
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-2 pt-5">
-              {conflictRules.map((rule, index) => (
-                <div
-                  key={rule}
-                  className="rounded-md border border-border/50 bg-muted/15 px-3 py-2 text-sm text-foreground/90"
-                >
-                  <span className="mr-2 font-mono text-xs text-muted-foreground/70">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  {rule}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </section>
-
-        <Card className="border-border/80 bg-card/70">
-          <CardHeader className="gap-2 border-b border-border/60 pb-5">
-            <div className="flex items-center gap-2">
-              <Database className="size-4 text-muted-foreground" />
-              <CardTitle className="text-base">如何进入生成链路</CardTitle>
             </div>
-            <CardDescription className="text-xs">
-              Canon 证据作为上下文约束进入写作与审稿
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap items-center gap-x-1 gap-y-3 pt-5">
-            {generationFlow.map((step, index) => (
-              <div key={step} className="flex items-center gap-1">
-                <div className="flex items-center gap-2 rounded-md border border-border/80 bg-muted/30 px-3 py-2 text-sm text-foreground/90">
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span className="whitespace-nowrap">{step}</span>
-                </div>
-                {index < generationFlow.length - 1 && (
-                  <ArrowRight
-                    className="mx-0.5 size-3.5 shrink-0 text-muted-foreground/50"
-                    aria-hidden
-                  />
-                )}
+          </div>
+
+          <div className="border border-[#171410]/15 bg-[#efe2c7]/65 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex size-10 items-center justify-center border border-[#171410]/15 bg-[#f8f0df]">
+                <Database className="size-4 text-[#53613b]" />
+              </span>
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+                  Generation Chain
+                </p>
+                <h2 className="font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
+                  如何进入生成链路
+                </h2>
               </div>
-            ))}
-          </CardContent>
-        </Card>
+            </div>
+            <div className="mt-6 flex flex-col gap-0 border-y border-[#171410]/12">
+              {generationFlow.map((step, index) => (
+                <div
+                  key={step}
+                  className="group flex items-center justify-between gap-3 border-b border-[#171410]/12 py-4 last:border-b-0"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="font-serif text-2xl leading-none text-[#53613b]">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="text-sm text-[#332d24]">{step}</span>
+                  </div>
+                  {index < generationFlow.length - 1 ? (
+                    <ArrowRight className="size-4 text-[#8a7c62]" aria-hidden />
+                  ) : (
+                    <span className="size-2 rounded-full bg-[#53613b]" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );
@@ -289,54 +353,85 @@ function EvidenceColumn({
   description: string;
   items: CanonEvidence[];
 }) {
+  const isHard = title === "Hard Canon";
+
   return (
-    <Card className="border-border/80 bg-card/80">
-      <CardHeader className="gap-2 border-b border-border/60 pb-5">
-        <div className="flex items-center justify-between gap-3">
-          <CardTitle className="text-base">{title}</CardTitle>
-          <Badge variant={title === "Hard Canon" ? "destructive" : "secondary"}>
-            {items.length}
-          </Badge>
+    <section
+      className={cn(
+        "border p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]",
+        isHard
+          ? "border-[#7f3326]/25 bg-[#f2dfd3]"
+          : "border-[#53613b]/22 bg-[#fbf5e8]/85",
+      )}
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-[#171410]/12 pb-5">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+            {isHard ? "Non-negotiable rule" : "Atmosphere reference"}
+          </p>
+          <h2 className="mt-2 font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
+            {title}
+          </h2>
+          <p className="mt-3 max-w-xl text-sm leading-7 text-[#6f6759]">
+            {description}
+          </p>
         </div>
-        <CardDescription className="text-xs leading-relaxed">
-          {description}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3 pt-5">
+        <Badge
+          variant="outline"
+          className={cn(
+            "border-[#171410]/20 bg-[#f8f0df] text-[#171410]",
+            isHard && "border-[#7f3326]/30 bg-[#edd1c5] text-[#7f3326]",
+          )}
+        >
+          {items.length}
+        </Badge>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-3">
         {items.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border/60 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+          <div className="border border-dashed border-[#171410]/20 bg-[#f8f0df]/65 px-4 py-10 text-center text-sm leading-7 text-[#7a705e]">
             点击「提取 Canon 证据」后展示 mock 证据卡片。
           </div>
         ) : (
           items.map((item) => (
-            <div
+            <article
               key={`${item.type}-${item.title}`}
-              className="rounded-lg border border-border/50 bg-muted/15 px-4 py-3"
+              className={cn(
+                "group border px-4 py-4 transition-all duration-200 hover:-translate-y-0.5",
+                isHard
+                  ? "border-[#7f3326]/25 bg-[#fff4ed] hover:border-[#7f3326]/45"
+                  : "border-[#53613b]/18 bg-[#fffaf0] hover:border-[#53613b]/45",
+              )}
             >
-              <div className="mb-2 flex flex-wrap items-center gap-2">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
                 <Badge
-                  variant={
-                    item.type === "Hard Canon" ? "destructive" : "outline"
-                  }
-                  className="text-[10px]"
+                  variant="outline"
+                  className={cn(
+                    "text-[10px]",
+                    isHard
+                      ? "border-[#7f3326]/35 bg-[#edd1c5] text-[#7f3326]"
+                      : "border-[#53613b]/35 bg-[#e7ead4] text-[#3f4b2f]",
+                  )}
                 >
                   {item.type}
                 </Badge>
-                <span className="text-xs text-muted-foreground">
-                  {item.source}
-                </span>
+                <span className="text-xs text-[#7a705e]">{item.source}</span>
               </div>
-              <p className="text-sm font-medium text-foreground">{item.title}</p>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                证据：{item.evidence}
+              <p className="font-serif text-2xl leading-none tracking-[-0.015em] text-[#171410]">
+                {item.title}
               </p>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                用途：{item.usage}
+              <p className="mt-3 text-sm leading-7 text-[#5f5849]">
+                <span className="font-medium text-[#332d24]">证据：</span>
+                {item.evidence}
               </p>
-            </div>
+              <p className="mt-2 text-sm leading-7 text-[#5f5849]">
+                <span className="font-medium text-[#332d24]">用途：</span>
+                {item.usage}
+              </p>
+            </article>
           ))
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
