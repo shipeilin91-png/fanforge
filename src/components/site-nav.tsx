@@ -19,7 +19,7 @@ const navLinks = [
 ] as const;
 
 const linkClassName =
-  "rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "px-3 py-1.5 text-sm text-[#c7c1b4] transition-colors hover:text-[#fff8ea] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#53613b]";
 
 type DemoUser = {
   nickname?: string;
@@ -48,11 +48,11 @@ export function SiteNav() {
   }
 
   return (
-    <header className="dark sticky top-0 z-50 w-full border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-6 px-10 lg:px-14">
+    <header className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-[#080806]">
+      <div className="mx-auto flex h-14 w-full max-w-[1440px] items-center justify-between gap-6 px-5 sm:px-8 lg:px-12">
         <Link
           href="/dashboard"
-          className="text-sm font-semibold tracking-tight text-foreground transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-sm"
+          className="font-serif text-lg font-semibold tracking-[-0.02em] text-[#fff8ea] transition-colors hover:text-[#e7ead4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#53613b]"
         >
           FanForge
         </Link>
@@ -67,8 +67,8 @@ export function SiteNav() {
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-2 border-l border-border/60 pl-3">
-            <span className="max-w-32 truncate text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 border-l border-white/[0.08] pl-3">
+            <span className="max-w-32 truncate text-xs text-[#a9a296]">
               {demoUser?.nickname
                 ? `Demo 用户：${demoUser.nickname}`
                 : "未登录"}
@@ -76,7 +76,7 @@ export function SiteNav() {
             <button
               type="button"
               onClick={handleLogout}
-              className="rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="px-2 py-1 text-xs text-[#c7c1b4] transition-colors hover:text-[#fff8ea] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#53613b]"
             >
               退出
             </button>

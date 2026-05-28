@@ -1,171 +1,120 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
+import { SiteNav } from "@/components/site-nav";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
 
-const CREATOR_IDENTITIES = [
-  "新手同人创作者",
-  "长篇连载作者",
-  "CP 短文创作者",
-  "设定党",
-] as const;
+function ensureDemoUser() {
+  const existing = window.localStorage.getItem(DEMO_USER_STORAGE_KEY);
+  if (existing) return;
 
-const FAVORITE_TYPES = ["CP", "群像", "宿敌", "师徒", "原创角色"] as const;
+  window.localStorage.setItem(
+    DEMO_USER_STORAGE_KEY,
+    JSON.stringify({
+      nickname: "演示创作者",
+      creatorIdentity: "新手同人创作者",
+      favoriteType: "CP",
+      createdAt: new Date().toISOString(),
+    }),
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
-  const [nickname, setNickname] = useState("");
-  const [creatorIdentity, setCreatorIdentity] = useState<
-    (typeof CREATOR_IDENTITIES)[number]
-  >("新手同人创作者");
-  const [favoriteType, setFavoriteType] =
-    useState<(typeof FAVORITE_TYPES)[number]>("CP");
 
-  function handleEnterDashboard(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const demoUser = {
-      nickname: nickname.trim() || "演示创作者",
-      creatorIdentity,
-      favoriteType,
-      createdAt: new Date().toISOString(),
-    };
-
-    window.localStorage.setItem(
-      DEMO_USER_STORAGE_KEY,
-      JSON.stringify(demoUser),
-    );
-    router.push("/dashboard");
+  function handleEnter(path: "/studio" | "/dashboard") {
+    ensureDemoUser();
+    router.push(path);
   }
 
   return (
-    <main className="dark flex min-h-full items-center justify-center bg-background px-6 py-12 text-foreground">
-      <div className="flex w-full max-w-md flex-col gap-8">
-        <header className="flex flex-col gap-3 text-center">
-          <span className="text-xs font-medium tracking-[0.22em] text-muted-foreground uppercase">
-            Fan Fiction · AI Co-writing
-          </span>
-          <div className="flex flex-col gap-2">
-            <h1 className="text-4xl font-semibold tracking-tight">FanForge</h1>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              面向同人创作者的原著一致性 AI 共写平台
-            </p>
-          </div>
-        </header>
+    <div className="min-h-full overflow-hidden bg-[#f4ecd9] text-[#191611]">
+      <SiteNav />
+      <main className="relative flex min-h-[calc(100vh-3.5rem)] px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+        <div className="pointer-events-none absolute left-[-7vw] top-16 hidden text-[16vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] lg:block">
+          CANON
+        </div>
+        <div className="pointer-events-none absolute right-[-8vw] top-[38%] hidden text-[13vw] font-serif font-semibold leading-none text-[#53613b]/[0.07] xl:block">
+          PERSONA
+        </div>
 
-        <Card className="border-border/80 bg-card/80 shadow-sm">
-          <CardHeader className="gap-2 border-b border-border/60 pb-5">
-            <CardTitle className="text-base">进入创作工作台</CardTitle>
-            <CardDescription className="text-xs leading-relaxed">
-              用演示身份体验 FanForge 的原作理解、情绪切片和多 Agent 审稿流程。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <form
-              className="flex flex-col gap-5"
-              onSubmit={handleEnterDashboard}
-            >
-              <div className="flex flex-col gap-2">
-                <label
-                  htmlFor="nickname"
-                  className="text-xs font-medium text-muted-foreground"
-                >
-                  创作者昵称
-                </label>
-                <Input
-                  id="nickname"
-                  value={nickname}
-                  onChange={(event) => setNickname(event.target.value)}
-                  placeholder="例如：夜航写手"
-                  className="bg-background/40"
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  创作身份
-                </span>
-                <Select
-                  value={creatorIdentity}
-                  onValueChange={(value) =>
-                    setCreatorIdentity(
-                      value as (typeof CREATOR_IDENTITIES)[number],
-                    )
-                  }
-                >
-                  <SelectTrigger className="w-full bg-background/40">
-                    <SelectValue placeholder="选择创作身份" />
-                  </SelectTrigger>
-                  <SelectContent
-                    position="popper"
-                    className="w-[var(--radix-select-trigger-width)]"
+        <div className="relative mx-auto grid w-full max-w-[1440px] items-center gap-10 lg:grid-cols-[minmax(0,1fr)_370px] xl:grid-cols-[minmax(0,1fr)_420px]">
+          <section className="max-w-5xl">
+            <div className="mb-7 inline-flex border border-[#2d281f]/20 bg-[#fffaf0]/45 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
+              FAN FICTION · CANON-AWARE AI WRITING
+            </div>
+            <h1 className="font-serif text-[clamp(5rem,18vw,17rem)] font-semibold leading-[0.78] tracking-[-0.04em] text-[#171410]">
+              FanForge
+            </h1>
+            <div className="mt-8 grid gap-6 lg:grid-cols-[0.85fr_1fr]">
+              <p className="max-w-xl font-serif text-[clamp(2rem,4vw,4.5rem)] leading-[0.95] tracking-[-0.025em] text-[#1e1a14]">
+                面向同人创作者的原著一致性 AI 共写平台
+              </p>
+              <div className="flex max-w-xl flex-col justify-end gap-6">
+                <p className="text-base leading-8 text-[#5f5849] sm:text-lg">
+                  从 Canon 证据、角色人格到多 Agent
+                  审稿，把长文本创作中的一致性问题产品化。
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    className="h-11 bg-[#171410] px-5 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
+                    onClick={() => handleEnter("/studio")}
                   >
-                    {CREATOR_IDENTITIES.map((identity) => (
-                      <SelectItem key={identity} value={identity}>
-                        {identity}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  常写类型
-                </span>
-                <Select
-                  value={favoriteType}
-                  onValueChange={(value) =>
-                    setFavoriteType(value as (typeof FAVORITE_TYPES)[number])
-                  }
-                >
-                  <SelectTrigger className="w-full bg-background/40">
-                    <SelectValue placeholder="选择常写类型" />
-                  </SelectTrigger>
-                  <SelectContent
-                    position="popper"
-                    className="w-[var(--radix-select-trigger-width)]"
+                    进入创作室
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 border-[#171410]/25 bg-[#fff8ea]/55 px-5 text-[#171410] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/60 hover:bg-[#eef0df]"
+                    onClick={() => handleEnter("/dashboard")}
                   >
-                    {FAVORITE_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    查看演示路径
+                  </Button>
+                </div>
+                <p className="max-w-lg text-xs leading-6 text-[#7a705e]">
+                  当前为 MVP 演示入口，不涉及真实账号系统；点击入口会创建本地 Demo 用户状态。
+                </p>
               </div>
+            </div>
+          </section>
 
-              <Button type="submit" size="lg" className="mt-1 h-11 w-full">
-                进入创作工作台
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <p className="text-center text-xs leading-relaxed text-muted-foreground">
-          当前为 MVP 演示登录，不涉及真实账号系统；后续可接入 Supabase /
-          Clerk / NextAuth 实现正式用户登录、项目保存和反馈追踪。
-        </p>
-      </div>
-    </main>
+          <aside className="relative border border-[#171410]/20 bg-[#efe2c7]/70 p-6 shadow-[0_20px_60px_rgba(49,39,24,0.08)]">
+            <div className="absolute -right-4 -top-4 size-24 bg-[#53613b] opacity-90" />
+            <div className="relative flex min-h-[360px] flex-col justify-between border border-[#171410]/15 bg-[#f8f0df] p-6">
+              <div>
+                <Badge
+                  variant="outline"
+                  className="border-[#53613b]/40 bg-[#e7ead4] text-[#3f4b2f]"
+                >
+                  Portfolio MVP
+                </Badge>
+                <p className="mt-8 font-serif text-4xl leading-none text-[#171410]">
+                  Canon stays.
+                  <br />
+                  Characters stay.
+                  <br />
+                  Tension moves.
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-3 pt-10">
+                {["Canon", "Persona", "Agent"].map((item) => (
+                  <div
+                    key={item}
+                    className="border border-[#171410]/15 bg-[#f4ecd9] px-3 py-3 text-center text-xs font-medium text-[#5f5849]"
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </div>
   );
 }
