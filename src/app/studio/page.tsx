@@ -3,10 +3,17 @@
 import Link from "next/link";
 import {
   BookOpenText,
+  Brain,
+  CheckCircle2,
   ExternalLink,
   FileText,
+  GitBranch,
+  Library,
+  MessageSquareText,
   PanelLeft,
+  PenLine,
   Save,
+  SearchCheck,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
@@ -17,13 +24,6 @@ import { useRouter } from "next/navigation";
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -43,8 +43,11 @@ type Asset = {
   id: string;
   title: string;
   description: string;
-  source?: "/persona" | "/canon";
+  source?: "/persona" | "/canon" | "/slice" | "/agents";
+  sourceLabel?: string;
   chapterTitle?: string;
+  meta: string;
+  status: string;
 };
 
 type ReviewResult = {
@@ -59,23 +62,31 @@ const assets: Record<AssetTab, Asset[]> = {
       title: "第一章：旧友婚礼",
       description: "主角隐姓埋名回到帝都，在旧友婚礼上确认对方是否认出自己。",
       chapterTitle: "第一章：旧友婚礼",
+      meta: "Chapter",
+      status: "正在写",
     },
     {
       id: "chapter-2",
       title: "第二章：雨夜重逢",
       description: "婚礼后的雨夜，两人在无人回廊短暂对峙，关系进入试探阶段。",
       chapterTitle: "第二章：雨夜重逢",
+      meta: "Chapter",
+      status: "待铺垫",
     },
     {
       id: "chapter-3",
       title: "第三章：身份暴露",
       description: "禁卫府发现旧徽章线索，主角真实身份开始逼近暴露。",
       chapterTitle: "第三章：身份暴露",
+      meta: "Chapter",
+      status: "高风险",
     },
     {
       id: "foreshadow-badge",
       title: "伏笔节点：旧徽章",
       description: "旧徽章连接宫变夜、旧友沉默和北塔禁令，是后续回收线索。",
+      meta: "Foreshadow",
+      status: "需回收",
     },
   ],
   materials: [
@@ -84,28 +95,42 @@ const assets: Record<AssetTab, Asset[]> = {
       title: "角色人格",
       description: "来自 /persona：核心人格内核、人生阶段和 OOC 边界。",
       source: "/persona",
+      sourceLabel: "Persona Map",
+      meta: "Character",
+      status: "已启用",
     },
     {
       id: "relationship",
       title: "人物关系",
       description: "来自 /persona：人物关系阶段、隐藏情绪、未解冲突和可埋伏笔。",
       source: "/persona",
+      sourceLabel: "Relationship",
+      meta: "Relation",
+      status: "已启用",
     },
     {
       id: "worldbuilding",
       title: "世界观设定",
       description: "帝国政体、禁卫府权限、誓印规则和王城地理约束。",
+      meta: "World",
+      status: "已索引",
     },
     {
       id: "canon",
       title: "Canon 证据",
       description: "来自 /canon：原作硬设定、时间线、身份信息和证据片段。",
       source: "/canon",
+      sourceLabel: "Canon Evidence",
+      meta: "Evidence",
+      status: "已锁定",
     },
     {
       id: "style-card",
       title: "文学气质风格卡",
-      description: "当前风格摘要：疏离克制，短句与停顿偏多，情绪落在动作、旧物、雨雪和站位上。",
+      description:
+        "当前风格摘要：疏离克制，短句与停顿偏多，情绪落在动作、旧物、雨雪和站位上。",
+      meta: "Style",
+      status: "已匹配",
     },
   ],
   docs: [
@@ -113,21 +138,31 @@ const assets: Record<AssetTab, Asset[]> = {
       id: "origin-snippet",
       title: "原作片段",
       description: "摘录的原作段落，用于辅助 Canon 判断和语气参考。",
+      meta: "Quote",
+      status: "可引用",
     },
     {
       id: "uploads",
       title: "用户上传资料",
       description: "用户补充的人设、同人设定、连载大纲和章节规划。",
+      meta: "Upload",
+      status: "3 份",
     },
     {
       id: "drafts",
       title: "章节草稿",
       description: "Studio 中保存的本地 Demo 草稿记录。",
+      meta: "Draft",
+      status: "本地",
     },
     {
       id: "review-logs",
       title: "审稿记录",
       description: "Reviewer / Criticizer 的历史审稿结论和修改建议。",
+      source: "/agents",
+      sourceLabel: "Agent Desk",
+      meta: "Review",
+      status: "可追溯",
     },
   ],
 };
@@ -143,34 +178,44 @@ const relationshipStages = [
   "共同作战",
 ] as const;
 
-const contextSwitches = [
-  {
-    title: "Canon Evidence",
-    source: "/canon",
-    description: "已启用，来自 /canon，约束时间线、身份和世界观硬设定。",
-  },
-  {
-    title: "Persona Map",
-    source: "/persona",
-    description: "已启用，来自 /persona，约束角色人格内核和 OOC 边界。",
-  },
-  {
-    title: "Relationship Map",
-    source: "/persona",
-    description: "已启用，来自 /persona，约束关系阶段、冲突和互动距离。",
-  },
-  {
-    title: "Style Card",
-    source: null,
-    description: "已启用，来自当前参数，约束文学气质、语言肌理和意象偏好。",
-  },
-] as const;
-
 const tabLabels: Record<AssetTab, string> = {
   outline: "大纲",
   materials: "素材",
   docs: "文档",
 };
+
+const tabNotes: Record<AssetTab, string> = {
+  outline: "章节骨架、伏笔和节奏节点",
+  materials: "人格、关系、Canon 与风格约束",
+  docs: "原作摘录、上传资料和审稿记录",
+};
+
+const contextModules = [
+  {
+    title: "Canon Evidence",
+    source: "/canon",
+    icon: SearchCheck,
+    description: "已启用，来自 /canon",
+  },
+  {
+    title: "Persona Map",
+    source: "/persona",
+    icon: Brain,
+    description: "已启用，来自 /persona",
+  },
+  {
+    title: "Relationship Map",
+    source: "/persona",
+    icon: GitBranch,
+    description: "已启用，来自 /persona",
+  },
+  {
+    title: "Style Card",
+    source: null,
+    icon: MessageSquareText,
+    description: "已启用，来自当前参数",
+  },
+] as const;
 
 function buildReviewResult(draft: string): ReviewResult {
   const hasCanonSignal = /徽章|誓印|帝都|禁卫府|王城/.test(draft);
@@ -220,11 +265,14 @@ export default function StudioPage() {
   const [draft, setDraft] = useState("");
   const [mode, setMode] = useState<(typeof writingModes)[number]>("单章续写");
   const [wordCount, setWordCount] = useState<(typeof wordCounts)[number]>("1000");
-  const [styleCard, setStyleCard] = useState<(typeof styleCards)[number]>("疏离克制");
+  const [styleCard, setStyleCard] =
+    useState<(typeof styleCards)[number]>("疏离克制");
   const [tension, setTension] = useState<(typeof tensions)[number]>("克制");
   const [relationshipStage, setRelationshipStage] =
     useState<(typeof relationshipStages)[number]>("分离后重逢");
-  const [forbiddenItems, setForbiddenItems] = useState("不要公开暴露身份；不要直接告白。");
+  const [forbiddenItems, setForbiddenItems] = useState(
+    "不要公开暴露身份；不要直接告白。",
+  );
   const [savedHint, setSavedHint] = useState<string | null>(null);
   const [lastToolCall, setLastToolCall] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
@@ -246,6 +294,19 @@ export default function StudioPage() {
     );
   }, [assetTab, selectedAssetId]);
 
+  function handleTabChange(value: string) {
+    const nextTab = value as AssetTab;
+    const firstAsset = assets[nextTab][0];
+
+    setAssetTab(nextTab);
+    setSelectedAssetId(firstAsset.id);
+    setSavedHint(null);
+
+    if (firstAsset.chapterTitle) {
+      setChapterTitle(firstAsset.chapterTitle);
+    }
+  }
+
   function handleSelectAsset(asset: Asset) {
     setSelectedAssetId(asset.id);
     setSavedHint(null);
@@ -265,25 +326,25 @@ export default function StudioPage() {
     appendDraft(
       "旧友抬眼时，正厅里的烛火轻轻晃了一下。陆沉没有回避那道视线，只把请柬折回袖中，像把自己的名字也一并藏回阴影里。",
     );
-    setLastToolCall("已调用：单章续写模式");
+    setLastToolCall("本次调用：单章续写");
   }
 
   function handleExpandScene() {
     appendDraft(
       "婚礼进行曲响起前，侍从送来一枚袖扣。银盘很冷，袖扣背面刻着一道几乎磨平的王徽，只有在雪光下才露出旧日纹路。",
     );
-    setLastToolCall("已调用：场景扩写模式");
+    setLastToolCall("本次调用：场景扩写");
   }
 
   function handleGenerateSlice() {
     appendDraft(
       "雨雪从彩窗外斜斜落下。旧友没有叫他的名字，只把戒指盒往掌心里收了半寸，像替他挡住某个即将暴露的旧称。",
     );
-    setLastToolCall("已调用：Slice 模式");
+    setLastToolCall("本次调用：Slice 模式");
   }
 
   function handleSaveDraft() {
-    setSavedHint("草稿已保存到本地 Demo 状态");
+    setSavedHint("草稿已保存");
   }
 
   function handleReview() {
@@ -299,52 +360,72 @@ export default function StudioPage() {
 
   if (isCheckingAuth) {
     return (
-      <div className="dark flex min-h-full items-center justify-center bg-background text-sm text-muted-foreground">
+      <div className="flex min-h-full items-center justify-center bg-[#f3ead7] text-sm text-[#6f6759]">
         正在检查登录状态……
       </div>
     );
   }
 
   return (
-    <div className="dark min-h-full bg-background text-foreground">
+    <div className="min-h-full overflow-hidden bg-[#f4ecd9] text-[#191611]">
       <SiteNav />
-      <main className="mx-auto flex min-h-full w-full max-w-[1500px] flex-col gap-6 px-6 py-8 lg:px-8">
-        <header className="flex flex-col gap-3 border-b border-border/60 pb-6">
-          <span className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
-            FanForge Studio · Main Workspace
-          </span>
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-semibold tracking-tight lg:text-4xl">
-              FanForge Studio
-            </h1>
-            <p className="max-w-4xl text-sm leading-relaxed text-muted-foreground lg:text-base">
-              Studio 是主创作台；Canon、人格图、情绪切片、多 Agent
-              等页面作为深度编辑与独立能力页，为 Studio 提供上下文和工具能力。
-            </p>
+      <main className="relative mx-auto flex min-h-full w-full max-w-[1540px] flex-col gap-6 px-5 py-6 sm:px-8 lg:px-10">
+        <div className="pointer-events-none absolute left-[-7vw] top-24 hidden text-[14vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] xl:block">
+          STUDIO
+        </div>
+        <div className="pointer-events-none absolute right-[-8vw] top-[420px] hidden text-[12vw] font-serif font-semibold leading-none text-[#53613b]/[0.07] xl:block">
+          DRAFT
+        </div>
+
+        <header className="relative border-b border-[#171410]/15 pb-6">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="max-w-5xl">
+              <span className="text-xs font-medium uppercase tracking-[0.22em] text-[#6f6759]">
+                FanForge Studio · Editorial Workspace
+              </span>
+              <h1 className="mt-3 font-serif text-[clamp(3.5rem,9vw,8.5rem)] font-semibold leading-[0.82] tracking-[-0.04em] text-[#171410]">
+                Writing Desk
+              </h1>
+              <p className="mt-5 max-w-4xl text-sm leading-7 text-[#5f5849] sm:text-base">
+                Studio 是主创作台；Canon、人格图、情绪切片、多 Agent
+                等页面作为深度编辑与独立能力页，为 Studio 提供上下文和工具能力。
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <StatusPill label="Context Engine" tone="moss" />
+              <StatusPill label="Canon Locked" tone="gold" />
+              <StatusPill label="Reviewer Ready" tone="ink" />
+            </div>
           </div>
         </header>
 
-        <section className="grid min-h-[720px] grid-cols-1 gap-6 xl:grid-cols-[280px_minmax(0,1fr)_340px]">
-          <Card className="border-border/80 bg-card/80">
-            <CardHeader className="gap-2 border-b border-border/60 pb-5">
-              <div className="flex items-center gap-2">
-                <PanelLeft className="size-4 text-muted-foreground" />
-                <CardTitle className="text-base">项目资产栏</CardTitle>
+        <section className="relative grid min-h-[760px] grid-cols-1 gap-4 xl:grid-cols-[294px_minmax(0,1fr)_356px]">
+          <aside className="border border-[#171410]/15 bg-[#efe2c7]/75 shadow-[0_18px_50px_rgba(49,39,24,0.06)]">
+            <div className="border-b border-[#171410]/15 px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Library className="size-4 text-[#53613b]" />
+                  <div>
+                    <h2 className="text-sm font-semibold text-[#171410]">
+                      项目资产栏
+                    </h2>
+                    <p className="text-xs text-[#6f6759]">
+                      Project archive
+                    </p>
+                  </div>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="border-[#171410]/20 bg-[#fbf5e8] text-[10px] text-[#6f6759]"
+                >
+                  Archive
+                </Badge>
               </div>
-              <CardDescription className="text-xs">
-                轻量选择资产，深度编辑跳转到独立能力页
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-5">
-              <Tabs
-                value={assetTab}
-                onValueChange={(value) => {
-                  const nextTab = value as AssetTab;
-                  setAssetTab(nextTab);
-                  setSelectedAssetId(assets[nextTab][0]?.id ?? selectedAssetId);
-                }}
-              >
-                <TabsList className="grid h-auto w-full grid-cols-3 bg-muted/50 p-1">
+            </div>
+
+            <Tabs value={assetTab} onValueChange={handleTabChange}>
+              <div className="px-4 pt-4">
+                <TabsList className="grid h-10 w-full grid-cols-3 border border-[#171410]/15 bg-[#f8f0df] p-1">
                   <TabsTrigger value="outline" className="text-xs">
                     大纲
                   </TabsTrigger>
@@ -355,83 +436,140 @@ export default function StudioPage() {
                     文档
                   </TabsTrigger>
                 </TabsList>
-                {(["outline", "materials", "docs"] as const).map((tab) => (
-                  <TabsContent key={tab} value={tab} className="mt-4">
-                    <div className="flex flex-col gap-2">
-                      {assets[tab].map((asset, index) => {
-                        const isSelected =
-                          assetTab === tab && selectedAssetId === asset.id;
-
-                        return (
-                          <button
-                            key={asset.id}
-                            type="button"
-                            onClick={() => handleSelectAsset(asset)}
-                            className={cn(
-                              "flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm transition-colors",
-                              isSelected
-                                ? "border-foreground/25 bg-muted/45 text-foreground"
-                                : "border-border/50 bg-muted/15 text-foreground/90 hover:bg-muted/30",
-                            )}
-                          >
-                            <span>{asset.title}</span>
-                            <span className="font-mono text-[10px] text-muted-foreground">
-                              {String(index + 1).padStart(2, "0")}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </TabsContent>
-                ))}
-              </Tabs>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/80 bg-card/70">
-            <CardHeader className="gap-3 border-b border-border/60 pb-5">
-              <div className="flex items-center gap-2">
-                <FileText className="size-4 text-muted-foreground" />
-                <CardTitle className="text-base">正文写作区</CardTitle>
+                <p className="mt-3 text-xs leading-relaxed text-[#7a705e]">
+                  {tabNotes[assetTab]}
+                </p>
               </div>
-              <div className="rounded-md border border-border/50 bg-muted/15 px-3 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      当前资产：{selectedAsset?.title}
-                    </p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      {selectedAsset?.description}
+
+              {(["outline", "materials", "docs"] as const).map((tab) => (
+                <TabsContent key={tab} value={tab} className="mt-0">
+                  <div className="flex flex-col gap-2 px-3 py-4">
+                    {assets[tab].map((asset) => {
+                      const isSelected =
+                        assetTab === tab && selectedAssetId === asset.id;
+
+                      return (
+                        <button
+                          key={asset.id}
+                          type="button"
+                          onClick={() => handleSelectAsset(asset)}
+                          className={cn(
+                            "group border px-3 py-3 text-left transition-all duration-200 hover:-translate-y-0.5",
+                            isSelected
+                              ? "border-[#53613b]/60 bg-[#e5ead4] text-[#171410] shadow-[0_8px_22px_rgba(63,75,47,0.12)]"
+                              : "border-[#171410]/10 bg-[#fbf5e8]/70 text-[#332d24] hover:border-[#53613b]/35 hover:bg-[#fff8ea]",
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <span className="text-sm font-medium leading-5">
+                              {asset.title}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "shrink-0 border-[#171410]/15 bg-transparent text-[10px] text-[#7a705e]",
+                                isSelected && "border-[#53613b]/45 text-[#3f4b2f]",
+                              )}
+                            >
+                              {asset.status}
+                            </Badge>
+                          </div>
+                          <div className="mt-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[#8a7c62]">
+                            <span>{asset.meta}</span>
+                            {asset.sourceLabel ? (
+                              <span>{asset.sourceLabel}</span>
+                            ) : null}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </TabsContent>
+              ))}
+            </Tabs>
+          </aside>
+
+          <section className="flex min-w-0 flex-col gap-4">
+            <div className="border border-[#171410]/15 bg-[#fbf5e8]/80 px-5 py-4 shadow-[0_14px_44px_rgba(49,39,24,0.05)]">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className="border-[#171410]/20 bg-[#f0e4cc] text-[10px] text-[#6f6759]"
+                    >
+                      {tabLabels[assetTab]}
+                    </Badge>
+                    {selectedAsset?.source ? (
+                      <Badge
+                        variant="outline"
+                        className="border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
+                      >
+                        来自 {selectedAsset.source}
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="border-[#171410]/20 bg-transparent text-[10px] text-[#6f6759]"
+                      >
+                        Studio 本地上下文
+                      </Badge>
+                    )}
+                  </div>
+                  <h2 className="mt-2 truncate font-serif text-3xl leading-none tracking-[-0.02em] text-[#171410]">
+                    {selectedAsset?.title}
+                  </h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-7 text-[#5f5849]">
+                    {selectedAsset?.description}
+                  </p>
+                </div>
+                <ContextDeepLink asset={selectedAsset} />
+              </div>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-4">
+              {contextModules.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <div
+                    key={item.title}
+                    className="border border-[#171410]/12 bg-[#f8f0df]/80 px-3 py-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Icon className="size-3.5 text-[#53613b]" />
+                        <span className="text-xs font-semibold text-[#171410]">
+                          {item.title}
+                        </span>
+                      </div>
+                      <span className="size-1.5 rounded-full bg-[#53613b]" />
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-[#7a705e]">
+                      {item.description}
                     </p>
                   </div>
-                  <Badge variant="outline" className="text-[10px]">
-                    {tabLabels[assetTab]}
-                  </Badge>
-                </div>
-                {selectedAsset?.title === "角色人格" ? (
-                  <DeepLink href="/persona" label="打开人格图深度编辑" />
-                ) : null}
-                {selectedAsset?.title === "Canon 证据" ? (
-                  <DeepLink href="/canon" label="打开 Canon 证据引擎" />
-                ) : null}
-                {selectedAsset?.title === "文学气质风格卡" ? (
-                  <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                    当前风格摘要：{styleCard}；建议使用停顿、环境、旧物和动作承载情绪，避免大段解释性心理描写。
-                  </p>
-                ) : null}
+                );
+              })}
+            </div>
+
+            <div className="flex flex-1 flex-col gap-4 border border-[#171410]/12 bg-[#efe2c7]/45 p-4 shadow-[0_20px_64px_rgba(49,39,24,0.07)]">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-medium text-[#6f6759]">
+                  章节标题
+                </label>
+                <Input
+                  value={chapterTitle}
+                  onChange={(event) => setChapterTitle(event.target.value)}
+                  placeholder="章节标题，例如：第一章：旧友婚礼"
+                  className="h-12 border-[#171410]/15 bg-[#fbf5e8] font-serif text-xl text-[#171410] placeholder:text-[#9a8f78]"
+                />
               </div>
-            </CardHeader>
-            <CardContent className="flex h-full min-h-[610px] flex-col gap-4 pt-5">
-              <Input
-                value={chapterTitle}
-                onChange={(event) => setChapterTitle(event.target.value)}
-                placeholder="章节标题，例如：第一章：旧友婚礼"
-                className="bg-background/40 text-base font-medium"
-              />
-              <div className="relative flex min-h-[430px] flex-1 rounded-lg border border-border/60 bg-background/40">
+
+              <div className="relative flex min-h-[470px] flex-1 overflow-hidden border border-[#171410]/15 bg-[#fffaf0] shadow-[0_18px_44px_rgba(49,39,24,0.08)]">
                 {!draft.trim() ? (
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                    选择左侧章节或直接开始写作
+                  <div className="pointer-events-none absolute inset-x-7 top-7 z-10 border border-[#171410]/12 bg-[#f8f0df]/85 px-4 py-3 text-sm leading-7 text-[#7a705e]">
+                    选择左侧章节会自动填入标题。正文可以直接输入，也可以从右侧参数约束后点击下方生成按钮追加 mock 内容。
                   </div>
                 ) : null}
                 <Textarea
@@ -441,218 +579,262 @@ export default function StudioPage() {
                     setSavedHint(null);
                     setReviewError(null);
                   }}
-                  className="min-h-full resize-none border-0 bg-transparent px-5 py-5 text-sm leading-8 shadow-none focus-visible:ring-0"
+                  className={cn(
+                    "min-h-full resize-none border-0 bg-transparent px-7 py-7 font-serif text-[16px] leading-9 text-[#211d17] shadow-none placeholder:text-[#9a8f78] focus-visible:ring-0",
+                    draft.trim() ? "pt-7" : "pt-32",
+                  )}
                 />
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <Button className="h-10" onClick={handleContinueWriting}>
+
+              <div className="flex flex-wrap items-center gap-3 border-t border-[#171410]/12 pt-4">
+                <Button
+                  className="h-10 bg-[#171410] px-4 text-[#f8f0df] hover:-translate-y-0.5 hover:bg-[#28331f]"
+                  onClick={handleContinueWriting}
+                >
                   <Sparkles className="mr-2 size-4" />
                   继续写
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-10"
+                  className="h-10 border-[#53613b]/35 bg-[#fbf5e8] text-[#28331f] hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#e7ead4]"
                   onClick={handleExpandScene}
                 >
+                  <BookOpenText className="mr-2 size-4" />
                   扩写场景
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-10"
+                  className="h-10 border-[#53613b]/35 bg-[#fbf5e8] text-[#28331f] hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#e7ead4]"
                   onClick={handleGenerateSlice}
                 >
+                  <PenLine className="mr-2 size-4" />
                   生成情绪切片
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-10"
+                  className="h-10 border-[#171410]/18 bg-[#fbf5e8] text-[#171410] hover:-translate-y-0.5 hover:border-[#171410]/35 hover:bg-[#fff8ea]"
                   onClick={handleSaveDraft}
                 >
                   <Save className="mr-2 size-4" />
                   保存草稿
                 </Button>
                 {savedHint ? (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5 text-xs text-[#3f4b2f]">
+                    <CheckCircle2 className="size-3.5" />
                     {savedHint}
                   </span>
                 ) : null}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
-          <Card className="border-border/80 bg-card/80">
-            <CardHeader className="gap-2 border-b border-border/60 pb-5">
+          <aside className="border border-[#171410]/15 bg-[#fbf5e8]/82 shadow-[0_18px_50px_rgba(49,39,24,0.06)]">
+            <div className="border-b border-[#171410]/15 px-4 py-4">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal className="size-4 text-muted-foreground" />
-                <CardTitle className="text-base">AI 参数与审稿栏</CardTitle>
+                <SlidersHorizontal className="size-4 text-[#53613b]" />
+                <div>
+                  <h2 className="text-sm font-semibold text-[#171410]">
+                    AI 参数与审稿栏
+                  </h2>
+                  <p className="text-xs text-[#6f6759]">
+                    Editorial notes panel
+                  </p>
+                </div>
               </div>
-              <CardDescription className="text-xs">
-                Studio 只做轻量调用，深度模式由独立页面承接
-              </CardDescription>
               {lastToolCall ? (
-                <Badge variant="secondary" className="w-fit text-[10px]">
+                <Badge
+                  variant="outline"
+                  className="mt-3 w-fit border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
+                >
                   {lastToolCall}
                 </Badge>
               ) : null}
-            </CardHeader>
-            <CardContent className="pt-5">
-              <Tabs defaultValue="params">
-                <TabsList className="grid h-auto w-full grid-cols-2 bg-muted/50 p-1">
-                  <TabsTrigger value="params" className="text-xs">
-                    创作参数
-                  </TabsTrigger>
-                  <TabsTrigger value="review" className="text-xs">
-                    审稿助手
-                  </TabsTrigger>
-                </TabsList>
+            </div>
 
-                <TabsContent value="params" className="mt-4 flex flex-col gap-4">
-                  <ParamSelect
-                    label="创作模式"
-                    value={mode}
-                    values={writingModes}
-                    onChange={(value) =>
-                      setMode(value as (typeof writingModes)[number])
-                    }
+            <Tabs defaultValue="params" className="px-4 py-4">
+              <TabsList className="grid h-10 w-full grid-cols-2 border border-[#171410]/15 bg-[#f4ecd9] p-1">
+                <TabsTrigger value="params" className="text-xs">
+                  创作参数
+                </TabsTrigger>
+                <TabsTrigger value="review" className="text-xs">
+                  审稿助手
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="params" className="mt-4 flex flex-col gap-4">
+                <ParamSelect
+                  label="创作模式"
+                  value={mode}
+                  values={writingModes}
+                  onChange={(value) =>
+                    setMode(value as (typeof writingModes)[number])
+                  }
+                />
+                <ParamSelect
+                  label="期望字数"
+                  value={wordCount}
+                  values={wordCounts}
+                  onChange={(value) =>
+                    setWordCount(value as (typeof wordCounts)[number])
+                  }
+                />
+                <ParamSelect
+                  label="文学气质"
+                  value={styleCard}
+                  values={styleCards}
+                  onChange={(value) =>
+                    setStyleCard(value as (typeof styleCards)[number])
+                  }
+                />
+                <ParamSelect
+                  label="情绪张力"
+                  value={tension}
+                  values={tensions}
+                  onChange={(value) =>
+                    setTension(value as (typeof tensions)[number])
+                  }
+                />
+                <ParamSelect
+                  label="关系阶段"
+                  value={relationshipStage}
+                  values={relationshipStages}
+                  onChange={(value) =>
+                    setRelationshipStage(
+                      value as (typeof relationshipStages)[number],
+                    )
+                  }
+                />
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-medium text-[#6f6759]">
+                    禁止项
+                  </span>
+                  <Textarea
+                    value={forbiddenItems}
+                    onChange={(event) => setForbiddenItems(event.target.value)}
+                    className="min-h-20 resize-none border-[#171410]/15 bg-[#f8f0df] text-sm leading-relaxed text-[#211d17]"
                   />
-                  <ParamSelect
-                    label="期望字数"
-                    value={wordCount}
-                    values={wordCounts}
-                    onChange={(value) =>
-                      setWordCount(value as (typeof wordCounts)[number])
-                    }
-                  />
-                  <ParamSelect
-                    label="文学气质"
-                    value={styleCard}
-                    values={styleCards}
-                    onChange={(value) =>
-                      setStyleCard(value as (typeof styleCards)[number])
-                    }
-                  />
-                  <ParamSelect
-                    label="情绪张力"
-                    value={tension}
-                    values={tensions}
-                    onChange={(value) =>
-                      setTension(value as (typeof tensions)[number])
-                    }
-                  />
-                  <ParamSelect
-                    label="关系阶段"
-                    value={relationshipStage}
-                    values={relationshipStages}
-                    onChange={(value) =>
-                      setRelationshipStage(
-                        value as (typeof relationshipStages)[number],
-                      )
-                    }
-                  />
-                  <div className="flex flex-col gap-2">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      禁止项
-                    </span>
-                    <Textarea
-                      value={forbiddenItems}
-                      onChange={(event) => setForbiddenItems(event.target.value)}
-                      className="min-h-20 resize-none bg-background/40 text-sm"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2 border-t border-border/60 pt-4">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Context Engine 开关
-                    </span>
-                    {contextSwitches.map((item) => (
+                </div>
+
+                <div className="border-t border-[#171410]/12 pt-4">
+                  <h3 className="text-xs font-medium text-[#6f6759]">
+                    Context Engine
+                  </h3>
+                  <div className="mt-3 grid gap-2">
+                    {contextModules.map((item) => (
                       <div
                         key={item.title}
-                        className="rounded-md border border-border/50 bg-muted/15 px-3 py-2"
+                        className="flex items-center justify-between gap-3 border border-[#171410]/12 bg-[#f8f0df] px-3 py-2"
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm text-foreground/90">
+                        <div>
+                          <span className="text-xs font-medium text-[#171410]">
                             {item.title}
                           </span>
-                          <Badge variant="secondary" className="text-[10px]">
-                            已启用
-                          </Badge>
+                          <p className="mt-0.5 text-[11px] text-[#7a705e]">
+                            {item.description}
+                          </p>
                         </div>
-                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                          {item.description}
-                        </p>
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
+                        >
+                          已启用
+                        </Badge>
                       </div>
                     ))}
                   </div>
-                </TabsContent>
+                </div>
+              </TabsContent>
 
-                <TabsContent value="review" className="mt-4 flex flex-col gap-4">
-                  <Button className="h-10 w-full" onClick={handleReview}>
-                    运行 Reviewer 检查
-                  </Button>
-                  {reviewError ? (
-                    <p className="text-sm text-destructive">{reviewError}</p>
-                  ) : null}
-                  {reviewResult ? (
-                    <>
+              <TabsContent value="review" className="mt-4 flex flex-col gap-4">
+                <Button
+                  className="h-10 w-full bg-[#171410] text-[#f8f0df] hover:-translate-y-0.5 hover:bg-[#28331f]"
+                  onClick={handleReview}
+                >
+                  <ShieldCheck className="mr-2 size-4" />
+                  运行 Reviewer 检查
+                </Button>
+                {reviewError ? (
+                  <div className="border border-[#8a3f30]/25 bg-[#f3d8cc] px-3 py-2 text-sm text-[#7f3326]">
+                    {reviewError}
+                  </div>
+                ) : null}
+                {reviewResult ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
                       {reviewResult.scores.map((score) => (
                         <div
                           key={score.label}
-                          className="rounded-md border border-border/50 bg-muted/15 px-3 py-3"
+                          className="border border-[#171410]/12 bg-[#f8f0df] px-3 py-3"
                         >
                           <div className="flex items-center justify-between gap-3">
-                            <span className="text-sm font-medium text-foreground">
+                            <span className="text-xs font-medium text-[#332d24]">
                               {score.label}
                             </span>
-                            <Badge variant="outline" className="text-[10px]">
+                            <Badge
+                              variant="outline"
+                              className="border-[#53613b]/35 bg-transparent text-[10px] text-[#3f4b2f]"
+                            >
                               {score.value}
                             </Badge>
                           </div>
-                          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                          <p className="mt-2 text-xs leading-relaxed text-[#7a705e]">
                             {score.note}
                           </p>
                         </div>
                       ))}
-                      <div className="rounded-md border border-dashed border-foreground/10 bg-muted/15 px-3 py-3">
-                        <div className="mb-2 flex items-center gap-2">
-                          <ShieldCheck className="size-4 text-muted-foreground" />
-                          <span className="text-sm font-medium text-foreground">
-                            修改建议
-                          </span>
-                        </div>
-                        <ul className="space-y-2 text-xs leading-relaxed text-muted-foreground">
-                          {reviewResult.suggestions.map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="rounded-md border border-dashed border-border/60 bg-muted/10 px-3 py-8 text-center text-sm text-muted-foreground">
-                      输入正文后可运行 Reviewer mock 检查。
                     </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
+                    <div className="border border-[#8a7c62]/30 bg-[#efe2c7] px-3 py-3">
+                      <div className="mb-2 flex items-center gap-2">
+                        <FileText className="size-4 text-[#53613b]" />
+                        <span className="text-sm font-medium text-[#171410]">
+                          修改建议
+                        </span>
+                      </div>
+                      <ul className="space-y-2 text-xs leading-relaxed text-[#5f5849]">
+                        {reviewResult.suggestions.map((item) => (
+                          <li key={item}>· {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </>
+                ) : (
+                  <div className="border border-dashed border-[#171410]/20 bg-[#f8f0df]/70 px-3 py-8 text-center text-sm leading-relaxed text-[#7a705e]">
+                    Reviewer 会在有正文后返回 OOC、Canon、情绪张力和风格匹配四项评分。
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </aside>
         </section>
-
-        <p className="rounded-lg border border-border/60 bg-card/60 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-          当前为 Studio MVP Demo：用于展示 FanForge 如何把大纲、素材、文档和 AI
-          写作参数整合到一个创作空间；后续可接入真实数据库、RAG 和 Writer / Reviewer API。
-        </p>
       </main>
     </div>
   );
 }
 
-function DeepLink({ href, label }: { href: string; label: string }) {
+function ContextDeepLink({ asset }: { asset?: Asset }) {
+  if (!asset?.source) {
+    return (
+      <div className="flex shrink-0 items-center gap-2 border border-[#171410]/12 bg-[#f8f0df] px-3 py-2 text-xs text-[#6f6759]">
+        <PanelLeft className="size-3.5" />
+        已同步到编辑器
+      </div>
+    );
+  }
+
+  const label =
+    asset.title === "角色人格"
+      ? "打开人格图深度编辑"
+      : asset.title === "Canon 证据"
+        ? "打开 Canon 证据引擎"
+        : `打开 ${asset.source}`;
+
   return (
     <Link
-      href={href}
-      className="mt-3 inline-flex w-fit items-center gap-1 rounded-md border border-border/60 px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground"
+      href={asset.source}
+      className="inline-flex shrink-0 items-center gap-1.5 border border-[#53613b]/35 bg-[#e7ead4] px-3 py-2 text-xs text-[#3f4b2f] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#dfe6c7]"
     >
       {label}
-      <ExternalLink className="size-3" />
+      <ExternalLink className="size-3.5" />
     </Link>
   );
 }
@@ -670,9 +852,9 @@ function ParamSelect({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <span className="text-xs font-medium text-[#6f6759]">{label}</span>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-full bg-background/40">
+        <SelectTrigger className="w-full border-[#171410]/15 bg-[#f8f0df] text-[#211d17]">
           <SelectValue placeholder={label} />
         </SelectTrigger>
         <SelectContent
@@ -687,5 +869,30 @@ function ParamSelect({
         </SelectContent>
       </Select>
     </div>
+  );
+}
+
+function StatusPill({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "moss" | "gold" | "ink";
+}) {
+  const tones = {
+    moss: "border-[#53613b]/35 bg-[#e7ead4] text-[#3f4b2f]",
+    gold: "border-[#8a7c62]/30 bg-[#efe2c7] text-[#6f5f3f]",
+    ink: "border-[#171410]/20 bg-[#fbf5e8] text-[#171410]",
+  };
+
+  return (
+    <span
+      className={cn(
+        "rounded-full border px-3 py-1 text-xs font-medium",
+        tones[tone],
+      )}
+    >
+      {label}
+    </span>
   );
 }
