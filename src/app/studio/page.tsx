@@ -196,24 +196,40 @@ const contextModules = [
     source: "/canon",
     icon: SearchCheck,
     description: "已启用，来自 /canon",
+    cardClass:
+      "border-[#53613b]/35 bg-[#eef1df]/80 hover:border-[#53613b]/60",
+    dotClass: "bg-[#53613b]",
+    iconClass: "text-[#53613b]",
   },
   {
     title: "Persona Map",
     source: "/persona",
     icon: Brain,
     description: "已启用，来自 /persona",
+    cardClass:
+      "border-[#9a7f45]/35 bg-[#f1e7cf]/80 hover:border-[#9a7f45]/60",
+    dotClass: "bg-[#8a6f38]",
+    iconClass: "text-[#8a6f38]",
   },
   {
     title: "Relationship Map",
     source: "/persona",
     icon: GitBranch,
     description: "已启用，来自 /persona",
+    cardClass:
+      "border-[#66745b]/35 bg-[#edf0e2]/80 hover:border-[#66745b]/60",
+    dotClass: "bg-[#66745b]",
+    iconClass: "text-[#66745b]",
   },
   {
     title: "Style Card",
     source: null,
     icon: MessageSquareText,
     description: "已启用，来自当前参数",
+    cardClass:
+      "border-[#8d6f58]/35 bg-[#f3e6d5]/80 hover:border-[#8d6f58]/60",
+    dotClass: "bg-[#8d6f58]",
+    iconClass: "text-[#8d6f58]",
   },
 ] as const;
 
@@ -260,6 +276,7 @@ export default function StudioPage() {
   const router = useRouter();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [assetTab, setAssetTab] = useState<AssetTab>("outline");
+  const [outlineAssets, setOutlineAssets] = useState<Asset[]>(assets.outline);
   const [selectedAssetId, setSelectedAssetId] = useState("chapter-1");
   const [chapterTitle, setChapterTitle] = useState("第一章：旧友婚礼");
   const [draft, setDraft] = useState("");
@@ -287,16 +304,24 @@ export default function StudioPage() {
     setIsCheckingAuth(false);
   }, [router]);
 
+  const activeAssets = useMemo(
+    () => ({
+      ...assets,
+      outline: outlineAssets,
+    }),
+    [outlineAssets],
+  );
+
   const selectedAsset = useMemo(() => {
     return (
-      assets[assetTab].find((asset) => asset.id === selectedAssetId) ??
-      assets[assetTab][0]
+      activeAssets[assetTab].find((asset) => asset.id === selectedAssetId) ??
+      activeAssets[assetTab][0]
     );
-  }, [assetTab, selectedAssetId]);
+  }, [activeAssets, assetTab, selectedAssetId]);
 
   function handleTabChange(value: string) {
     const nextTab = value as AssetTab;
-    const firstAsset = assets[nextTab][0];
+    const firstAsset = activeAssets[nextTab][0];
 
     setAssetTab(nextTab);
     setSelectedAssetId(firstAsset.id);
@@ -314,6 +339,26 @@ export default function StudioPage() {
     if (asset.chapterTitle) {
       setChapterTitle(asset.chapterTitle);
     }
+  }
+
+  function handleAddChapter() {
+    const nextNumber =
+      outlineAssets.filter((asset) => asset.chapterTitle).length + 1;
+    const title = `新章节 ${nextNumber}`;
+    const newChapter: Asset = {
+      id: `new-chapter-${nextNumber}-${Date.now()}`,
+      title,
+      description: "新建章节，可继续补全本章目标、场景节奏和正文草稿。",
+      chapterTitle: title,
+      meta: "CHAPTER",
+      status: "新建",
+    };
+
+    setOutlineAssets((current) => [...current, newChapter]);
+    setAssetTab("outline");
+    setSelectedAssetId(newChapter.id);
+    setChapterTitle(title);
+    setSavedHint(null);
   }
 
   function appendDraft(text: string) {
@@ -367,9 +412,9 @@ export default function StudioPage() {
   }
 
   return (
-    <div className="min-h-full overflow-hidden bg-[#f4ecd9] text-[#191611]">
+    <div className="min-h-full overflow-hidden bg-[#f6efdf] text-[#191611]">
       <SiteNav />
-      <main className="relative mx-auto flex min-h-full w-full max-w-[1540px] flex-col gap-6 px-5 py-6 sm:px-8 lg:px-10">
+      <main className="relative mx-auto flex min-h-full w-full max-w-[1540px] flex-col gap-4 px-5 py-5 sm:px-8 lg:px-10">
         <div className="pointer-events-none absolute left-[-7vw] top-24 hidden text-[14vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] xl:block">
           STUDIO
         </div>
@@ -377,7 +422,7 @@ export default function StudioPage() {
           DRAFT
         </div>
 
-        <header className="relative border-b border-[#171410]/15 pb-6">
+        <header className="relative border-b border-[#b9aa83]/70 pb-4">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="max-w-5xl">
               <span className="text-xs font-medium uppercase tracking-[0.22em] text-[#6f6759]">
@@ -386,10 +431,6 @@ export default function StudioPage() {
               <h1 className="mt-3 font-serif text-[clamp(3.5rem,9vw,8.5rem)] font-semibold leading-[0.82] tracking-[-0.04em] text-[#171410]">
                 Writing Desk
               </h1>
-              <p className="mt-5 max-w-4xl text-sm leading-7 text-[#5f5849] sm:text-base">
-                Studio 是主创作台；Canon、人格图、情绪切片、多 Agent
-                等页面作为深度编辑与独立能力页，为 Studio 提供上下文和工具能力。
-              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <StatusPill label="Context Engine" tone="moss" />
@@ -400,8 +441,8 @@ export default function StudioPage() {
         </header>
 
         <section className="relative grid min-h-[760px] grid-cols-1 gap-4 xl:grid-cols-[294px_minmax(0,1fr)_356px]">
-          <aside className="border border-[#171410]/15 bg-[#efe2c7]/75 shadow-[0_18px_50px_rgba(49,39,24,0.06)]">
-            <div className="border-b border-[#171410]/15 px-4 py-4">
+          <aside className="border border-[#7b8359]/35 bg-[#f7efe0]/86 shadow-[0_18px_50px_rgba(92,69,42,0.08)]">
+            <div className="border-b border-[#8a7c62]/25 px-4 py-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Library className="size-4 text-[#53613b]" />
@@ -416,7 +457,7 @@ export default function StudioPage() {
                 </div>
                 <Badge
                   variant="outline"
-                  className="border-[#171410]/20 bg-[#fbf5e8] text-[10px] text-[#6f6759]"
+                  className="border-[#8a7c62]/30 bg-[#fbf5e8] text-[10px] text-[#6f6759]"
                 >
                   Archive
                 </Badge>
@@ -425,7 +466,7 @@ export default function StudioPage() {
 
             <Tabs value={assetTab} onValueChange={handleTabChange}>
               <div className="px-4 pt-4">
-                <TabsList className="grid h-10 w-full grid-cols-3 border border-[#171410]/15 bg-[#f8f0df] p-1">
+                <TabsList className="grid h-10 w-full grid-cols-3 border border-[#7b8359]/25 bg-[#f8f0df] p-1">
                   <TabsTrigger value="outline" className="text-xs">
                     大纲
                   </TabsTrigger>
@@ -439,12 +480,22 @@ export default function StudioPage() {
                 <p className="mt-3 text-xs leading-relaxed text-[#7a705e]">
                   {tabNotes[assetTab]}
                 </p>
+                {assetTab === "outline" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3 h-9 w-full justify-center border-[#53613b]/35 bg-[#fffaf0] text-xs text-[#28331f] hover:-translate-y-0.5 hover:border-[#53613b]/65 hover:bg-[#eef1df]"
+                    onClick={handleAddChapter}
+                  >
+                    + 新增章节
+                  </Button>
+                ) : null}
               </div>
 
               {(["outline", "materials", "docs"] as const).map((tab) => (
                 <TabsContent key={tab} value={tab} className="mt-0">
                   <div className="flex flex-col gap-2 px-3 py-4">
-                    {assets[tab].map((asset) => {
+                    {activeAssets[tab].map((asset) => {
                       const isSelected =
                         assetTab === tab && selectedAssetId === asset.id;
 
@@ -456,8 +507,8 @@ export default function StudioPage() {
                           className={cn(
                             "group border px-3 py-3 text-left transition-all duration-200 hover:-translate-y-0.5",
                             isSelected
-                              ? "border-[#53613b]/60 bg-[#e5ead4] text-[#171410] shadow-[0_8px_22px_rgba(63,75,47,0.12)]"
-                              : "border-[#171410]/10 bg-[#fbf5e8]/70 text-[#332d24] hover:border-[#53613b]/35 hover:bg-[#fff8ea]",
+                              ? "border-[#53613b]/65 bg-[#e5ead4] text-[#171410] shadow-[0_8px_22px_rgba(63,75,47,0.14)]"
+                              : "border-[#9a7f45]/20 bg-[#fffaf0]/78 text-[#332d24] hover:border-[#53613b]/35 hover:bg-[#fffdf7]",
                           )}
                         >
                           <div className="flex items-start justify-between gap-3">
@@ -490,13 +541,13 @@ export default function StudioPage() {
           </aside>
 
           <section className="flex min-w-0 flex-col gap-4">
-            <div className="border border-[#171410]/15 bg-[#fbf5e8]/80 px-5 py-4 shadow-[0_14px_44px_rgba(49,39,24,0.05)]">
+            <div className="border border-[#9a7f45]/30 bg-[#fffaf0]/86 px-5 py-4 shadow-[0_14px_44px_rgba(92,69,42,0.06)]">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge
                       variant="outline"
-                      className="border-[#171410]/20 bg-[#f0e4cc] text-[10px] text-[#6f6759]"
+                      className="border-[#9a7f45]/30 bg-[#f0e4cc] text-[10px] text-[#6f6759]"
                     >
                       {tabLabels[assetTab]}
                     </Badge>
@@ -510,7 +561,7 @@ export default function StudioPage() {
                     ) : (
                       <Badge
                         variant="outline"
-                        className="border-[#171410]/20 bg-transparent text-[10px] text-[#6f6759]"
+                        className="border-[#8a7c62]/35 bg-transparent text-[10px] text-[#6f6759]"
                       >
                         Studio 本地上下文
                       </Badge>
@@ -534,26 +585,28 @@ export default function StudioPage() {
                 return (
                   <div
                     key={item.title}
-                    className="border border-[#171410]/12 bg-[#f8f0df]/80 px-3 py-3"
+                    className={cn(
+                      "rounded-[24px] border px-3.5 py-3.5 transition-all duration-200 hover:-translate-y-0.5",
+                      item.cardClass,
+                    )}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <Icon className="size-3.5 text-[#53613b]" />
+                        <Icon className={cn("size-3.5", item.iconClass)} />
                         <span className="text-xs font-semibold text-[#171410]">
                           {item.title}
                         </span>
                       </div>
-                      <span className="size-1.5 rounded-full bg-[#53613b]" />
+                      <span
+                        className={cn("size-1.5 rounded-full", item.dotClass)}
+                      />
                     </div>
-                    <p className="mt-1 text-xs leading-relaxed text-[#7a705e]">
-                      {item.description}
-                    </p>
                   </div>
                 );
               })}
             </div>
 
-            <div className="flex flex-1 flex-col gap-4 border border-[#171410]/12 bg-[#efe2c7]/45 p-4 shadow-[0_20px_64px_rgba(49,39,24,0.07)]">
+            <div className="flex flex-1 flex-col gap-4 border border-[#9a7f45]/35 bg-[#fbf7ed]/78 p-4 shadow-[0_20px_64px_rgba(92,69,42,0.08)]">
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-medium text-[#6f6759]">
                   章节标题
@@ -562,31 +615,24 @@ export default function StudioPage() {
                   value={chapterTitle}
                   onChange={(event) => setChapterTitle(event.target.value)}
                   placeholder="章节标题，例如：第一章：旧友婚礼"
-                  className="h-12 border-[#171410]/15 bg-[#fbf5e8] font-serif text-xl text-[#171410] placeholder:text-[#9a8f78]"
+                  className="h-12 border-[#9a7f45]/35 bg-[#fffaf0] font-serif text-xl text-[#171410] placeholder:text-[#9a8f78]"
                 />
               </div>
 
-              <div className="relative flex min-h-[470px] flex-1 overflow-hidden border border-[#171410]/15 bg-[#fffaf0] shadow-[0_18px_44px_rgba(49,39,24,0.08)]">
-                {!draft.trim() ? (
-                  <div className="pointer-events-none absolute inset-x-7 top-7 z-10 border border-[#171410]/12 bg-[#f8f0df]/85 px-4 py-3 text-sm leading-7 text-[#7a705e]">
-                    选择左侧章节会自动填入标题。正文可以直接输入，也可以从右侧参数约束后点击下方生成按钮追加 mock 内容。
-                  </div>
-                ) : null}
+              <div className="relative flex min-h-[470px] flex-1 overflow-hidden border border-[#8a6f38]/35 bg-[#fffaf0] shadow-[0_18px_44px_rgba(92,69,42,0.09)]">
                 <Textarea
                   value={draft}
+                  placeholder="从这里开始写。"
                   onChange={(event) => {
                     setDraft(event.target.value);
                     setSavedHint(null);
                     setReviewError(null);
                   }}
-                  className={cn(
-                    "min-h-full resize-none border-0 bg-transparent px-7 py-7 font-serif text-[16px] leading-9 text-[#211d17] shadow-none placeholder:text-[#9a8f78] focus-visible:ring-0",
-                    draft.trim() ? "pt-7" : "pt-32",
-                  )}
+                  className="min-h-full resize-none border-0 bg-transparent px-7 py-7 font-serif text-[16px] leading-9 text-[#211d17] shadow-none placeholder:text-[#9a8f78] focus-visible:ring-0"
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 border-t border-[#171410]/12 pt-4">
+              <div className="flex flex-wrap items-center gap-3 border-t border-[#b9aa83]/55 pt-4">
                 <Button
                   className="h-10 bg-[#171410] px-4 text-[#f8f0df] hover:-translate-y-0.5 hover:bg-[#28331f]"
                   onClick={handleContinueWriting}
@@ -628,8 +674,8 @@ export default function StudioPage() {
             </div>
           </section>
 
-          <aside className="border border-[#171410]/15 bg-[#fbf5e8]/82 shadow-[0_18px_50px_rgba(49,39,24,0.06)]">
-            <div className="border-b border-[#171410]/15 px-4 py-4">
+          <aside className="border border-[#8a7c62]/35 bg-[#fffaf0]/84 shadow-[0_18px_50px_rgba(92,69,42,0.06)]">
+            <div className="border-b border-[#8a7c62]/28 px-4 py-4">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal className="size-4 text-[#53613b]" />
                 <div>
@@ -652,7 +698,7 @@ export default function StudioPage() {
             </div>
 
             <Tabs defaultValue="params" className="px-4 py-4">
-              <TabsList className="grid h-10 w-full grid-cols-2 border border-[#171410]/15 bg-[#f4ecd9] p-1">
+              <TabsList className="grid h-10 w-full grid-cols-2 border border-[#8a7c62]/30 bg-[#fbf7ed] p-1">
                 <TabsTrigger value="params" className="text-xs">
                   创作参数
                 </TabsTrigger>
@@ -711,11 +757,11 @@ export default function StudioPage() {
                   <Textarea
                     value={forbiddenItems}
                     onChange={(event) => setForbiddenItems(event.target.value)}
-                    className="min-h-20 resize-none border-[#171410]/15 bg-[#f8f0df] text-sm leading-relaxed text-[#211d17]"
+                    className="min-h-20 resize-none border-[#8a7c62]/30 bg-[#fffaf0] text-sm leading-relaxed text-[#211d17]"
                   />
                 </div>
 
-                <div className="border-t border-[#171410]/12 pt-4">
+                <div className="border-t border-[#b9aa83]/55 pt-4">
                   <h3 className="text-xs font-medium text-[#6f6759]">
                     Context Engine
                   </h3>
@@ -723,22 +769,14 @@ export default function StudioPage() {
                     {contextModules.map((item) => (
                       <div
                         key={item.title}
-                        className="flex items-center justify-between gap-3 border border-[#171410]/12 bg-[#f8f0df] px-3 py-2"
+                        className="flex items-center justify-between gap-3 rounded-2xl border border-[#7b8359]/24 bg-[#fffdf7] px-3 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45"
                       >
-                        <div>
-                          <span className="text-xs font-medium text-[#171410]">
-                            {item.title}
-                          </span>
-                          <p className="mt-0.5 text-[11px] text-[#7a705e]">
-                            {item.description}
-                          </p>
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className="shrink-0 border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
-                        >
-                          已启用
-                        </Badge>
+                        <span className="text-xs font-medium text-[#171410]">
+                          {item.title}
+                        </span>
+                        <span className="flex h-5 w-9 items-center rounded-full border border-[#53613b]/35 bg-[#dfe6c7] p-0.5 shadow-inner">
+                          <span className="ml-auto size-3.5 rounded-full bg-[#53613b] shadow-[0_1px_3px_rgba(23,20,16,0.22)]" />
+                        </span>
                       </div>
                     ))}
                   </div>

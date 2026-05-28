@@ -26,9 +26,9 @@ function ensureDemoUser() {
 export default function LoginPage() {
   const router = useRouter();
 
-  function handleEnter(path: "/studio" | "/dashboard") {
+  function handleEnterStudio() {
     ensureDemoUser();
-    router.push(path);
+    router.push("/studio");
   }
 
   return (
@@ -42,12 +42,12 @@ export default function LoginPage() {
           PERSONA
         </div>
 
-        <div className="relative mx-auto grid w-full max-w-[1440px] items-center gap-10 lg:grid-cols-[minmax(0,1fr)_370px] xl:grid-cols-[minmax(0,1fr)_420px]">
-          <section className="max-w-5xl">
+        <div className="relative mx-auto grid w-full max-w-[1440px] items-center gap-12 lg:grid-cols-[minmax(0,0.58fr)_minmax(340px,0.42fr)] xl:gap-16">
+          <section className="max-w-[880px]">
             <div className="mb-7 inline-flex border border-[#2d281f]/20 bg-[#fffaf0]/45 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
               FAN FICTION · CANON-AWARE AI WRITING
             </div>
-            <h1 className="font-serif text-[clamp(5rem,18vw,17rem)] font-semibold leading-[0.78] tracking-[-0.04em] text-[#171410]">
+            <h1 className="font-serif text-[clamp(4.75rem,13vw,12.5rem)] font-semibold leading-[0.78] tracking-[-0.035em] text-[#171410]">
               FanForge
             </h1>
             <div className="mt-8 grid gap-6 lg:grid-cols-[0.85fr_1fr]">
@@ -63,27 +63,16 @@ export default function LoginPage() {
                   <Button
                     type="button"
                     className="h-11 bg-[#171410] px-5 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
-                    onClick={() => handleEnter("/studio")}
+                    onClick={handleEnterStudio}
                   >
                     进入创作室
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 border-[#171410]/25 bg-[#fff8ea]/55 px-5 text-[#171410] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/60 hover:bg-[#eef0df]"
-                    onClick={() => handleEnter("/dashboard")}
-                  >
-                    查看演示路径
-                  </Button>
                 </div>
-                <p className="max-w-lg text-xs leading-6 text-[#7a705e]">
-                  当前为 MVP 演示入口，不涉及真实账号系统；点击入口会创建本地 Demo 用户状态。
-                </p>
               </div>
             </div>
           </section>
 
-          <aside className="relative border border-[#171410]/20 bg-[#efe2c7]/70 p-6 shadow-[0_20px_60px_rgba(49,39,24,0.08)]">
+          <aside className="relative w-full max-w-[430px] justify-self-end border border-[#171410]/20 bg-[#efe2c7]/70 p-6 shadow-[0_20px_60px_rgba(49,39,24,0.08)] lg:translate-y-4">
             <div className="absolute -right-4 -top-4 size-24 bg-[#53613b] opacity-90" />
             <div className="relative flex min-h-[360px] flex-col justify-between border border-[#171410]/15 bg-[#f8f0df] p-6">
               <div>
@@ -91,7 +80,7 @@ export default function LoginPage() {
                   variant="outline"
                   className="border-[#53613b]/40 bg-[#e7ead4] text-[#3f4b2f]"
                 >
-                  Portfolio MVP
+                  Canon-aware Studio
                 </Badge>
                 <p className="mt-8 font-serif text-4xl leading-none text-[#171410]">
                   Canon stays.
