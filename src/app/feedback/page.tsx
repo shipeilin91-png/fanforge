@@ -280,88 +280,86 @@ export default function FeedbackPage() {
           </div>
         </header>
 
-        {records.length === 0 ? (
-          <section className="border border-dashed border-[#171410]/20 bg-[#fbf5e8]/80 px-6 py-12 text-center text-sm leading-7 text-[#7a705e]">
-            暂无真实反馈记录。请先到情绪切片页面生成内容并提交反馈。
-          </section>
-        ) : (
-          <>
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {stats.metrics.map((metric, index) => (
-                <MetricNote
-                  key={metric.label}
-                  label={metric.label}
-                  value={metric.value}
-                  index={index}
-                  muted={metric.count === 0}
-                />
-              ))}
-            </section>
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {stats.metrics.map((metric, index) => (
+            <MetricNote
+              key={metric.label}
+              label={metric.label}
+              value={metric.value}
+              index={index}
+              muted={metric.count === 0}
+            />
+          ))}
+        </section>
 
-            <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.35fr_0.65fr]">
-              <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]">
-                <div className="mb-5 flex items-center gap-3 border-b border-[#171410]/12 pb-5">
-                  <ClipboardList className="size-4 text-[#53613b]" />
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
-                      Reader / Editor Notes
-                    </p>
-                    <h2 className="mt-2 font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
-                      最近反馈
-                    </h2>
-                    <p className="mt-2 text-xs text-[#6f6759]">
-                      读取浏览器 localStorage 中最近 5 条反馈。
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-3">
-                  {recentRecords.map((record) => (
-                    <article
-                      key={record.id}
-                      className="border border-[#171410]/12 bg-[#fffaf0] px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#fff8ea]"
-                    >
-                      <div className="mb-3 flex flex-wrap items-center gap-2">
-                        <span className="text-xs text-[#8a7c62]">
-                          {formatTime(record.createdAt)}
-                        </span>
-                        {record.selectedTags.map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="outline"
-                            className="border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                      <p className="text-sm leading-7 text-[#332d24]">
-                        用户文字反馈：{record.comment || "未填写文字反馈"}
-                      </p>
-                      <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
-                        场景描述：{record.scenarioText || "未填写"}
-                      </p>
-                      <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
-                        生成预览：{record.generatedPreview}
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              </section>
-
-              <section className="border border-[#171410]/15 bg-[#efe2c7]/65 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
+        <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.35fr_0.65fr]">
+          <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]">
+            <div className="mb-5 flex items-center gap-3 border-b border-[#171410]/12 pb-5">
+              <ClipboardList className="size-4 text-[#53613b]" />
+              <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
-                  Optimization Signal
+                  Reader / Editor Notes
                 </p>
-                <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
-                  下一步优化判断
+                <h2 className="mt-2 font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
+                  最近反馈
                 </h2>
-                <div className="mt-5 border border-dashed border-[#53613b]/30 bg-[#f8f0df] px-4 py-4 text-sm leading-7 text-[#5f5849]">
-                  {optimizationAdvice}
-                </div>
-              </section>
-            </section>
-          </>
-        )}
+                <p className="mt-2 text-xs text-[#6f6759]">
+                  读取浏览器 localStorage 中最近 5 条反馈。
+                </p>
+              </div>
+            </div>
+            {recentRecords.length === 0 ? (
+              <div className="border border-dashed border-[#171410]/20 bg-[#fffaf0] px-6 py-10 text-center text-sm leading-7 text-[#7a705e]">
+                暂无真实反馈记录。请先到情绪切片页面生成内容并提交反馈。
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {recentRecords.map((record) => (
+                  <article
+                    key={record.id}
+                    className="border border-[#171410]/12 bg-[#fffaf0] px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#fff8ea]"
+                  >
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-[#8a7c62]">
+                        {formatTime(record.createdAt)}
+                      </span>
+                      {record.selectedTags.map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant="outline"
+                          className="border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="text-sm leading-7 text-[#332d24]">
+                      用户文字反馈：{record.comment || "未填写文字反馈"}
+                    </p>
+                    <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
+                      场景描述：{record.scenarioText || "未填写"}
+                    </p>
+                    <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
+                      生成预览：{record.generatedPreview}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="border border-[#171410]/15 bg-[#efe2c7]/65 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
+            <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+              Optimization Signal
+            </p>
+            <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
+              下一步优化判断
+            </h2>
+            <div className="mt-5 border border-dashed border-[#53613b]/30 bg-[#f8f0df] px-4 py-4 text-sm leading-7 text-[#5f5849]">
+              {optimizationAdvice}
+            </div>
+          </section>
+        </section>
 
         <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
           <div className="mb-6 flex items-center gap-3">
