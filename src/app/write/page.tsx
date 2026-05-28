@@ -7,13 +7,6 @@ import { useRouter } from "next/navigation";
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -33,31 +26,31 @@ const contextItems = [
   {
     title: "Canon Evidence",
     enabled: true,
-    constraint: "原作硬设定、时间线、身份信息与世界观规则。",
+    constraint: "约束世界观与时间线",
     writerImpact: "限制章节中的事件顺序、称呼、能力使用和设定新增，降低 Canon 冲突。",
   },
   {
     title: "Persona Map",
     enabled: true,
-    constraint: "角色人格内核、人生阶段、行为模式与 OOC 边界。",
+    constraint: "约束角色人格与 OOC 边界",
     writerImpact: "约束角色在冲突中的反应方式，避免突然告白、突然崩坏或动机断裂。",
   },
   {
     title: "Relationship Map",
     enabled: true,
-    constraint: "人物关系阶段、隐藏情绪、未解冲突和可埋伏笔。",
+    constraint: "约束关系阶段与未解冲突",
     writerImpact: "决定互动距离、冲突升级节奏和章节结尾可留下的关系钩子。",
   },
   {
     title: "Style Card",
     enabled: true,
-    constraint: "文学气质、语言肌理、句式密度和意象偏好。",
+    constraint: "影响语言肌理、意象和节奏",
     writerImpact: "影响叙述节奏、环境描写比例和情绪表达方式，让长文风格保持一致。",
   },
   {
     title: "User Intent",
     enabled: true,
-    constraint: "用户自由输入的剧情目标、本章任务和禁止项。",
+    constraint: "用户输入的剧情目标",
     writerImpact: "把本章目标转成 Writer Agent 的章节结构规划，而不是只生成短片段。",
   },
 ] as const;
@@ -130,184 +123,227 @@ export default function WritePage() {
 
   if (isCheckingAuth) {
     return (
-      <div className="dark flex min-h-full items-center justify-center bg-background text-sm text-muted-foreground">
+      <div className="flex min-h-full items-center justify-center bg-[#f3ead7] text-sm text-[#6f6759]">
         正在检查登录状态……
       </div>
     );
   }
 
   return (
-    <div className="dark min-h-full bg-background text-foreground">
+    <div className="min-h-full overflow-hidden bg-[#f4ecd9] text-[#191611]">
       <SiteNav />
-      <main className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-8 px-10 py-14 lg:gap-10 lg:px-14 lg:py-16">
-        <header className="flex flex-col gap-4 border-b border-border/60 pb-8">
-          <span className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
-            Longform Writing · Context Engine
-          </span>
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-semibold tracking-tight lg:text-4xl">
-              同人章节写作工作台
+      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-10 px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+        <div className="pointer-events-none absolute left-[-8vw] top-28 hidden text-[14vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] lg:block">
+          CHAPTER
+        </div>
+        <div className="pointer-events-none absolute right-[-8vw] top-[520px] hidden text-[12vw] font-serif font-semibold leading-none text-[#53613b]/[0.07] xl:block">
+          DRAFT
+        </div>
+        <div className="pointer-events-none absolute bottom-8 left-[28%] hidden text-[12vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] xl:block">
+          LONGFORM
+        </div>
+
+        <header className="relative border-b border-[#171410]/15 pb-8">
+          <div className="max-w-5xl">
+            <div className="mb-7 inline-flex border border-[#2d281f]/20 bg-[#fffaf0]/45 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
+              LONGFORM WRITING · CHAPTER DRAFT
+            </div>
+            <h1 className="font-serif text-[clamp(4.7rem,13vw,12rem)] font-semibold leading-[0.82] tracking-[-0.045em] text-[#171410]">
+              Chapter Desk
             </h1>
-            <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground lg:text-base">
-              面向长文、章节续写和连载创作，基于 FanForge Context Engine
-              组织原作、角色、关系和风格上下文。
-            </p>
+            <div className="mt-7 grid gap-6 lg:grid-cols-[0.9fr_1fr]">
+              <p className="max-w-2xl font-serif text-[clamp(1.85rem,3.2vw,4rem)] leading-[0.96] tracking-[-0.025em] text-[#211d17]">
+                面向长文、章节续写和连载创作，基于 Context Engine 组织原作、角色、关系和风格上下文。
+              </p>
+              <div className="flex max-w-2xl flex-col justify-end gap-4">
+                <p className="text-sm leading-7 text-[#5f5849] sm:text-base">
+                  Write 页面是长文/章节写作页，Studio 可以轻量调用它。
+                </p>
+                <p className="text-sm leading-7 text-[#5f5849]">
+                  章节写作不同于情绪切片，它更关注剧情推进、伏笔回收、人物状态变化和下一章钩子。
+                </p>
+                <Badge
+                  variant="outline"
+                  className="w-fit border-[#53613b]/35 bg-[#e7ead4] text-xs text-[#3f4b2f]"
+                >
+                  MVP Demo · React state mock draft
+                </Badge>
+              </div>
+            </div>
           </div>
-          <Badge variant="outline" className="w-fit text-xs">
-            当前为 MVP Demo，后续可将 Context Engine 接入真实 Writer API 和 RAG 检索结果。
-          </Badge>
         </header>
 
-        <section className="grid grid-cols-1 gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <Card className="border-border/80 bg-card/80">
-            <CardHeader className="gap-2 border-b border-border/60 pb-5">
-              <div className="flex items-center gap-2">
-                <PenLine className="size-4 text-muted-foreground" />
-                <CardTitle className="text-base">创作输入区</CardTitle>
+        <section className="grid grid-cols-1 gap-6 lg:grid-cols-[0.86fr_1.14fr]">
+          <section className="border border-[#171410]/15 bg-[#efe2c7]/72 p-4 shadow-[0_20px_60px_rgba(49,39,24,0.06)]">
+            <div className="border border-[#171410]/12 bg-[#fbf5e8]">
+              <div className="border-b border-[#171410]/12 px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <PenLine className="size-4 text-[#53613b]" />
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+                    Chapter Plan Manuscript
+                  </p>
+                </div>
+                <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
+                  章节计划手稿
+                </h2>
+                <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
+                  长文模式会先组织章节目标和上下文，再生成草稿。
+                </p>
               </div>
-              <CardDescription className="text-xs">
-                长文模式会先组织章节目标和上下文，再生成草稿。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-5 pt-5">
-              <div className="flex flex-col gap-2">
-                <FieldLabel>创作模式</FieldLabel>
-                <Select value={mode} onValueChange={(value) => setMode(value as (typeof writingModes)[number])}>
-                  <SelectTrigger className="w-full bg-background/40">
-                    <SelectValue placeholder="选择创作模式" />
-                  </SelectTrigger>
-                  <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)]">
-                    {writingModes.map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {item}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <div className="flex flex-col gap-5 p-5">
+                <ParamSelect
+                  label="创作模式"
+                  value={mode}
+                  values={writingModes}
+                  onChange={(value) => setMode(value as (typeof writingModes)[number])}
+                />
 
-              <div className="flex flex-col gap-2">
-                <FieldLabel>本章目标</FieldLabel>
-                <Textarea
+                <TextAreaField
+                  label="本章目标"
                   value={chapterGoal}
-                  onChange={(event) => setChapterGoal(event.target.value)}
+                  onChange={setChapterGoal}
                   placeholder="例如：让主角在婚礼现场确认旧友是否已经认出自己的真实身份。"
-                  className="min-h-24 resize-none bg-background/40 text-sm leading-relaxed"
+                  minHeight="min-h-24"
                 />
-              </div>
 
-              <div className="flex flex-col gap-2">
-                <FieldLabel>剧情输入</FieldLabel>
-                <Textarea
+                <TextAreaField
+                  label="剧情输入"
                   value={plotInput}
-                  onChange={(event) => setPlotInput(event.target.value)}
+                  onChange={setPlotInput}
                   placeholder="例如：主角在流亡三年后回到帝都，但必须隐藏身份参加旧友的婚礼……"
-                  className="min-h-32 resize-none bg-background/40 text-sm leading-relaxed"
+                  minHeight="min-h-36"
                 />
-              </div>
 
-              <div className="flex flex-col gap-2">
-                <FieldLabel>期望字数</FieldLabel>
-                <Select value={wordCount} onValueChange={(value) => setWordCount(value as (typeof wordCounts)[number])}>
-                  <SelectTrigger className="w-full bg-background/40">
-                    <SelectValue placeholder="选择期望字数" />
-                  </SelectTrigger>
-                  <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)]">
-                    {wordCounts.map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {item}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {wordCount === "自定义" ? (
-                  <Input
-                    value={customWordCount}
-                    onChange={(event) => setCustomWordCount(event.target.value)}
-                    placeholder="例如：4500 字"
-                    className="bg-background/40"
-                  />
-                ) : null}
-              </div>
+                <div className="flex flex-col gap-2">
+                  <FieldLabel>期望字数</FieldLabel>
+                  <Select
+                    value={wordCount}
+                    onValueChange={(value) => setWordCount(value as (typeof wordCounts)[number])}
+                  >
+                    <SelectTrigger className="w-full border-[#171410]/15 bg-[#fffaf0] text-[#211d17]">
+                      <SelectValue placeholder="选择期望字数" />
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)]">
+                      {wordCounts.map((item) => (
+                        <SelectItem key={item} value={item}>
+                          {item}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {wordCount === "自定义" ? (
+                    <Input
+                      value={customWordCount}
+                      onChange={(event) => setCustomWordCount(event.target.value)}
+                      placeholder="例如：4500 字"
+                      className="border-[#171410]/15 bg-[#fffaf0] text-[#211d17]"
+                    />
+                  ) : null}
+                </div>
 
-              <div className="flex flex-col gap-2">
-                <FieldLabel>文风要求</FieldLabel>
-                <Textarea
+                <TextAreaField
+                  label="文风要求"
                   value={styleRequest}
-                  onChange={(event) => setStyleRequest(event.target.value)}
+                  onChange={setStyleRequest}
                   placeholder="例如：叙事克制，少解释心理，多用环境和动作推进关系。"
-                  className="min-h-24 resize-none bg-background/40 text-sm leading-relaxed"
+                  minHeight="min-h-24"
                 />
-              </div>
 
-              <div className="flex flex-col gap-2">
-                <FieldLabel>禁止项</FieldLabel>
-                <Textarea
+                <TextAreaField
+                  label="禁止项"
                   value={forbiddenItems}
-                  onChange={(event) => setForbiddenItems(event.target.value)}
+                  onChange={setForbiddenItems}
                   placeholder="例如：不要公开暴露身份；不要直接告白；不要新增未解释的魔法能力。"
-                  className="min-h-24 resize-none bg-background/40 text-sm leading-relaxed"
+                  minHeight="min-h-24"
                 />
-              </div>
 
-              <Button className="h-11 w-full" onClick={handleGenerateDraft}>
-                生成章节草稿
-              </Button>
-            </CardContent>
-          </Card>
+                <Button
+                  className="h-11 w-full bg-[#171410] text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
+                  onClick={handleGenerateDraft}
+                >
+                  生成章节草稿
+                </Button>
+              </div>
+            </div>
+          </section>
 
           <div className="flex flex-col gap-6">
-            <Card className="border-border/80 bg-card/80">
-              <CardHeader className="gap-2 border-b border-border/60 pb-5">
-                <div className="flex items-center gap-2">
-                  <Layers className="size-4 text-muted-foreground" />
-                  <CardTitle className="text-base">Context Engine</CardTitle>
+            <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]">
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-[#171410]/12 pb-5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Layers className="size-4 text-[#53613b]" />
+                    <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+                      Context Index Cards
+                    </p>
+                  </div>
+                  <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
+                    Context Engine
+                  </h2>
+                  <p className="mt-2 text-xs text-[#6f6759]">
+                    本次章节生成会把这些上下文传递给 Writer Agent。
+                  </p>
                 </div>
-                <CardDescription className="text-xs">
-                  本次章节生成会把这些上下文传递给 Writer Agent
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-3 pt-5 md:grid-cols-2">
-                {contextItems.map((item) => (
+                <Badge variant="outline" className="border-[#53613b]/35 bg-[#e7ead4] text-[#3f4b2f]">
+                  已启用
+                </Badge>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {contextItems.map((item, index) => (
                   <div
                     key={item.title}
-                    className="rounded-lg border border-border/50 bg-muted/15 px-4 py-3"
+                    className="group border border-[#171410]/12 bg-[#f8f0df] px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#fff8ea]"
                   >
-                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-foreground">
-                        {item.title}
-                      </p>
-                      <Badge variant={item.enabled ? "secondary" : "outline"} className="text-[10px]">
+                    <div className="mb-3 flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-3">
+                        <span className="font-serif text-3xl leading-none text-[#53613b]">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        <div>
+                          <p className="text-sm font-semibold text-[#171410]">
+                            {item.title}
+                          </p>
+                          <p className="mt-1 text-xs text-[#6f6759]">
+                            {item.constraint}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
+                      >
                         {item.enabled ? "已启用" : "未启用"}
                       </Badge>
                     </div>
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      约束：{item.constraint}
-                    </p>
-                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    <p className="text-xs leading-relaxed text-[#5f5849]">
                       影响 Writer：{item.writerImpact}
                     </p>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </section>
 
-            <Card className="border-border/80 bg-card/80">
-              <CardHeader className="gap-2 border-b border-border/60 pb-5">
-                <div className="flex items-center gap-2">
-                  <BookOpenText className="size-4 text-muted-foreground" />
-                  <CardTitle className="text-base">章节生成结果</CardTitle>
+            <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]">
+              <div className="mb-5 flex items-center gap-2 border-b border-[#171410]/12 pb-5">
+                <BookOpenText className="size-4 text-[#53613b]" />
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+                    Chapter Draft Paper
+                  </p>
+                  <h2 className="mt-2 font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
+                    章节生成结果
+                  </h2>
+                  <p className="mt-2 text-xs text-[#6f6759]">
+                    输出长文结构草稿、上下文说明、伏笔和下一章衔接建议。
+                  </p>
                 </div>
-                <CardDescription className="text-xs">
-                  输出长文结构草稿、上下文说明、伏笔和下一章衔接建议
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-5 pt-5">
+              </div>
+              <div className="flex flex-col gap-5">
                 {result ? (
                   <>
-                    <div className="rounded-lg border border-border/50 bg-background/40 px-4 py-4 text-sm leading-8 text-foreground/90">
+                    <div className="border border-[#171410]/15 bg-[#fffaf0] px-6 py-6 font-serif text-[16px] leading-9 text-[#211d17] shadow-[0_16px_40px_rgba(49,39,24,0.06)]">
                       {result.draft.split("\n\n").map((paragraph) => (
-                        <p key={paragraph} className="mb-4 whitespace-pre-line last:mb-0">
+                        <p key={paragraph} className="mb-5 whitespace-pre-line last:mb-0">
                           {paragraph}
                         </p>
                       ))}
@@ -317,12 +353,12 @@ export default function WritePage() {
                     <ResultList title="下一章衔接建议" items={result.nextChapterSuggestions} />
                   </>
                 ) : (
-                  <div className="flex min-h-56 items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
-                    点击「生成章节草稿」后，这里会展示长文结构草稿和 Context Engine 使用说明。
+                  <div className="flex min-h-56 items-center justify-center border border-dashed border-[#171410]/20 bg-[#f8f0df]/70 px-4 py-8 text-center text-sm leading-7 text-[#7a705e]">
+                    点击「生成章节草稿」后，这里会展示开场段、冲突推进、情绪转折、结尾钩子和 Context Engine 使用说明。
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </section>
           </div>
         </section>
       </main>
@@ -332,31 +368,87 @@ export default function WritePage() {
 
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
-    <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+    <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#6f6759]">
       {children}
     </span>
   );
 }
 
-function ResultList({ title, items }: { title: string; items: string[] }) {
+function ParamSelect({
+  label,
+  value,
+  values,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  values: readonly string[];
+  onChange: (value: string) => void;
+}) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <Sparkles className="size-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium text-muted-foreground">
+      <FieldLabel>{label}</FieldLabel>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="w-full border-[#171410]/15 bg-[#fffaf0] text-[#211d17]">
+          <SelectValue placeholder={label} />
+        </SelectTrigger>
+        <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)]">
+          {values.map((item) => (
+            <SelectItem key={item} value={item}>
+              {item}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function TextAreaField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  minHeight,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  minHeight: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <FieldLabel>{label}</FieldLabel>
+      <Textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className={`${minHeight} resize-none border-[#171410]/15 bg-[#fffaf0] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]`}
+      />
+    </div>
+  );
+}
+
+function ResultList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="border border-[#171410]/12 bg-[#fbf5e8] px-4 py-4">
+      <div className="mb-3 flex items-center gap-2">
+        <Sparkles className="size-3.5 text-[#53613b]" />
+        <h3 className="font-serif text-3xl leading-none tracking-[-0.02em] text-[#171410]">
           {title}
-        </span>
+        </h3>
       </div>
       <div className="flex flex-col gap-2">
         {items.map((item, index) => (
           <div
             key={item}
-            className="rounded-md border border-border/50 bg-muted/15 px-3 py-2 text-xs leading-relaxed text-muted-foreground"
+            className="grid grid-cols-[42px_minmax(0,1fr)] gap-3 border border-dashed border-[#53613b]/30 bg-[#f8f0df] px-3 py-3 text-xs leading-relaxed text-[#5f5849]"
           >
-            <span className="mr-2 font-mono text-[10px] text-muted-foreground/70">
+            <span className="font-serif text-2xl leading-none text-[#53613b]">
               {String(index + 1).padStart(2, "0")}
             </span>
-            {item}
+            <span>{item}</span>
           </div>
         ))}
       </div>
