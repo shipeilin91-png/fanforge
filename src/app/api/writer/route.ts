@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
 
 type WriterResponse = {
@@ -5,6 +6,51 @@ type WriterResponse = {
   emotionStructure: string;
   characterConstraints: string;
 };
+
+type ModelProvider =
+  | "fanforge_free"
+  | "openai"
+  | "gemini"
+  | "claude"
+  | "deepseek";
+
+type UserModelSettings = {
+  provider: ModelProvider;
+  model: string;
+  api_key: string | null;
+};
+
+type WriterRequestBody = {
+  relationshipType?: string;
+  moment?: string;
+  stage?: string;
+  tension?: string;
+  styleCard?: string;
+  forbiddenItems?: string[];
+};
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+const supabase =
+  supabaseUrl && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey, {
+        auth: { persistSession: false },
+      })
+    : null;
+
+function createSupabaseClientForToken(token: string) {
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false },
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  });
+}
 
 const writerResponseSchema = {
   type: "object",
@@ -26,7 +72,7 @@ const writerResponseSchema = {
   required: ["text", "emotionStructure", "characterConstraints"],
 } as const;
 
-function createFallbackResponse({
+function createFreeModelResponse({
   relationshipType,
   moment,
   stage,
@@ -41,31 +87,104 @@ function createFallbackResponse({
   styleCard: string;
   forbiddenText: string;
 }): WriterResponse {
+  const forbiddenClause =
+    forbiddenText === "无"
+      ? "两人都没有把话说满，只把真正的念头留在动作之间。"
+      : `那些被禁止的越界写法没有出现，${forbiddenText}都被压在场景边缘。`;
+
   const text = [
-    `${moment}的语境里，${stage}的两人像被潮水推到同一块礁石。`,
+    `${moment}把${stage}里的两个人推到同一处窄檐下。雨声很密，像替他们把周围的喧哗一层层隔开，只剩彼此袖口上未干的水痕。`,
     ``,
-    `她站在檐下，袖口还留着没干透的水痕；他停在两步之外，肩线绷得很直，像刻意把距离维持在一个不会被误读的长度。谁也没有先开口——${tension}在空气里摊开，却比任何对白都更清晰。`,
+    `他停在两步之外，没有立刻靠近。那段距离比礼貌更近，又比亲密更远，正好容得下「${relationshipType}」这个名字里所有未说出口的部分。她看见他指节上的旧伤，颜色淡得几乎要被雨光抹去，可他握伞的力道还是在那一瞬收紧。`,
     ``,
-    `其中一人把视线落在对方指节上——那里有一道旧伤，颜色已经很淡，指腹却在伞柄上收紧了一瞬，又慢慢松开。他什么都没说，只把伞沿往她那边倾了半寸。水痕顺着伞骨滑下去，滴在两人脚边同一块湿砖上。`,
+    `${tension}没有落成一句话。她只是抬手，像要接过伞柄，又在触到他袖口前停住。风从他们之间穿过去，把灯影吹得轻轻晃了一下；他顺势把伞沿偏向她半寸，仿佛这只是再自然不过的避雨。`,
     ``,
-    `雨声很大。她伸手去接斜过来的雨，指尖擦过他袖口，又很快收回。`,
+    `${forbiddenClause}等雨水从伞骨落到同一块湿砖上，她才低声说了一句无关紧要的话。他没有拆穿，只把那半寸距离继续留给她。`,
   ].join("\n");
 
   const emotionStructure = [
-    `起——以「${moment}」打开场景张力，让读者先撞上空间与体感，再看见人物。`,
-    `承——用「${stage}」里悬而未决的关系刻度，两人之间有话未说、有事未了。`,
-    `转——以「${tension}」为轴心加压：不写结论，改写几乎发生的动作与被压回去的欲望。`,
-    `合——回扣「${relationshipType}」：同一动作出现两次位移（靠近 / 退去），留白收束。`,
+    `起——用「${moment}」建立空间压缩感，让关系先从距离和雨声里显影。`,
+    `承——以「${stage}」控制人物默认距离，避免关系推进过快。`,
+    `转——围绕「${tension}」写未完成动作，让情绪停在几乎触碰的一刻。`,
+    `合——回到「${relationshipType}」的关系框架，用半寸伞沿和湿砖收束留白。`,
   ].join("\n");
 
   const characterConstraints = [
-    `文学气质锚点：${styleCard}（句式与意象围绕该气质收束）。`,
-    `情绪张力：${tension}（禁止用旁白直接命名情绪，仅允许通过行为与节奏暗示）。`,
-    `关系框架：${relationshipType} · ${stage}（对白密度压低，用动作与物件承担叙事）。`,
-    `本轮写作禁止项：${forbiddenText}`,
+    `文学气质：${styleCard}，以雨声、袖口、伞沿和湿砖承载情绪。`,
+    `情绪张力：${tension}，通过停顿、未完成动作和距离变化表达。`,
+    `关系阶段：${relationshipType} · ${stage}，不越过当前关系刻度。`,
+    `禁止项：${forbiddenText}`,
   ].join("\n");
 
   return { text, emotionStructure, characterConstraints };
+}
+
+function getBearerToken(request: Request) {
+  const authorization = request.headers.get("authorization");
+  if (!authorization?.startsWith("Bearer ")) return null;
+  return authorization.slice("Bearer ".length).trim() || null;
+}
+
+function normalizeProvider(value: unknown): ModelProvider {
+  if (
+    value === "openai" ||
+    value === "gemini" ||
+    value === "claude" ||
+    value === "deepseek"
+  ) {
+    return value;
+  }
+
+  return "fanforge_free";
+}
+
+async function getUserModelSettings(request: Request): Promise<UserModelSettings> {
+  const defaultSettings: UserModelSettings = {
+    provider: "fanforge_free",
+    model: "fanforge-free",
+    api_key: null,
+  };
+
+  const token = getBearerToken(request);
+  if (!token || !supabase) return defaultSettings;
+
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  const user = userData.user;
+
+  if (userError || !user) {
+    return defaultSettings;
+  }
+
+  const userSupabase = createSupabaseClientForToken(token);
+  if (!userSupabase) return defaultSettings;
+
+  const { data, error } = await userSupabase
+    .from("user_model_settings")
+    .select("provider, model, api_key")
+    .eq("user_id", user.id)
+    .limit(1);
+
+  if (error || !data?.[0]) {
+    return defaultSettings;
+  }
+
+  const settings = data[0] as {
+    provider?: unknown;
+    model?: unknown;
+    api_key?: unknown;
+  };
+  const provider = normalizeProvider(settings.provider);
+
+  return {
+    provider,
+    model:
+      typeof settings.model === "string" && settings.model.trim()
+        ? settings.model
+        : provider === "fanforge_free"
+          ? "fanforge-free"
+          : provider,
+    api_key: typeof settings.api_key === "string" ? settings.api_key : null,
+  };
 }
 
 function isWriterResponse(value: unknown): value is WriterResponse {
@@ -81,7 +200,13 @@ function isWriterResponse(value: unknown): value is WriterResponse {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  let body: WriterRequestBody = {};
+
+  try {
+    body = (await request.json()) as WriterRequestBody;
+  } catch {
+    body = {};
+  }
 
   const {
     relationshipType = "CP",
@@ -90,21 +215,13 @@ export async function POST(request: Request) {
     tension = "克制",
     styleCard = "疏离克制",
     forbiddenItems = [] as string[],
-  } = body as {
-    relationshipType?: string;
-    moment?: string;
-    stage?: string;
-    tension?: string;
-    styleCard?: string;
-    forbiddenItems?: string[];
-  };
+  } = body;
 
-  const apiKey = process.env.OPENAI_API_KEY;
   const forbiddenText =
     Array.isArray(forbiddenItems) && forbiddenItems.length > 0
       ? forbiddenItems.join("、")
       : "无";
-  const fallback = createFallbackResponse({
+  const freeModelResponse = createFreeModelResponse({
     relationshipType,
     moment,
     stage,
@@ -112,18 +229,37 @@ export async function POST(request: Request) {
     styleCard,
     forbiddenText,
   });
+  const settings = await getUserModelSettings(request);
 
-  if (!apiKey) {
+  if (settings.provider === "fanforge_free") {
+    return Response.json(freeModelResponse);
+  }
+
+  if (
+    settings.provider === "gemini" ||
+    settings.provider === "claude" ||
+    settings.provider === "deepseek"
+  ) {
     return Response.json(
-      { error: "OPENAI_API_KEY is not configured." },
-      { status: 500 },
+      {
+        message:
+          "该模型适配器即将开放，请先使用 FanForge Free Model 或 OpenAI GPT。",
+      },
+      { status: 400 },
+    );
+  }
+
+  if (!settings.api_key) {
+    return Response.json(
+      { error: "请先在模型设置中配置 OpenAI API Key" },
+      { status: 400 },
     );
   }
 
   try {
-    const client = new OpenAI({ apiKey });
+    const client = new OpenAI({ apiKey: settings.api_key });
     const response = await client.responses.create({
-      model: process.env.OPENAI_MODEL ?? "gpt-5.2",
+      model: settings.model || "gpt-5.2",
       instructions: [
         "你是 FanForge 的 Writer Agent，负责生成同人关系情绪切片。",
         "你必须遵守角色边界：不写 OOC 的突然告白、不替角色越过当前关系阶段、不违反用户禁止项。",
@@ -159,13 +295,15 @@ export async function POST(request: Request) {
     const parsed = JSON.parse(response.output_text);
 
     if (!isWriterResponse(parsed)) {
-      return Response.json(fallback);
+      return Response.json(freeModelResponse);
     }
 
     return Response.json(parsed);
   } catch (error) {
+    console.error("Writer API error", error);
+
     if (error instanceof SyntaxError) {
-      return Response.json(fallback);
+      return Response.json(freeModelResponse);
     }
 
     const message =
