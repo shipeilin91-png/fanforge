@@ -18,6 +18,8 @@ type UserModelSettings = {
   provider: ModelProvider;
   model: string;
   api_key: string | null;
+  user_id: string | null;
+  access_token: string | null;
 };
 
 type WriterRequestBody = {
@@ -54,6 +56,10 @@ const supabase =
         auth: { persistSession: false },
       })
     : null;
+
+const FREE_DAILY_LIMIT = 10;
+const FREE_PROVIDER = "fanforge_free";
+const WRITER_FEATURE = "slice";
 
 function createSupabaseClientForToken(token: string) {
   if (!supabaseUrl || !supabaseAnonKey) return null;
@@ -439,6 +445,102 @@ function getBearerToken(request: Request) {
   return authorization.slice("Bearer ".length).trim() || null;
 }
 
+function getTodayDateString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function getFreeUsage(
+  client: NonNullable<typeof supabase>,
+  userId: string,
+  feature: string,
+) {
+  const { data, error } = await client
+    .from("user_generation_usage")
+    .select("count")
+    .eq("user_id", userId)
+    .eq("usage_date", getTodayDateString())
+    .eq("feature", feature)
+    .eq("provider", FREE_PROVIDER)
+    .maybeSingle();
+
+  if (error) {
+    return { error, count: 0, exists: false };
+  }
+
+  return {
+    error: null,
+    count: typeof data?.count === "number" ? data.count : 0,
+    exists: Boolean(data),
+  };
+}
+
+async function incrementFreeUsage(
+  client: NonNullable<typeof supabase>,
+  userId: string,
+  feature: string,
+  currentCount: number,
+  exists: boolean,
+) {
+  const now = new Date().toISOString();
+  const nextCount = currentCount + 1;
+
+  if (exists) {
+    const { error } = await client
+      .from("user_generation_usage")
+      .update({ count: nextCount, updated_at: now })
+      .eq("user_id", userId)
+      .eq("usage_date", getTodayDateString())
+      .eq("feature", feature)
+      .eq("provider", FREE_PROVIDER);
+
+    return { error, count: nextCount };
+  }
+
+  const { error } = await client.from("user_generation_usage").insert({
+    user_id: userId,
+    usage_date: getTodayDateString(),
+    feature,
+    provider: FREE_PROVIDER,
+    count: nextCount,
+    created_at: now,
+    updated_at: now,
+  });
+
+  return { error, count: nextCount };
+}
+
+async function checkFreeQuota(
+  client: NonNullable<typeof supabase>,
+  userId: string,
+  feature: string,
+) {
+  const usage = await getFreeUsage(client, userId, feature);
+
+  if (usage.error) {
+    return {
+      allowed: false,
+      error: "无法读取免费生成额度，请稍后重试。",
+      count: 0,
+      exists: false,
+    };
+  }
+
+  if (usage.count >= FREE_DAILY_LIMIT) {
+    return {
+      allowed: false,
+      message: "今日免费生成额度已用完，请切换高级模型或明天再试。",
+      count: usage.count,
+      exists: usage.exists,
+    };
+  }
+
+  return {
+    allowed: true,
+    count: usage.count,
+    exists: usage.exists,
+  };
+}
+
 function normalizeProvider(value: unknown): ModelProvider {
   if (
     value === "openai" ||
@@ -457,6 +559,8 @@ async function getUserModelSettings(request: Request): Promise<UserModelSettings
     provider: "fanforge_free",
     model: "fanforge-free",
     api_key: null,
+    user_id: null,
+    access_token: null,
   };
 
   const token = getBearerToken(request);
@@ -479,7 +583,11 @@ async function getUserModelSettings(request: Request): Promise<UserModelSettings
     .limit(1);
 
   if (error || !data?.[0]) {
-    return defaultSettings;
+    return {
+      ...defaultSettings,
+      user_id: user.id,
+      access_token: token,
+    };
   }
 
   const settings = data[0] as {
@@ -498,6 +606,8 @@ async function getUserModelSettings(request: Request): Promise<UserModelSettings
           ? "fanforge-free"
           : provider,
     api_key: typeof settings.api_key === "string" ? settings.api_key : null,
+    user_id: user.id,
+    access_token: token,
   };
 }
 
@@ -590,6 +700,54 @@ export async function POST(request: Request) {
   const settings = await getUserModelSettings(request);
 
   if (settings.provider === "fanforge_free") {
+    if (settings.user_id && settings.access_token) {
+      const userSupabase = createSupabaseClientForToken(settings.access_token);
+
+      if (!userSupabase) {
+        return Response.json(
+          { error: "无法连接免费额度服务，请稍后重试。" },
+          { status: 500 },
+        );
+      }
+
+      const quota = await checkFreeQuota(
+        userSupabase,
+        settings.user_id,
+        WRITER_FEATURE,
+      );
+
+      if (!quota.allowed) {
+        return Response.json(
+          { message: quota.message ?? quota.error },
+          { status: quota.message ? 429 : 500 },
+        );
+      }
+
+      const usage = await incrementFreeUsage(
+        userSupabase,
+        settings.user_id,
+        WRITER_FEATURE,
+        quota.count,
+        quota.exists,
+      );
+
+      if (usage.error) {
+        return Response.json(
+          { error: "无法更新免费生成额度，请稍后重试。" },
+          { status: 500 },
+        );
+      }
+
+      return Response.json({
+        ...freeModelResponse,
+        usage: {
+          limit: FREE_DAILY_LIMIT,
+          used: usage.count,
+          remaining: Math.max(0, FREE_DAILY_LIMIT - usage.count),
+        },
+      });
+    }
+
     return Response.json(freeModelResponse);
   }
 
