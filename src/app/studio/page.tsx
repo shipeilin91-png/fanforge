@@ -56,6 +56,12 @@ type ReviewResult = {
   suggestions: string[];
 };
 
+type UsageInfo = {
+  limit: number;
+  used: number;
+  remaining: number;
+};
+
 type ChapterGenerationResult = {
   usedContext: string[];
   foreshadowingNotes: string[];
@@ -329,6 +335,8 @@ export default function StudioPage() {
     "不要公开暴露身份；不要直接告白。",
   );
   const [savedHint, setSavedHint] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [lastToolCall, setLastToolCall] = useState<string | null>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [generationStatus, setGenerationStatus] = useState<
@@ -338,6 +346,7 @@ export default function StudioPage() {
     useState<ChapterGenerationResult | null>(null);
   const [sliceGenerationResult, setSliceGenerationResult] =
     useState<SliceGenerationResult | null>(null);
+  const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null);
 
@@ -375,6 +384,7 @@ export default function StudioPage() {
     setAssetTab(nextTab);
     setSelectedAssetId(firstAsset.id);
     setSavedHint(null);
+    setSaveError(null);
 
     if (firstAsset.chapterTitle) {
       setChapterTitle(firstAsset.chapterTitle);
@@ -384,6 +394,7 @@ export default function StudioPage() {
   function handleSelectAsset(asset: Asset) {
     setSelectedAssetId(asset.id);
     setSavedHint(null);
+    setSaveError(null);
 
     if (asset.chapterTitle) {
       setChapterTitle(asset.chapterTitle);
@@ -408,11 +419,13 @@ export default function StudioPage() {
     setSelectedAssetId(newChapter.id);
     setChapterTitle(title);
     setSavedHint(null);
+    setSaveError(null);
   }
 
   function appendDraft(text: string) {
     setDraft((current) => `${current.trim() ? `${current}\n\n` : ""}${text}`);
     setSavedHint(null);
+    setSaveError(null);
     setReviewError(null);
     setGenerationError(null);
   }
@@ -431,6 +444,10 @@ export default function StudioPage() {
   }
 
   function requestErrorMessage(status: number) {
+    if (status === 429) {
+      return "今日免费生成额度已用完，请前往模型设置切换高级模型，或明天再试。";
+    }
+
     return status === 400
       ? "生成失败，请检查模型设置。OpenAI API Key 未配置时可切换 FanForge Free Model。"
       : "生成失败，请稍后重试。";
@@ -482,9 +499,11 @@ export default function StudioPage() {
         usedContext: string[];
         foreshadowingNotes: string[];
         nextChapterHooks: string[];
+        usage?: UsageInfo;
       };
 
       appendDraft(data.draft);
+      if (data.usage) setUsageInfo(data.usage);
       setChapterGenerationResult({
         usedContext: data.usedContext,
         foreshadowingNotes: data.foreshadowingNotes,
@@ -561,9 +580,11 @@ export default function StudioPage() {
         text: string;
         emotionStructure: string[];
         characterConstraints: string[];
+        usage?: UsageInfo;
       };
 
       appendDraft(data.text);
+      if (data.usage) setUsageInfo(data.usage);
       setSliceGenerationResult({
         emotionStructure: data.emotionStructure,
         characterConstraints: data.characterConstraints,
@@ -579,8 +600,57 @@ export default function StudioPage() {
     }
   }
 
-  function handleSaveDraft() {
-    setSavedHint("草稿已保存");
+  async function handleSaveDraft() {
+    if (isSavingDraft) return;
+
+    setSavedHint(null);
+    setSaveError(null);
+    setIsSavingDraft(true);
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
+
+      if (!user) {
+        setSaveError("请先登录后保存草稿。");
+        return;
+      }
+
+      const { error } = await supabase.from("user_drafts").insert({
+        user_id: user.id,
+        title: chapterTitle.trim() || "未命名章节",
+        draft_type: "studio",
+        content: draft,
+        metadata: {
+          expectedLength: wordCount,
+          literaryStyle: styleCard,
+          emotionalTension: tension,
+          relationshipStage,
+          forbiddenItems,
+          selectedChapter: selectedAsset?.title ?? chapterTitle,
+          contextEngine: {
+            canon: true,
+            persona: true,
+            relationship: true,
+            styleCard: true,
+          },
+        },
+        updated_at: new Date().toISOString(),
+      });
+
+      if (error) {
+        setSaveError(error.message);
+        return;
+      }
+
+      setSavedHint("草稿已保存。");
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : "保存失败，请稍后重试。",
+      );
+    } finally {
+      setIsSavingDraft(false);
+    }
   }
 
   function handleReview() {
@@ -837,6 +907,7 @@ export default function StudioPage() {
                   onChange={(event) => {
                     setDraft(event.target.value);
                     setSavedHint(null);
+                    setSaveError(null);
                     setReviewError(null);
                   }}
                   className="min-h-full resize-none border-0 bg-transparent px-7 py-7 font-serif text-[16px] leading-9 text-[#211d17] shadow-none placeholder:text-[#9a8f78] focus-visible:ring-0"
@@ -874,14 +945,20 @@ export default function StudioPage() {
                   variant="outline"
                   className="h-10 border-[#171410]/18 bg-[#fbf5e8] text-[#171410] hover:-translate-y-0.5 hover:border-[#171410]/35 hover:bg-[#fff8ea]"
                   onClick={handleSaveDraft}
+                  disabled={isSavingDraft}
                 >
                   <Save className="mr-2 size-4" />
-                  保存草稿
+                  {isSavingDraft ? "保存中..." : "保存草稿"}
                 </Button>
                 {savedHint ? (
                   <span className="inline-flex items-center gap-1.5 text-xs text-[#3f4b2f]">
                     <CheckCircle2 className="size-3.5" />
                     {savedHint}
+                  </span>
+                ) : null}
+                {saveError ? (
+                  <span className="text-xs text-[#7f3326]">
+                    {saveError}
                   </span>
                 ) : null}
                 {generationError ? (
@@ -913,6 +990,25 @@ export default function StudioPage() {
                 >
                   {lastToolCall}
                 </Badge>
+              ) : null}
+              {usageInfo ? (
+                <div
+                  className={cn(
+                    "mt-3 rounded-xl border px-3 py-2 text-xs leading-relaxed",
+                    usageInfo.remaining <= 2
+                      ? "border-[#9a7f45]/35 bg-[#efe2c7] text-[#6f5f3f]"
+                      : "border-[#53613b]/28 bg-[#e7ead4] text-[#3f4b2f]",
+                  )}
+                >
+                  <div>
+                    今日免费额度：剩余 {usageInfo.remaining} / {usageInfo.limit}
+                  </div>
+                  {usageInfo.remaining <= 2 ? (
+                    <div className="mt-1">
+                      免费额度即将用完，可在模型设置中切换高级模型。
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
 
