@@ -2,7 +2,6 @@
 
 import { BookOpenText, Layers, PenLine, Sparkles } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-
-const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
+import { supabase } from "@/lib/supabase";
 
 const writingModes = ["单章续写", "长篇大纲", "场景扩写", "结局改写"] as const;
 const wordCounts = ["1000 字", "2000 字", "3000 字", "自定义"] as const;
@@ -57,49 +55,15 @@ const contextItems = [
 
 type ChapterResult = {
   draft: string;
-  contextNotes: string[];
-  foreshadowHints: string[];
-  nextChapterSuggestions: string[];
+  usedContext: string[];
+  foreshadowingNotes: string[];
+  nextChapterHooks: string[];
 };
 
-function buildChapterDraft(mode: string, target: string, plot: string): ChapterResult {
-  const chapterGoal =
-    target.trim() || "让主角在回到帝都后完成一次身份隐藏下的关系试探";
-  const plotSeed =
-    plot.trim() ||
-    "主角在流亡三年后回到帝都，但必须隐藏身份参加旧友的婚礼。";
-
-  return {
-    draft: [
-      `【开场段】\n帝都的钟声比记忆里更冷。${plotSeed}他站在宾客队列的末尾，把请柬压在掌心，指腹刚好覆住旧日王徽的位置。大厅里所有灯都亮着，却没有一盏照向他真正的名字。`,
-      `【冲突推进】\n婚礼开始前，旧友派人送来一枚没有署名的袖扣。那是三年前宫变夜遗失的样式，按理说不该出现在这里。主角必须在不暴露身份的前提下确认对方是否知情，而禁卫府的人已经守在侧门，逐一核对宾客来历。`,
-      `【情绪转折】\n他原本以为自己只是回来取证，可当旧友隔着人群看向他时，那一眼没有惊讶，只有一种早已等候太久的平静。${chapterGoal}不再只是任务，它变成一条更危险的线：如果对方认出了他，却仍选择沉默，那么这场婚礼本身也许就是一场保护。`,
-      `【结尾钩子】\n在「${mode}」模式下，章节不会在此处直接解谜。誓词念到一半，教堂外忽然落雪。侍从递来第二封请柬，封口处压着半枚誓印的纹路。纸上只有一句话：今晚不要去北塔。`,
-    ].join("\n\n"),
-    contextNotes: [
-      "Canon Evidence：保留流亡三年后回帝都的时间线，不让主角公开使用王子身份。",
-      "Persona Map：主角以克制、试探和风险计算推进情节，不直接解释恐惧或思念。",
-      "Relationship Map：旧友关系处于未确认信任阶段，因此使用沉默、物件和站位表达保护。",
-      "Style Card：使用冷光、钟声、旧物、落雪等意象维持疏离克制的章节氛围。",
-      "User Intent：围绕本章目标组织开场、冲突、转折和钩子，而不是只写单个情绪瞬间。",
-    ],
-    foreshadowHints: [
-      "袖扣可以在三章后证明旧友曾进入宫变现场。",
-      "北塔禁令暗示有人利用婚礼调开禁卫府视线。",
-      "落雪意象可反复出现，绑定主角与旧友共同隐瞒的过去。",
-    ],
-    nextChapterSuggestions: [
-      "下一章可写主角是否违背警告前往北塔，制造主动选择的代价。",
-      "让 Reviewer 检查王城地理、禁卫府权限和誓印规则是否冲突。",
-      "把旧友的沉默延迟解释，先用行动证明其立场。",
-    ],
-  };
-}
-
 export default function WritePage() {
-  const router = useRouter();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [mode, setMode] = useState<(typeof writingModes)[number]>("单章续写");
+  const [chapterTitle, setChapterTitle] = useState("");
   const [chapterGoal, setChapterGoal] = useState("");
   const [plotInput, setPlotInput] = useState("");
   const [wordCount, setWordCount] = useState<(typeof wordCounts)[number]>("2000 字");
@@ -107,18 +71,71 @@ export default function WritePage() {
   const [styleRequest, setStyleRequest] = useState("");
   const [forbiddenItems, setForbiddenItems] = useState("");
   const [result, setResult] = useState<ChapterResult | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!window.localStorage.getItem(DEMO_USER_STORAGE_KEY)) {
-      router.replace("/");
-      return;
-    }
-
     setIsCheckingAuth(false);
-  }, [router]);
+  }, []);
 
-  function handleGenerateDraft() {
-    setResult(buildChapterDraft(mode, chapterGoal, plotInput));
+  function getExpectedLength() {
+    return wordCount === "自定义" ? customWordCount.trim() || "2000 字" : wordCount;
+  }
+
+  async function handleGenerateDraft() {
+    if (isGenerating) return;
+
+    setIsGenerating(true);
+    setErrorMsg(null);
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (data.session?.access_token) {
+        headers.Authorization = `Bearer ${data.session.access_token}`;
+      }
+
+      const response = await fetch("/api/chapter", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          mode,
+          chapterTitle: chapterTitle.trim() || "未命名章节",
+          chapterGoal,
+          plotInput,
+          expectedLength: getExpectedLength(),
+          styleRequirement: styleRequest,
+          forbiddenItems,
+          canonContext: contextItems[0].writerImpact,
+          personaContext: contextItems[1].writerImpact,
+          relationshipContext: contextItems[2].writerImpact,
+          previousChapterSummary: plotInput.trim()
+            ? `上一段剧情输入：${plotInput.trim()}`
+            : "上一章留下未解释的旧物和未完成的对话。",
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+          message?: string;
+        } | null;
+
+        throw new Error(payload?.error || payload?.message || `HTTP ${response.status}`);
+      }
+
+      const data = (await response.json()) as ChapterResult;
+      setResult(data);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "章节生成失败，请稍后重试。";
+      setErrorMsg(message);
+    } finally {
+      setIsGenerating(false);
+    }
   }
 
   if (isCheckingAuth) {
@@ -184,6 +201,16 @@ export default function WritePage() {
                   onChange={(value) => setMode(value as (typeof writingModes)[number])}
                 />
 
+                <div className="flex flex-col gap-2">
+                  <FieldLabel>章节标题</FieldLabel>
+                  <Input
+                    value={chapterTitle}
+                    onChange={(event) => setChapterTitle(event.target.value)}
+                    placeholder="例如：第二章 雨夜重逢"
+                    className="rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-[#211d17] placeholder:text-[#9a8f78]"
+                  />
+                </div>
+
                 <TextAreaField
                   label="本章目标"
                   value={chapterGoal}
@@ -246,9 +273,11 @@ export default function WritePage() {
                 <Button
                   className="h-11 w-full rounded-xl bg-[#171410] text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
                   onClick={handleGenerateDraft}
+                  disabled={isGenerating}
                 >
-                  生成章节草稿
+                  {isGenerating ? "生成中..." : "生成章节草稿"}
                 </Button>
+                {errorMsg ? <p className="text-sm text-[#7f3326]">{errorMsg}</p> : null}
               </div>
             </div>
           </section>
@@ -325,9 +354,9 @@ export default function WritePage() {
                         </p>
                       ))}
                     </div>
-                    <ResultList title="使用到的上下文说明" items={result.contextNotes} />
-                    <ResultList title="伏笔提示" items={result.foreshadowHints} />
-                    <ResultList title="下一章衔接建议" items={result.nextChapterSuggestions} />
+                    <ResultList title="使用到的上下文" items={result.usedContext} />
+                    <ResultList title="伏笔提示" items={result.foreshadowingNotes} />
+                    <ResultList title="下一章钩子" items={result.nextChapterHooks} />
                   </>
                 ) : (
                   <div className="flex min-h-56 items-center justify-center rounded-xl border border-dashed border-[#8a7c62]/32 bg-[#fffdf7]/74 px-4 py-8 text-center text-sm leading-7 text-[#7a705e]">
