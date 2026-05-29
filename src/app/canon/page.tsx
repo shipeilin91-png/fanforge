@@ -7,13 +7,14 @@ import {
   Search,
   ShieldCheck,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 type EvidenceType = "Hard Canon" | "Soft Canon";
@@ -24,6 +25,13 @@ type CanonEvidence = {
   source: string;
   evidence: string;
   usage: string;
+};
+
+type CanonDocument = {
+  id: string;
+  title: string;
+  content: string;
+  updated_at: string | null;
 };
 
 const sampleEvidence: CanonEvidence[] = [
@@ -110,9 +118,193 @@ const conflictRules = [
   "设定凭空添加",
 ] as const;
 
+function formatDocumentDate(value: string | null) {
+  if (!value) return "未记录";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "未记录";
+
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function previewText(content: string) {
+  const compact = content.replace(/\s+/g, " ").trim();
+  return compact ? compact.slice(0, 30) : "空白文档";
+}
+
 export default function CanonPage() {
+  const [documentTitle, setDocumentTitle] = useState("");
   const [sourceText, setSourceText] = useState("");
   const [evidence, setEvidence] = useState<CanonEvidence[]>([]);
+  const [documents, setDocuments] = useState<CanonDocument[]>([]);
+  const [currentDocumentId, setCurrentDocumentId] = useState<string | null>(null);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [savingDocument, setSavingDocument] = useState(false);
+  const [documentMessage, setDocumentMessage] = useState("登录后可保存和管理原作文档");
+  const [documentError, setDocumentError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadInitialDocuments() {
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
+
+      if (!user) {
+        if (isMounted) setDocumentMessage("登录后可保存和管理原作文档");
+        return;
+      }
+
+      await loadCanonDocuments(user.id, isMounted);
+    }
+
+    void loadInitialDocuments();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  async function loadCanonDocuments(userId: string, isMounted = true) {
+    setLoadingDocuments(true);
+    setDocumentError(null);
+
+    const { data, error } = await supabase
+      .from("user_canon_documents")
+      .select("id, title, content, updated_at")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(10);
+
+    if (!isMounted) return;
+
+    setLoadingDocuments(false);
+
+    if (error) {
+      setDocumentError("文档读取失败。");
+      setDocuments([]);
+      return;
+    }
+
+    const nextDocuments = (data ?? []).map((item) => ({
+      id: String(item.id),
+      title: typeof item.title === "string" && item.title ? item.title : "未命名原作文档",
+      content: typeof item.content === "string" ? item.content : "",
+      updated_at: typeof item.updated_at === "string" ? item.updated_at : null,
+    }));
+
+    setDocuments(nextDocuments);
+    setDocumentMessage(nextDocuments.length ? "" : "暂无原作文档。");
+  }
+
+  async function refreshCanonDocuments() {
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
+
+    if (!user) {
+      setDocuments([]);
+      setDocumentMessage("登录后可保存和管理原作文档");
+      return;
+    }
+
+    await loadCanonDocuments(user.id);
+  }
+
+  function handleLoadDocument(document: CanonDocument) {
+    setCurrentDocumentId(document.id);
+    setDocumentTitle(document.title);
+    setSourceText(document.content);
+    setDocumentMessage("文档已加载。");
+    setDocumentError(null);
+  }
+
+  function handleNewDocument() {
+    setCurrentDocumentId(null);
+    setDocumentTitle("");
+    setSourceText("");
+    setDocumentMessage("");
+    setDocumentError(null);
+  }
+
+  async function handleSaveDocument() {
+    if (savingDocument) return;
+
+    setSavingDocument(true);
+    setDocumentError(null);
+    setDocumentMessage("");
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
+
+      if (!user) {
+        setDocumentError("请先登录后保存原作文档。");
+        return;
+      }
+
+      if (!sourceText.trim()) {
+        setDocumentError("请先输入原作文档内容。");
+        return;
+      }
+
+      const payload = {
+        user_id: user.id,
+        title: documentTitle.trim() || "未命名原作文档",
+        content: sourceText,
+        source_type: "paste",
+        metadata: {
+          contentLength: sourceText.length,
+          savedFrom: "canon-page",
+        },
+        updated_at: new Date().toISOString(),
+      };
+      let successMessage = "原作文档已保存。";
+
+      if (currentDocumentId) {
+        const { error } = await supabase
+          .from("user_canon_documents")
+          .update(payload)
+          .eq("id", currentDocumentId)
+          .eq("user_id", user.id);
+
+        if (error) {
+          setDocumentError(error.message);
+          return;
+        }
+        successMessage = "原作文档已保存。";
+      } else {
+        const { data: insertedDocument, error } = await supabase
+          .from("user_canon_documents")
+          .insert(payload)
+          .select("id")
+          .single();
+
+        if (error) {
+          setDocumentError(error.message);
+          return;
+        }
+
+        if (insertedDocument?.id) {
+          setCurrentDocumentId(String(insertedDocument.id));
+        }
+      }
+
+      await refreshCanonDocuments();
+      setDocumentMessage(successMessage);
+    } catch (error) {
+      setDocumentError(
+        error instanceof Error ? error.message : "保存失败，请稍后重试。",
+      );
+    } finally {
+      setSavingDocument(false);
+    }
+  }
 
   function handleExtractEvidence() {
     setEvidence(sampleEvidence);
@@ -177,6 +369,12 @@ export default function CanonPage() {
               </div>
 
               <div className="flex flex-col gap-5 p-5">
+                <Input
+                  value={documentTitle}
+                  onChange={(event) => setDocumentTitle(event.target.value)}
+                  placeholder="例如：第一卷世界观设定 / 角色苏砚人生线 / 原作第十二章摘录"
+                  className="rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-[#211d17] placeholder:text-[#9a8f78] focus-visible:ring-[#53613b]"
+                />
                 <Textarea
                   value={sourceText}
                   onChange={(event) => setSourceText(event.target.value)}
@@ -197,11 +395,101 @@ export default function CanonPage() {
                     提取 Canon 证据
                   </Button>
                 </div>
+                <div className="flex flex-wrap items-center gap-3 border-t border-[#b9aa83]/45 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 rounded-xl border-[#53613b]/35 bg-[#e7ead4] px-5 text-[#3f4b2f] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/65 hover:bg-[#dfe6c7]"
+                    onClick={handleSaveDocument}
+                    disabled={savingDocument}
+                  >
+                    {savingDocument ? "保存中..." : "保存原作文档"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] px-4 text-[#5f5849] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#f4f7ea]"
+                    onClick={handleNewDocument}
+                  >
+                    新建文档
+                  </Button>
+                  {documentMessage ? (
+                    <span className="text-xs text-[#3f4b2f]">
+                      {documentMessage}
+                    </span>
+                  ) : null}
+                  {documentError ? (
+                    <span className="text-xs text-[#7f3326]">
+                      {documentError}
+                    </span>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
 
           <aside className="rounded-[14px] border border-[#8a7c62]/30 bg-[#fffaf0]/86 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.05)]">
+            <div className="mb-6 border-b border-[#b9aa83]/45 pb-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
+                    Canon Library
+                  </p>
+                  <h2 className="mt-2 font-serif text-3xl leading-none tracking-[-0.02em] text-[#171410]">
+                    我的原作文档
+                  </h2>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="rounded-xl border-[#53613b]/30 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
+                >
+                  {documents.length}/10
+                </Badge>
+              </div>
+
+              {loadingDocuments ? (
+                <div className="rounded-xl border border-dashed border-[#8a7c62]/28 bg-[#fffdf7]/74 px-3 py-5 text-center text-xs text-[#7a705e]">
+                  正在读取文档……
+                </div>
+              ) : documents.length ? (
+                <div className="flex flex-col gap-2">
+                  {documents.map((document) => {
+                    const isCurrent = currentDocumentId === document.id;
+
+                    return (
+                      <button
+                        key={document.id}
+                        type="button"
+                        onClick={() => handleLoadDocument(document)}
+                        className={cn(
+                          "rounded-xl border px-3 py-3 text-left transition-all duration-200 hover:-translate-y-0.5",
+                          isCurrent
+                            ? "border-[#53613b]/60 bg-[#e7ead4] shadow-[0_8px_20px_rgba(63,75,47,0.12)]"
+                            : "border-[#9a7f45]/18 bg-[#fffdf7]/80 hover:border-[#53613b]/35 hover:bg-[#fffdf7]",
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="line-clamp-2 text-sm font-medium leading-5 text-[#171410]">
+                            {document.title}
+                          </span>
+                          <span className="shrink-0 text-[10px] text-[#8a7c62]">
+                            {formatDocumentDate(document.updated_at)}
+                          </span>
+                        </div>
+                        <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#6f6759]">
+                          {previewText(document.content)}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-[#8a7c62]/28 bg-[#fffdf7]/74 px-3 py-5 text-center text-xs leading-relaxed text-[#7a705e]">
+                  {documentMessage || "暂无原作文档。"}
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center gap-3">
               <span className="inline-flex size-10 items-center justify-center rounded-xl border border-[#9a7f45]/28 bg-[#f0e4cc]">
                 <ShieldCheck className="size-4 text-[#53613b]" />
