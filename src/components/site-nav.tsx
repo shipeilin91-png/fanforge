@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
+import { supabase } from "@/lib/supabase";
 
 const navLinks = [
   { label: "首页", href: "/" },
@@ -21,29 +21,38 @@ const navLinks = [
 const linkClassName =
   "px-3 py-1.5 text-sm text-[#c7c1b4] transition-colors hover:text-[#fff8ea] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#53613b]";
 
-type DemoUser = {
-  nickname?: string;
-};
-
 export function SiteNav() {
   const router = useRouter();
-  const [demoUser, setDemoUser] = useState<DemoUser | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    const raw = window.localStorage.getItem(DEMO_USER_STORAGE_KEY);
-    if (!raw) return;
+    let isMounted = true;
 
-    try {
-      const parsed = JSON.parse(raw) as DemoUser;
-      setDemoUser(parsed);
-    } catch {
-      setDemoUser(null);
+    async function loadSession() {
+      const { data } = await supabase.auth.getSession();
+
+      if (!isMounted) return;
+
+      setUserEmail(data.session?.user.email ?? null);
     }
+
+    void loadSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user.email ?? null);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  function handleLogout() {
-    window.localStorage.removeItem(DEMO_USER_STORAGE_KEY);
-    setDemoUser(null);
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setUserEmail(null);
     router.push("/");
   }
 
@@ -69,9 +78,7 @@ export function SiteNav() {
           </nav>
           <div className="flex items-center gap-2 border-l border-white/[0.08] pl-3">
             <span className="max-w-32 truncate text-xs text-[#a9a296]">
-              {demoUser?.nickname
-                ? `Demo 用户：${demoUser.nickname}`
-                : "未登录"}
+              {userEmail ?? "未登录"}
             </span>
             <button
               type="button"
