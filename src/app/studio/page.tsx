@@ -62,6 +62,23 @@ type UsageInfo = {
   remaining: number;
 };
 
+type DraftMetadata = {
+  expectedLength?: unknown;
+  literaryStyle?: unknown;
+  emotionalTension?: unknown;
+  relationshipStage?: unknown;
+  forbiddenItems?: unknown;
+  selectedChapter?: unknown;
+};
+
+type SavedDraft = {
+  id: string;
+  title: string;
+  content: string;
+  updated_at: string | null;
+  metadata: DraftMetadata | null;
+};
+
 type ChapterGenerationResult = {
   usedContext: string[];
   foreshadowingNotes: string[];
@@ -277,6 +294,47 @@ function lengthStatus(currentLength: number, targetLength: number) {
   return "接近目标";
 }
 
+function formatDraftDate(value: string | null) {
+  if (!value) return "未记录";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "未记录";
+
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function previewText(content: string) {
+  const compact = content.replace(/\s+/g, " ").trim();
+  return compact ? compact.slice(0, 30) : "空白草稿";
+}
+
+function isWordCount(value: unknown): value is (typeof wordCounts)[number] {
+  return typeof value === "string" && wordCounts.includes(value as (typeof wordCounts)[number]);
+}
+
+function isStyleCard(value: unknown): value is (typeof styleCards)[number] {
+  return typeof value === "string" && styleCards.includes(value as (typeof styleCards)[number]);
+}
+
+function isTension(value: unknown): value is (typeof tensions)[number] {
+  return typeof value === "string" && tensions.includes(value as (typeof tensions)[number]);
+}
+
+function isRelationshipStage(
+  value: unknown,
+): value is (typeof relationshipStages)[number] {
+  return (
+    typeof value === "string" &&
+    relationshipStages.includes(value as (typeof relationshipStages)[number])
+  );
+}
+
 function buildReviewResult(draft: string): ReviewResult {
   const hasCanonSignal = /徽章|誓印|帝都|禁卫府|王城/.test(draft);
   const hasEmotionSignal = /沉默|旧友|雨|雪|旧伤|停顿/.test(draft);
@@ -337,6 +395,10 @@ export default function StudioPage() {
   const [savedHint, setSavedHint] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [savedDrafts, setSavedDrafts] = useState<SavedDraft[]>([]);
+  const [loadingDrafts, setLoadingDrafts] = useState(false);
+  const [draftMessage, setDraftMessage] = useState("登录后查看草稿");
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [lastToolCall, setLastToolCall] = useState<string | null>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [generationStatus, setGenerationStatus] = useState<
@@ -351,13 +413,117 @@ export default function StudioPage() {
   const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null);
 
   useEffect(() => {
-    if (!window.localStorage.getItem(DEMO_USER_STORAGE_KEY)) {
-      router.replace("/");
+    let isMounted = true;
+
+    async function initializeStudio() {
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
+
+      if (!user && !window.localStorage.getItem(DEMO_USER_STORAGE_KEY)) {
+        router.replace("/");
+        return;
+      }
+
+      if (user) {
+        await loadSavedDrafts(user.id, isMounted);
+      } else if (isMounted) {
+        setDraftMessage("登录后查看草稿");
+      }
+
+      if (isMounted) setIsCheckingAuth(false);
+    }
+
+    void initializeStudio();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
+  async function loadSavedDrafts(userId: string, isMounted = true) {
+    setLoadingDrafts(true);
+    setDraftMessage("");
+
+    const { data, error } = await supabase
+      .from("user_drafts")
+      .select("id, title, content, updated_at, metadata")
+      .eq("user_id", userId)
+      .eq("draft_type", "studio")
+      .order("updated_at", { ascending: false })
+      .limit(10);
+
+    if (!isMounted) return;
+
+    setLoadingDrafts(false);
+
+    if (error) {
+      setDraftMessage("草稿读取失败。");
       return;
     }
 
-    setIsCheckingAuth(false);
-  }, [router]);
+    const drafts = (data ?? []).map((item) => ({
+      id: String(item.id),
+      title: typeof item.title === "string" && item.title ? item.title : "未命名章节",
+      content: typeof item.content === "string" ? item.content : "",
+      updated_at: typeof item.updated_at === "string" ? item.updated_at : null,
+      metadata:
+        item.metadata && typeof item.metadata === "object"
+          ? (item.metadata as DraftMetadata)
+          : null,
+    }));
+
+    setSavedDrafts(drafts);
+    setDraftMessage(drafts.length ? "" : "暂无保存草稿。");
+  }
+
+  async function refreshSavedDrafts() {
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
+
+    if (!user) {
+      setDraftMessage("登录后查看草稿");
+      setSavedDrafts([]);
+      return;
+    }
+
+    await loadSavedDrafts(user.id);
+  }
+
+  function applyDraftMetadata(metadata: DraftMetadata | null) {
+    if (!metadata) return;
+
+    if (isWordCount(metadata.expectedLength)) {
+      setWordCount(metadata.expectedLength);
+    }
+
+    if (isStyleCard(metadata.literaryStyle)) {
+      setStyleCard(metadata.literaryStyle);
+    }
+
+    if (isTension(metadata.emotionalTension)) {
+      setTension(metadata.emotionalTension);
+    }
+
+    if (isRelationshipStage(metadata.relationshipStage)) {
+      setRelationshipStage(metadata.relationshipStage);
+    }
+
+    if (typeof metadata.forbiddenItems === "string") {
+      setForbiddenItems(metadata.forbiddenItems);
+    }
+  }
+
+  function handleLoadDraft(savedDraft: SavedDraft) {
+    setCurrentDraftId(savedDraft.id);
+    setChapterTitle(savedDraft.title || "未命名章节");
+    setDraft(savedDraft.content);
+    applyDraftMetadata(savedDraft.metadata);
+    setSavedHint("草稿已加载。");
+    setSaveError(null);
+    setDraftMessage("");
+    setReviewError(null);
+    setReviewResult(null);
+  }
 
   const activeAssets = useMemo(
     () => ({
@@ -383,6 +549,7 @@ export default function StudioPage() {
 
     setAssetTab(nextTab);
     setSelectedAssetId(firstAsset.id);
+    setCurrentDraftId(null);
     setSavedHint(null);
     setSaveError(null);
 
@@ -393,6 +560,7 @@ export default function StudioPage() {
 
   function handleSelectAsset(asset: Asset) {
     setSelectedAssetId(asset.id);
+    setCurrentDraftId(null);
     setSavedHint(null);
     setSaveError(null);
 
@@ -417,6 +585,7 @@ export default function StudioPage() {
     setOutlineAssets((current) => [...current, newChapter]);
     setAssetTab("outline");
     setSelectedAssetId(newChapter.id);
+    setCurrentDraftId(null);
     setChapterTitle(title);
     setSavedHint(null);
     setSaveError(null);
@@ -616,34 +785,62 @@ export default function StudioPage() {
         return;
       }
 
-      const { error } = await supabase.from("user_drafts").insert({
+      const metadata = {
+        expectedLength: wordCount,
+        literaryStyle: styleCard,
+        emotionalTension: tension,
+        relationshipStage,
+        forbiddenItems,
+        selectedChapter: selectedAsset?.title ?? chapterTitle,
+        contextEngine: {
+          canon: true,
+          persona: true,
+          relationship: true,
+          styleCard: true,
+        },
+      };
+      const payload = {
         user_id: user.id,
         title: chapterTitle.trim() || "未命名章节",
         draft_type: "studio",
         content: draft,
-        metadata: {
-          expectedLength: wordCount,
-          literaryStyle: styleCard,
-          emotionalTension: tension,
-          relationshipStage,
-          forbiddenItems,
-          selectedChapter: selectedAsset?.title ?? chapterTitle,
-          contextEngine: {
-            canon: true,
-            persona: true,
-            relationship: true,
-            styleCard: true,
-          },
-        },
+        metadata,
         updated_at: new Date().toISOString(),
-      });
+      };
 
-      if (error) {
-        setSaveError(error.message);
-        return;
+      if (currentDraftId) {
+        const { error } = await supabase
+          .from("user_drafts")
+          .update(payload)
+          .eq("id", currentDraftId)
+          .eq("user_id", user.id);
+
+        if (error) {
+          setSaveError(error.message);
+          return;
+        }
+
+        setSavedHint("草稿已更新。");
+      } else {
+        const { data: insertedDraft, error } = await supabase
+          .from("user_drafts")
+          .insert(payload)
+          .select("id")
+          .single();
+
+        if (error) {
+          setSaveError(error.message);
+          return;
+        }
+
+        if (insertedDraft?.id) {
+          setCurrentDraftId(String(insertedDraft.id));
+        }
+
+        setSavedHint("草稿已保存。");
       }
 
-      setSavedHint("草稿已保存。");
+      await refreshSavedDrafts();
     } catch (error) {
       setSaveError(
         error instanceof Error ? error.message : "保存失败，请稍后重试。",
@@ -799,6 +996,67 @@ export default function StudioPage() {
                 </TabsContent>
               ))}
             </Tabs>
+
+            <div className="border-t border-[#8a7c62]/24 px-3 py-4">
+              <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6f6759]">
+                    我的草稿
+                  </h3>
+                  <p className="mt-1 text-[11px] text-[#8a7c62]">
+                    Saved studio drafts
+                  </p>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="border-[#53613b]/25 bg-[#fffaf0] text-[10px] text-[#3f4b2f]"
+                >
+                  {savedDrafts.length}/10
+                </Badge>
+              </div>
+
+              {loadingDrafts ? (
+                <div className="rounded-xl border border-dashed border-[#8a7c62]/28 bg-[#fffaf0]/70 px-3 py-4 text-center text-xs text-[#7a705e]">
+                  正在读取草稿……
+                </div>
+              ) : savedDrafts.length ? (
+                <div className="flex flex-col gap-2">
+                  {savedDrafts.map((savedDraft) => {
+                    const isCurrent = currentDraftId === savedDraft.id;
+
+                    return (
+                      <button
+                        key={savedDraft.id}
+                        type="button"
+                        onClick={() => handleLoadDraft(savedDraft)}
+                        className={cn(
+                          "rounded-xl border px-3 py-3 text-left transition-all duration-200 hover:-translate-y-0.5",
+                          isCurrent
+                            ? "border-[#53613b]/60 bg-[#e7ead4] shadow-[0_8px_20px_rgba(63,75,47,0.12)]"
+                            : "border-[#9a7f45]/18 bg-[#fffdf7]/80 hover:border-[#53613b]/35 hover:bg-[#fffdf7]",
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="line-clamp-2 text-sm font-medium leading-5 text-[#171410]">
+                            {savedDraft.title}
+                          </span>
+                          <span className="shrink-0 text-[10px] text-[#8a7c62]">
+                            {formatDraftDate(savedDraft.updated_at)}
+                          </span>
+                        </div>
+                        <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#6f6759]">
+                          {previewText(savedDraft.content)}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-[#8a7c62]/28 bg-[#fffaf0]/70 px-3 py-4 text-center text-xs text-[#7a705e]">
+                  {draftMessage || "暂无保存草稿。"}
+                </div>
+              )}
+            </div>
           </aside>
 
           <section className="flex min-w-0 flex-col gap-4">
