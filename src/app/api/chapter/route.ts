@@ -104,13 +104,22 @@ function stringValue(value: unknown, fallback = "") {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
-function parseExpectedLength(value: unknown) {
-  const raw = stringValue(value, "1200");
+function parseTargetLength(value: unknown, fallback = 1000) {
+  const raw = stringValue(value, String(fallback));
   const matched = raw.match(/\d+/);
-  const parsed = matched ? Number(matched[0]) : 1200;
+  const parsed = matched ? Number(matched[0]) : fallback;
 
-  if (!Number.isFinite(parsed)) return 1200;
-  return Math.min(5000, Math.max(600, Math.round(parsed)));
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(5000, Math.max(300, Math.round(parsed)));
+}
+
+function getLengthRange(targetLength: number) {
+  const ratio = targetLength <= 300 ? 0.2 : 0.15;
+
+  return {
+    min: Math.floor(targetLength * (1 - ratio)),
+    max: Math.ceil(targetLength * (1 + ratio)),
+  };
 }
 
 function parseForbiddenItems(value: ChapterRequestBody["forbiddenItems"]) {
@@ -135,7 +144,7 @@ function normalizeChapterInput(body: ChapterRequestBody): NormalizedChapterInput
       body.plotInput,
       "雨夜里，旧友在同一处屋檐下重逢。两人都认出了对方，却都没有先承认。",
     ),
-    expectedLength: parseExpectedLength(body.expectedLength),
+    expectedLength: parseTargetLength(body.expectedLength, 1000),
     styleRequirement: stringValue(
       body.styleRequirement,
       "短段落，动作推进，少解释，多留白。",
@@ -244,6 +253,12 @@ function sanitizeDraft(draft: string) {
     .trim();
 }
 
+function getChapterParagraphCount(targetLength: number) {
+  if (targetLength <= 600) return { min: 8, max: 12 };
+  if (targetLength <= 1200) return { min: 14, max: 20 };
+  return { min: 20, max: 28 };
+}
+
 function createFreeChapterResponse(input: NormalizedChapterInput): ChapterResponse {
   const paragraphs = [
     `${input.chapterTitle}这一夜来得很迟。雨从城墙外压下来，把巷口的灯打得忽明忽暗，石阶上积着薄薄一层水。`,
@@ -260,10 +275,33 @@ function createFreeChapterResponse(input: NormalizedChapterInput): ChapterRespon
     `“你到底惹上了谁？”`,
     `沈砚没有回答。他只是把门外的伞收拢，伞尖在石阶上点了一下。`,
     `那一声很轻。墙外的脚步声却停了。`,
+    `林栀把手按在门框上，指节因为用力而发白。她知道这不是普通的追兵，也知道沈砚不会无缘无故把危险带到她门前。`,
+    `“进来。”她终于说。`,
+    `沈砚没有动：“你会后悔。”`,
+    `“我后悔的事已经够多了。”`,
+    `这句话落下去，屋里的暗处像被轻轻拨动了一下。旧书架上有一页纸滑出来，正好停在两人脚边。`,
+    `纸上是半幅王城巡防图，北塔的位置被红线圈住。红线旁边还有一个细小的墨点，像谁在匆忙中留下的记号。`,
+    `沈砚低头看了一眼，脸色第一次变了。`,
+    `“这东西怎么会在你这里？”`,
+    `林栀没有回答。她弯腰捡起那页纸，纸背上沾着一点干涸的泥。那泥色很浅，只有禁卫府后巷的白石路会留下这种痕迹。`,
+    `外面的脚步声又近了一步。有人在院墙外低声报出一个名字，那不是沈砚现在用的名字，而是五年前就该被埋掉的旧称。`,
+    `烛火已经灭了，屋内只剩雨光。林栀站在黑暗里，忽然明白沈砚为什么一定要来拿那枚旧徽章。`,
+    `那不是证物。`,
+    `那是钥匙。`,
+    `“你还信我吗？”沈砚问。`,
+    `林栀把巡防图折好，塞进袖中：“先活过今晚。”`,
+    `话音刚落，门外有人抬手叩门。三下，不轻不重，像早就知道里面有两个人。`,
+    `林栀转身去取墙上的短刀，刀鞘多年未动，抽出时发出一声低哑的响。`,
+    `沈砚看着她的动作，眼神里那点犹豫终于沉下去。他把旧徽章重新扣进掌心，像扣住一个迟来的答案。`,
+    `“北塔的门只能开一次。”他说。`,
+    `林栀回头：“那就别浪费。”`,
+    `门闩在下一瞬被人从外面震了一下。木屑落下来，雨声忽然变得很远。`,
+    `屋内没有人再说话。`,
+    `第二下撞击来临前，林栀看见窗纸上浮出一道陌生的影子。那影子抬起手，掌心印着半枚誓印。`,
   ];
 
-  const targetParagraphCount =
-    input.expectedLength >= 1800 ? paragraphs.length : Math.max(8, Math.min(12, paragraphs.length));
+  const paragraphCount = getChapterParagraphCount(input.expectedLength);
+  const targetParagraphCount = Math.min(paragraphCount.max, paragraphs.length);
   const draft = sanitizeDraft(paragraphs.slice(0, targetParagraphCount).join("\n\n"));
 
   return {
@@ -314,6 +352,7 @@ export async function POST(request: Request) {
   }
 
   const normalized = normalizeChapterInput(body);
+  const lengthRange = getLengthRange(normalized.expectedLength);
   const freeModelResponse = createFreeChapterResponse(normalized);
   const settings = await getUserModelSettings(request);
 
@@ -350,6 +389,8 @@ export async function POST(request: Request) {
         "你是 FanForge 的章节写作 Agent，专门负责同人长文和连载章节草稿。",
         "你的任务不是写情绪切片，而是写一个可继续扩展的章节片段。",
         "你要关注剧情推进、人物状态变化、伏笔埋设、上下文连续性、角色关系阶段、下一章钩子、Canon 和人格一致性。",
+        `draft 字段目标字数约为 ${normalized.expectedLength} 个中文字符，章节正文必须尽量落在 ${lengthRange.min} 到 ${lengthRange.max} 个中文字符之间。`,
+        "不要只输出短片段。如果用户选择 1000 字，应至少写到 850 字左右。",
         "draft 字段只能是小说正文，不要混入解释说明、写作策略、上下文列表或大纲。",
         "draft 必须有明确场景开端、人物行动、至少 3 句自然对话、短段落和下一章钩子。",
         "draft 不允许出现：根据用户要求、本章目标是、生成、mock、demo、fallback、参数、禁止项、设定说明。",
@@ -359,9 +400,12 @@ export async function POST(request: Request) {
       ].join("\n"),
       input: JSON.stringify({
         ...normalized,
+        targetLength: normalized.expectedLength,
+        minLength: lengthRange.min,
+        maxLength: lengthRange.max,
         task: "生成一个章节草稿片段，并返回上下文、伏笔提示和下一章钩子。",
       }),
-      max_output_tokens: Math.min(5000, Math.max(1800, normalized.expectedLength * 2)),
+      max_output_tokens: Math.min(7000, Math.max(2200, normalized.expectedLength * 3)),
       store: false,
       text: {
         format: {

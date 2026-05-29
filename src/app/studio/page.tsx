@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
@@ -53,6 +54,17 @@ type Asset = {
 type ReviewResult = {
   scores: { label: string; value: string; note: string }[];
   suggestions: string[];
+};
+
+type ChapterGenerationResult = {
+  usedContext: string[];
+  foreshadowingNotes: string[];
+  nextChapterHooks: string[];
+};
+
+type SliceGenerationResult = {
+  emotionStructure: string[];
+  characterConstraints: string[];
 };
 
 const assets: Record<AssetTab, Asset[]> = {
@@ -229,6 +241,36 @@ const contextModules = [
   },
 ] as const;
 
+function parseTargetLength(input: unknown, fallback = 1000) {
+  if (typeof input === "number" && Number.isFinite(input)) {
+    return Math.round(input);
+  }
+
+  if (typeof input === "string") {
+    const matched = input.match(/\d+/);
+    if (matched) return Number(matched[0]);
+  }
+
+  return fallback;
+}
+
+function getLengthRange(targetLength: number) {
+  const ratio = targetLength <= 300 ? 0.2 : 0.15;
+
+  return {
+    min: Math.floor(targetLength * (1 - ratio)),
+    max: Math.ceil(targetLength * (1 + ratio)),
+  };
+}
+
+function lengthStatus(currentLength: number, targetLength: number) {
+  const range = getLengthRange(targetLength);
+
+  if (currentLength < range.min) return "低于目标，可继续扩写";
+  if (currentLength > range.max) return "已超过目标";
+  return "接近目标";
+}
+
 function buildReviewResult(draft: string): ReviewResult {
   const hasCanonSignal = /徽章|誓印|帝都|禁卫府|王城/.test(draft);
   const hasEmotionSignal = /沉默|旧友|雨|雪|旧伤|停顿/.test(draft);
@@ -288,6 +330,14 @@ export default function StudioPage() {
   );
   const [savedHint, setSavedHint] = useState<string | null>(null);
   const [lastToolCall, setLastToolCall] = useState<string | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [generationStatus, setGenerationStatus] = useState<
+    "continue" | "expand" | "slice" | null
+  >(null);
+  const [chapterGenerationResult, setChapterGenerationResult] =
+    useState<ChapterGenerationResult | null>(null);
+  const [sliceGenerationResult, setSliceGenerationResult] =
+    useState<SliceGenerationResult | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null);
 
@@ -314,6 +364,9 @@ export default function StudioPage() {
       activeAssets[assetTab][0]
     );
   }, [activeAssets, assetTab, selectedAssetId]);
+  const targetLength = parseTargetLength(wordCount, 1000);
+  const currentLength = draft.length;
+  const currentLengthStatus = lengthStatus(currentLength, targetLength);
 
   function handleTabChange(value: string) {
     const nextTab = value as AssetTab;
@@ -361,27 +414,169 @@ export default function StudioPage() {
     setDraft((current) => `${current.trim() ? `${current}\n\n` : ""}${text}`);
     setSavedHint(null);
     setReviewError(null);
+    setGenerationError(null);
   }
 
-  function handleContinueWriting() {
-    appendDraft(
-      "旧友抬眼时，正厅里的烛火轻轻晃了一下。陆沉没有回避那道视线，只把请柬折回袖中，像把自己的名字也一并藏回阴影里。",
-    );
-    setLastToolCall("本次调用：单章续写");
+  async function requestHeaders() {
+    const { data } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (data.session?.access_token) {
+      headers.Authorization = `Bearer ${data.session.access_token}`;
+    }
+
+    return headers;
   }
 
-  function handleExpandScene() {
-    appendDraft(
-      "婚礼进行曲响起前，侍从送来一枚袖扣。银盘很冷，袖扣背面刻着一道几乎磨平的王徽，只有在雪光下才露出旧日纹路。",
-    );
-    setLastToolCall("本次调用：场景扩写");
+  function requestErrorMessage(status: number) {
+    return status === 400
+      ? "生成失败，请检查模型设置。OpenAI API Key 未配置时可切换 FanForge Free Model。"
+      : "生成失败，请稍后重试。";
   }
 
-  function handleGenerateSlice() {
-    appendDraft(
-      "雨雪从彩窗外斜斜落下。旧友没有叫他的名字，只把戒指盒往掌心里收了半寸，像替他挡住某个即将暴露的旧称。",
-    );
-    setLastToolCall("本次调用：Slice 模式");
+  async function handleChapterGeneration(kind: "continue" | "expand") {
+    if (generationStatus) return;
+
+    setGenerationStatus(kind);
+    setGenerationError(null);
+
+    try {
+      const response = await fetch("/api/chapter", {
+        method: "POST",
+        headers: await requestHeaders(),
+        body: JSON.stringify({
+          mode: kind === "continue" ? "continue" : "expand_scene",
+          chapterTitle,
+          chapterGoal:
+            kind === "continue"
+              ? "延续当前章节正文，保持角色关系和上下文一致"
+              : "扩写当前场景，增加动作、对话、情绪推进和场景细节",
+          plotInput: draft,
+          expectedLength: wordCount,
+          styleRequirement: styleCard,
+          forbiddenItems,
+          canonContext: "Canon Evidence 已启用，约束世界观、身份信息和时间线。",
+          personaContext: "Persona Map 已启用，约束角色人格和 OOC 边界。",
+          relationshipContext: `Relationship Map 已启用，当前关系阶段：${relationshipStage}。`,
+          previousChapterSummary: draft.trim()
+            ? draft.trim().slice(0, 600)
+            : selectedAsset?.description,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+          message?: string;
+        } | null;
+
+        throw new Error(
+          payload?.error || payload?.message || requestErrorMessage(response.status),
+        );
+      }
+
+      const data = (await response.json()) as {
+        draft: string;
+        usedContext: string[];
+        foreshadowingNotes: string[];
+        nextChapterHooks: string[];
+      };
+
+      appendDraft(data.draft);
+      setChapterGenerationResult({
+        usedContext: data.usedContext,
+        foreshadowingNotes: data.foreshadowingNotes,
+        nextChapterHooks: data.nextChapterHooks,
+      });
+      setSliceGenerationResult(null);
+      setLastToolCall(kind === "continue" ? "本次调用：单章续写" : "本次调用：场景扩写");
+    } catch (error) {
+      setGenerationError(
+        error instanceof Error ? error.message : "生成失败，请检查模型设置。",
+      );
+    } finally {
+      setGenerationStatus(null);
+    }
+  }
+
+  async function handleContinueWriting() {
+    await handleChapterGeneration("continue");
+  }
+
+  async function handleExpandScene() {
+    await handleChapterGeneration("expand");
+  }
+
+  async function handleGenerateSlice() {
+    if (generationStatus) return;
+
+    setGenerationStatus("slice");
+    setGenerationError(null);
+
+    try {
+      const lastParagraph =
+        draft
+          .split(/\n{2,}/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .at(-1) ?? "";
+      const response = await fetch("/api/writer", {
+        method: "POST",
+        headers: await requestHeaders(),
+        body: JSON.stringify({
+          characterNames: "",
+          relationshipType: "角色关系",
+          relationshipTypeFinal: relationshipStage,
+          moment: "当前章节瞬间",
+          momentFinal: [chapterTitle, lastParagraph].filter(Boolean).join("："),
+          stage: relationshipStage,
+          stageFinal: relationshipStage,
+          tension,
+          tensionFinal: tension,
+          expectedLength: wordCount,
+          customLength: "",
+          styleCard,
+          styleCustom: "",
+          forbiddenItems: forbiddenItems
+            ? forbiddenItems.split(/[；;、\n]/).filter(Boolean)
+            : [],
+          forbiddenCustom: "",
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+          message?: string;
+        } | null;
+
+        throw new Error(
+          payload?.error || payload?.message || requestErrorMessage(response.status),
+        );
+      }
+
+      const data = (await response.json()) as {
+        text: string;
+        emotionStructure: string[];
+        characterConstraints: string[];
+      };
+
+      appendDraft(data.text);
+      setSliceGenerationResult({
+        emotionStructure: data.emotionStructure,
+        characterConstraints: data.characterConstraints,
+      });
+      setChapterGenerationResult(null);
+      setLastToolCall("本次调用：Slice 模式");
+    } catch (error) {
+      setGenerationError(
+        error instanceof Error ? error.message : "生成失败，请检查模型设置。",
+      );
+    } finally {
+      setGenerationStatus(null);
+    }
   }
 
   function handleSaveDraft() {
@@ -615,6 +810,26 @@ export default function StudioPage() {
                 />
               </div>
 
+              <div className="flex flex-wrap items-center gap-2 border border-[#8a7c62]/24 bg-[#fffdf7] px-3 py-2 text-xs text-[#6f6759]">
+                <span>目标字数：{targetLength}</span>
+                <span className="text-[#b9aa83]">/</span>
+                <span>当前字数：{currentLength}</span>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "border-[#8a7c62]/24 bg-[#fbf5e8] text-[10px]",
+                    currentLengthStatus === "接近目标" &&
+                      "border-[#53613b]/35 bg-[#e7ead4] text-[#3f4b2f]",
+                    currentLengthStatus === "已超过目标" &&
+                      "border-[#9a7f45]/35 bg-[#efe2c7] text-[#6f5f3f]",
+                    currentLengthStatus === "低于目标，可继续扩写" &&
+                      "border-[#8a3f30]/25 bg-[#f3d8cc] text-[#7f3326]",
+                  )}
+                >
+                  {currentLengthStatus}
+                </Badge>
+              </div>
+
               <div className="relative flex min-h-[470px] flex-1 overflow-hidden border border-[#8a6f38]/35 bg-[#fffaf0] shadow-[0_18px_44px_rgba(92,69,42,0.09)]">
                 <Textarea
                   value={draft}
@@ -632,25 +847,28 @@ export default function StudioPage() {
                 <Button
                   className="h-10 bg-[#171410] px-4 text-[#f8f0df] hover:-translate-y-0.5 hover:bg-[#28331f]"
                   onClick={handleContinueWriting}
+                  disabled={generationStatus !== null}
                 >
                   <Sparkles className="mr-2 size-4" />
-                  继续写
+                  {generationStatus === "continue" ? "续写中..." : "继续写"}
                 </Button>
                 <Button
                   variant="outline"
                   className="h-10 border-[#53613b]/35 bg-[#fbf5e8] text-[#28331f] hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#e7ead4]"
                   onClick={handleExpandScene}
+                  disabled={generationStatus !== null}
                 >
                   <BookOpenText className="mr-2 size-4" />
-                  扩写场景
+                  {generationStatus === "expand" ? "扩写中..." : "扩写场景"}
                 </Button>
                 <Button
                   variant="outline"
                   className="h-10 border-[#53613b]/35 bg-[#fbf5e8] text-[#28331f] hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#e7ead4]"
                   onClick={handleGenerateSlice}
+                  disabled={generationStatus !== null}
                 >
                   <PenLine className="mr-2 size-4" />
-                  生成情绪切片
+                  {generationStatus === "slice" ? "生成中..." : "生成情绪切片"}
                 </Button>
                 <Button
                   variant="outline"
@@ -664,6 +882,11 @@ export default function StudioPage() {
                   <span className="inline-flex items-center gap-1.5 text-xs text-[#3f4b2f]">
                     <CheckCircle2 className="size-3.5" />
                     {savedHint}
+                  </span>
+                ) : null}
+                {generationError ? (
+                  <span className="text-xs text-[#7f3326]">
+                    {generationError}
                   </span>
                 ) : null}
               </div>
@@ -836,6 +1059,34 @@ export default function StudioPage() {
                     Reviewer 会在有正文后返回 OOC、Canon、情绪张力和风格匹配四项评分。
                   </div>
                 )}
+                {chapterGenerationResult ? (
+                  <div className="grid gap-3">
+                    <GenerationList
+                      title="使用到的上下文"
+                      items={chapterGenerationResult.usedContext}
+                    />
+                    <GenerationList
+                      title="伏笔提示"
+                      items={chapterGenerationResult.foreshadowingNotes}
+                    />
+                    <GenerationList
+                      title="下一章钩子"
+                      items={chapterGenerationResult.nextChapterHooks}
+                    />
+                  </div>
+                ) : null}
+                {sliceGenerationResult ? (
+                  <div className="grid gap-3">
+                    <GenerationList
+                      title="情绪结构"
+                      items={sliceGenerationResult.emotionStructure}
+                    />
+                    <GenerationList
+                      title="使用到的约束"
+                      items={sliceGenerationResult.characterConstraints}
+                    />
+                  </div>
+                ) : null}
               </TabsContent>
             </Tabs>
           </aside>
@@ -902,6 +1153,22 @@ function ParamSelect({
           ))}
         </SelectContent>
       </Select>
+    </div>
+  );
+}
+
+function GenerationList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-2xl border border-[#8a7c62]/28 bg-[#fffdf7] px-3 py-3">
+      <div className="mb-2 flex items-center gap-2">
+        <Sparkles className="size-3.5 text-[#53613b]" />
+        <span className="text-sm font-medium text-[#171410]">{title}</span>
+      </div>
+      <ul className="space-y-2 text-xs leading-relaxed text-[#5f5849]">
+        {items.map((item) => (
+          <li key={item}>· {item}</li>
+        ))}
+      </ul>
     </div>
   );
 }

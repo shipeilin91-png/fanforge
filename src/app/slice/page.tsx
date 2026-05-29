@@ -18,10 +18,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
-const RELATION_TYPES = ["CP", "宿敌", "师徒", "亲情", "阵营对立"] as const;
-const MOMENTS = ["雨夜重逢", "战后包扎", "冷战破冰", "旧物归还", "临别前一刻"] as const;
-const STAGES = ["初识", "对立", "暧昧", "冷战", "分离后重逢"] as const;
-const TENSIONS = ["克制", "酸涩", "旧情未了", "保护欲", "共犯感"] as const;
+const RELATION_TYPES = ["CP", "宿敌", "师徒", "亲情", "阵营对立", "自定义关系"] as const;
+const MOMENTS = ["雨夜重逢", "战后包扎", "冷战破冰", "旧物归还", "临别前一刻", "自定义瞬间"] as const;
+const STAGES = ["初识", "对立", "暧昧", "冷战", "分离后重逢", "自定义阶段"] as const;
+const TENSIONS = ["克制", "酸涩", "旧情未了", "保护欲", "共犯感", "自定义张力"] as const;
 const VIBES = ["冷艳华美", "温润烟火", "疏离克制", "浪漫诗性"] as const;
 const FORBIDDEN = ["禁止告白", "禁止拥抱", "禁止亲吻", "禁止心理解释", "禁止过度甜腻"] as const;
 const WORD_COUNTS = ["300 字", "500 字", "800 字", "自定义"] as const;
@@ -72,16 +72,17 @@ type FeedbackRecord = {
   generatedPreview: string;
 };
 
-function relationCue(relation: SliceParams["relation"]) {
-  const cues: Record<SliceParams["relation"], string> = {
+function relationCue(relation: string) {
+  const cues: Record<string, string> = {
     CP: "未曾说破的牵连",
     宿敌: "针锋相对的旧日默契",
     师徒: "克制照拂里的分寸",
     亲情: "不必解释的牵挂",
     阵营对立: "立场相背时的迟疑",
+    自定义关系: "复杂而未明的牵连",
   };
 
-  return cues[relation];
+  return cues[relation] || relation || "复杂而未明的牵连";
 }
 
 function buildPreviewFallback(p: SliceParams, runIndex: number): SlicePreview {
@@ -166,6 +167,20 @@ function FieldLabel({ children }: { children: ReactNode }) {
   );
 }
 
+function parseTargetLength(input: string, fallback = 500) {
+  const matched = input.match(/\d+/);
+  return matched ? Number(matched[0]) : fallback;
+}
+
+function getLengthRange(targetLength: number) {
+  const ratio = targetLength <= 300 ? 0.2 : 0.15;
+
+  return {
+    min: Math.floor(targetLength * (1 - ratio)),
+    max: Math.ceil(targetLength * (1 + ratio)),
+  };
+}
+
 export default function SlicePage() {
   const router = useRouter();
   const [relation, setRelation] =
@@ -215,7 +230,22 @@ export default function SlicePage() {
   }
 
   function currentParams(): SliceParams {
-    return { relation, moment, stage, tension, vibe, forbiddens };
+    return {
+      relation: (relation === "自定义关系"
+        ? relationshipTypeCustom.trim() || relation
+        : relation) as SliceParams["relation"],
+      moment: (moment === "自定义瞬间"
+        ? momentCustom.trim() || moment
+        : moment) as SliceParams["moment"],
+      stage: (stage === "自定义阶段"
+        ? stageCustom.trim() || stage
+        : stage) as SliceParams["stage"],
+      tension: (tension === "自定义张力"
+        ? tensionCustom.trim() || tension
+        : tension) as SliceParams["tension"],
+      vibe,
+      forbiddens,
+    };
   }
 
   function toggleForbidden(item: (typeof FORBIDDEN)[number]) {
@@ -232,6 +262,9 @@ export default function SlicePage() {
 
     return wordCount;
   }
+  const targetLength = parseTargetLength(getTargetLength(), 500);
+  const currentLength = preview.fragment.length;
+  const targetRange = getLengthRange(targetLength);
 
   function saveFeedbackRecord(tags: string[] = feedbackTags, comment = feedbackText) {
     if (typeof window === "undefined") return;
@@ -277,8 +310,35 @@ export default function SlicePage() {
   async function handleGenerate() {
     if (isGenerating) return;
 
-    setIsGenerating(true);
     setErrorMsg(null);
+
+    const relationshipTypeFinal =
+      relation === "自定义关系" ? relationshipTypeCustom.trim() : relation;
+    const momentFinal = moment === "自定义瞬间" ? momentCustom.trim() : moment;
+    const stageFinal = stage === "自定义阶段" ? stageCustom.trim() : stage;
+    const tensionFinal = tension === "自定义张力" ? tensionCustom.trim() : tension;
+
+    if (relation === "自定义关系" && !relationshipTypeFinal) {
+      setErrorMsg("请填写自定义关系");
+      return;
+    }
+
+    if (moment === "自定义瞬间" && !momentFinal) {
+      setErrorMsg("请填写自定义瞬间");
+      return;
+    }
+
+    if (stage === "自定义阶段" && !stageFinal) {
+      setErrorMsg("请填写自定义阶段");
+      return;
+    }
+
+    if (tension === "自定义张力" && !tensionFinal) {
+      setErrorMsg("请填写自定义张力");
+      return;
+    }
+
+    setIsGenerating(true);
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -297,12 +357,16 @@ export default function SlicePage() {
           characterNames,
           relationshipType: relation,
           relationshipTypeCustom,
+          relationshipTypeFinal,
           moment,
           momentCustom,
+          momentFinal,
           stage,
           stageCustom,
+          stageFinal,
           tension,
           tensionCustom,
+          tensionFinal,
           expectedLength: wordCount,
           customLength,
           styleCard: vibe,
@@ -317,18 +381,18 @@ export default function SlicePage() {
 
       const data = (await res.json()) as {
         text: string;
-        emotionStructure: string;
-        characterConstraints: string;
+        emotionStructure: string | string[];
+        characterConstraints: string | string[];
       };
+      const toLines = (value: string | string[]) =>
+        Array.isArray(value)
+          ? value.filter((line) => line.trim() !== "")
+          : value.split("\n").filter((line) => line.trim() !== "");
 
       setPreview({
         fragment: data.text,
-        structure: data.emotionStructure
-          .split("\n")
-          .filter((l) => l.trim() !== ""),
-        constraints: data.characterConstraints
-          .split("\n")
-          .filter((l) => l.trim() !== ""),
+        structure: toLines(data.emotionStructure),
+        constraints: toLines(data.characterConstraints),
       });
       setGenerationRun((n) => n + 1);
     } catch {
@@ -408,51 +472,53 @@ export default function SlicePage() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <ParamSelect label="关系类型" value={relation} values={RELATION_TYPES} onChange={(v) => setRelation(v as SliceParams["relation"])} />
-                  <ParamSelect label="关系瞬间" value={moment} values={MOMENTS} onChange={(v) => setMoment(v as SliceParams["moment"])} />
-                  <ParamSelect label="关系阶段" value={stage} values={STAGES} onChange={(v) => setStage(v as SliceParams["stage"])} />
-                  <ParamSelect label="情绪张力" value={tension} values={TENSIONS} onChange={(v) => setTension(v as SliceParams["tension"])} />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="flex flex-col gap-2">
-                    <FieldLabel>关系类型补充</FieldLabel>
-                    <Textarea
-                      value={relationshipTypeCustom}
-                      onChange={(event) => setRelationshipTypeCustom(event.target.value)}
-                      placeholder="补充关系设定，例如：名义婚约、旧友重逢、宿敌合作、互相亏欠。"
-                      className="min-h-24 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
-                    />
+                  <div className="flex flex-col gap-3">
+                    <ParamSelect label="关系类型" value={relation} values={RELATION_TYPES} onChange={(v) => setRelation(v as SliceParams["relation"])} />
+                    {relation === "自定义关系" ? (
+                      <Textarea
+                        value={relationshipTypeCustom}
+                        onChange={(event) => setRelationshipTypeCustom(event.target.value)}
+                        placeholder="输入你的关系设定，例如：名义婚约、旧友重逢、宿敌合作、互相亏欠。"
+                        className="min-h-24 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
+                      />
+                    ) : null}
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <FieldLabel>关系阶段补充</FieldLabel>
-                    <Textarea
-                      value={stageCustom}
-                      onChange={(event) => setStageCustom(event.target.value)}
-                      placeholder="补充阶段细节，例如：分离五年后重逢，仍然熟悉但不敢越界。"
-                      className="min-h-24 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
-                    />
+
+                  <div className="flex flex-col gap-3">
+                    <ParamSelect label="关系瞬间" value={moment} values={MOMENTS} onChange={(v) => setMoment(v as SliceParams["moment"])} />
+                    {moment === "自定义瞬间" ? (
+                      <Textarea
+                        value={momentCustom}
+                        onChange={(event) => setMomentCustom(event.target.value)}
+                        placeholder="具体描述你想写的瞬间，例如：雨夜里两人躲在同一处屋檐下，谁都没有先开口。"
+                        className="min-h-28 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
+                      />
+                    ) : null}
                   </div>
-                </div>
 
-                <div className="flex flex-col gap-2">
-                  <FieldLabel>关系瞬间自由输入</FieldLabel>
-                  <Textarea
-                    value={momentCustom}
-                    onChange={(event) => setMomentCustom(event.target.value)}
-                    placeholder="具体描述你想写的瞬间，例如：雨夜里两人躲在同一处屋檐下，谁都没有先开口。"
-                    className="min-h-28 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
-                  />
-                </div>
+                  <div className="flex flex-col gap-3">
+                    <ParamSelect label="关系阶段" value={stage} values={STAGES} onChange={(v) => setStage(v as SliceParams["stage"])} />
+                    {stage === "自定义阶段" ? (
+                      <Textarea
+                        value={stageCustom}
+                        onChange={(event) => setStageCustom(event.target.value)}
+                        placeholder="补充阶段细节，例如：分离五年后重逢，仍然熟悉但不敢越界。"
+                        className="min-h-24 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
+                      />
+                    ) : null}
+                  </div>
 
-                <div className="flex flex-col gap-2">
-                  <FieldLabel>情绪张力补充</FieldLabel>
-                  <Textarea
-                    value={tensionCustom}
-                    onChange={(event) => setTensionCustom(event.target.value)}
-                    placeholder="你希望这段的情绪如何推进？例如：表面克制，内里酸涩，有一点旧情未了。"
-                    className="min-h-24 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
-                  />
+                  <div className="flex flex-col gap-3">
+                    <ParamSelect label="情绪张力" value={tension} values={TENSIONS} onChange={(v) => setTension(v as SliceParams["tension"])} />
+                    {tension === "自定义张力" ? (
+                      <Textarea
+                        value={tensionCustom}
+                        onChange={(event) => setTensionCustom(event.target.value)}
+                        placeholder="你希望这段的情绪如何推进？例如：表面克制，内里酸涩，有一点旧情未了。"
+                        className="min-h-24 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
+                      />
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-2">
@@ -569,6 +635,10 @@ export default function SlicePage() {
                 <h2 className="mt-2 font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
                   短篇稿纸
                 </h2>
+                <p className="mt-3 text-xs text-[#6f6759]">
+                  目标字数：{targetLength} / 当前字数：{currentLength}
+                  {currentLength < targetRange.min ? " · 当前结果低于目标字数，可点击继续写或扩写。" : ""}
+                </p>
               </div>
             </div>
 
@@ -584,7 +654,7 @@ export default function SlicePage() {
                     <p className="text-[#7a705e]">正在根据当前参数生成片段…</p>
                   ) : (
                     preview.fragment.split("\n\n").map((para, i) => (
-                      <p key={i} className="mb-5 last:mb-0">
+                      <p key={i} className="mb-5 whitespace-pre-wrap last:mb-0">
                         {para}
                       </p>
                     ))

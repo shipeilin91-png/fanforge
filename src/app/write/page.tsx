@@ -60,6 +60,20 @@ type ChapterResult = {
   nextChapterHooks: string[];
 };
 
+function parseTargetLength(input: string, fallback = 1000) {
+  const matched = input.match(/\d+/);
+  return matched ? Number(matched[0]) : fallback;
+}
+
+function getLengthRange(targetLength: number) {
+  const ratio = targetLength <= 300 ? 0.2 : 0.15;
+
+  return {
+    min: Math.floor(targetLength * (1 - ratio)),
+    max: Math.ceil(targetLength * (1 + ratio)),
+  };
+}
+
 export default function WritePage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [mode, setMode] = useState<(typeof writingModes)[number]>("单章续写");
@@ -81,6 +95,9 @@ export default function WritePage() {
   function getExpectedLength() {
     return wordCount === "自定义" ? customWordCount.trim() || "2000 字" : wordCount;
   }
+  const targetLength = parseTargetLength(getExpectedLength(), 1000);
+  const currentLength = result?.draft.length ?? 0;
+  const targetRange = getLengthRange(targetLength);
 
   async function handleGenerateDraft() {
     if (isGenerating) return;
@@ -89,13 +106,13 @@ export default function WritePage() {
     setErrorMsg(null);
 
     try {
-      const { data } = await supabase.auth.getSession();
+      const { data: sessionData } = await supabase.auth.getSession();
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
 
-      if (data.session?.access_token) {
-        headers.Authorization = `Bearer ${data.session.access_token}`;
+      if (sessionData.session?.access_token) {
+        headers.Authorization = `Bearer ${sessionData.session.access_token}`;
       }
 
       const response = await fetch("/api/chapter", {
@@ -127,8 +144,8 @@ export default function WritePage() {
         throw new Error(payload?.error || payload?.message || `HTTP ${response.status}`);
       }
 
-      const data = (await response.json()) as ChapterResult;
-      setResult(data);
+      const chapterData = (await response.json()) as ChapterResult;
+      setResult(chapterData);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "章节生成失败，请稍后重试。";
@@ -342,6 +359,12 @@ export default function WritePage() {
                   <h2 className="mt-2 font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
                     章节生成结果
                   </h2>
+                  <p className="mt-3 text-xs text-[#6f6759]">
+                    目标字数：{targetLength} / 当前字数：{currentLength}
+                    {result && currentLength < targetRange.min
+                      ? " · 当前结果低于目标字数，可点击继续写或扩写。"
+                      : ""}
+                  </p>
                 </div>
               </div>
               <div className="flex flex-col gap-5">
