@@ -46,6 +46,12 @@ export default function HomePage() {
   }, []);
 
   function handleEnterStudio() {
+    if (!hasSession) {
+      setAuthError("请先登录或注册");
+      setAuthMessage(null);
+      return;
+    }
+
     router.push("/studio");
   }
 
@@ -84,7 +90,12 @@ export default function HomePage() {
       return;
     }
 
-    setAuthMessage("注册成功，请检查邮箱完成验证");
+    if (authMode === "signup") {
+      setAuthMessage("注册成功，请检查邮箱完成验证");
+      return;
+    }
+
+    setAuthError("登录未完成，请检查邮箱或密码");
   }
 
   function handleToggleMode() {
