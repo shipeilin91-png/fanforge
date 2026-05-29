@@ -16,7 +16,7 @@ const usageModes = [
     provider: "fanforge_free",
     model: "fanforge-free",
     description: "免费体验模型，无需 API Key。",
-    detail: "每日免费额度：10 次生成。适合新用户试用情绪切片、章节草稿和多 Agent 审稿。",
+    detail: "适合新用户试用情绪切片、章节草稿和多 Agent 审稿，实时额度见免费模型卡片。",
     icon: Server,
   },
   {
@@ -34,7 +34,7 @@ const modelProviders = [
     label: "FanForge Free Model",
     provider: "fanforge_free",
     models: [{ label: "FanForge Free Model", value: "fanforge-free" }],
-    meta: "每日 10 次生成",
+    meta: "无需 Key",
   },
   {
     label: "OpenAI GPT",
@@ -76,6 +76,15 @@ const securityTips = [
   "不要把用户 Key 写入环境变量或 localStorage。",
 ] as const;
 
+type UsageSummary = {
+  loggedIn: boolean;
+  limit: number;
+  sliceUsed: number;
+  chapterUsed: number;
+  totalUsed: number;
+  remaining: number;
+};
+
 export default function SettingsPage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -89,6 +98,39 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [usageSummary, setUsageSummary] = useState<UsageSummary | null>(null);
+  const [usageError, setUsageError] = useState<string | null>(null);
+  const [isUsageLoading, setIsUsageLoading] = useState(false);
+
+  async function refreshUsage(accessToken?: string | null) {
+    setIsUsageLoading(true);
+    setUsageError(null);
+
+    try {
+      const headers: Record<string, string> = {};
+
+      if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch("/api/usage", { headers });
+      const payload = (await response.json().catch(() => null)) as
+        | (UsageSummary & { error?: string })
+        | null;
+
+      if (!response.ok || !payload) {
+        throw new Error(payload?.error || "无法读取今日免费额度");
+      }
+
+      setUsageSummary(payload);
+    } catch (error) {
+      setUsageError(
+        error instanceof Error ? error.message : "无法读取今日免费额度",
+      );
+    } finally {
+      setIsUsageLoading(false);
+    }
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -111,11 +153,13 @@ export default function SettingsPage() {
         setUserId(null);
         setUserEmail(null);
         setIsCheckingAuth(false);
+        void refreshUsage(null);
         return;
       }
 
       setUserId(user.id);
       setUserEmail(user.email ?? null);
+      void refreshUsage(sessionData.session?.access_token ?? null);
 
       const { data, error } = await supabase
         .from("user_model_settings")
@@ -183,12 +227,16 @@ export default function SettingsPage() {
 
     setIsSaving(true);
 
-    const { error } = await supabase.from("user_model_settings").upsert({
-      user_id: userId,
-      provider,
-      model,
-      api_key: nextApiKey || null,
-    });
+    const { error } = await supabase.from("user_model_settings").upsert(
+      {
+        user_id: userId,
+        provider,
+        model: provider === "fanforge_free" ? "fanforge-free" : model,
+        api_key: provider === "fanforge_free" ? null : nextApiKey,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,provider" },
+    );
 
     setIsSaving(false);
 
@@ -202,6 +250,9 @@ export default function SettingsPage() {
     setHasSavedApiKey(Boolean(nextApiKey));
     setApiKey("");
     setStatusMessage("模型设置已保存");
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    await refreshUsage(sessionData.session?.access_token ?? null);
   }
 
   if (isCheckingAuth) {
@@ -338,11 +389,16 @@ export default function SettingsPage() {
                 selected={provider === "fanforge_free"}
                 onClick={() => handleSelectProvider("fanforge_free")}
                 label="FanForge Free Model"
-                meta="每日 10 次生成"
+                meta="实时额度"
               />
               <p className="rounded-xl border border-[#53613b]/30 bg-[#e7ead4] px-3 py-3 text-xs leading-relaxed text-[#3f4b2f]">
                 免费体验模型，适合新用户试用情绪切片、章节草稿和多 Agent 审稿。
               </p>
+              <UsageQuotaCard
+                usage={usageSummary}
+                error={usageError}
+                isLoading={isUsageLoading}
+              />
             </div>
           </SettingsManual>
 
@@ -422,9 +478,16 @@ export default function SettingsPage() {
                 ) : null}
               </>
             ) : (
-              <p className="rounded-xl border border-[#53613b]/30 bg-[#e7ead4] px-3 py-3 text-xs leading-relaxed text-[#3f4b2f]">
-                当前使用免费模型，无需配置 API Key。每日免费额度：10 次生成。
-              </p>
+              <div className="flex flex-col gap-3">
+                <p className="rounded-xl border border-[#53613b]/30 bg-[#e7ead4] px-3 py-3 text-xs leading-relaxed text-[#3f4b2f]">
+                  当前使用免费模型，无需配置 API Key。
+                </p>
+                <UsageQuotaCard
+                  usage={usageSummary}
+                  error={usageError}
+                  isLoading={isUsageLoading}
+                />
+              </div>
             )}
             <Button
               type="button"
@@ -497,6 +560,73 @@ function getDefaultModel(provider: Provider) {
 
 function isKnownProvider(value: string): value is Provider {
   return modelProviders.some((item) => item.provider === value);
+}
+
+function UsageQuotaCard({
+  usage,
+  error,
+  isLoading,
+}: {
+  usage: UsageSummary | null;
+  error: string | null;
+  isLoading: boolean;
+}) {
+  if (isLoading && !usage) {
+    return (
+      <div className="rounded-xl border border-[#8a7c62]/24 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#6f6759]">
+        正在读取今日免费额度……
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-[#8a3f30]/25 bg-[#f3d8cc] px-3 py-3 text-xs leading-relaxed text-[#7f3326]">
+        {error}
+      </div>
+    );
+  }
+
+  if (!usage?.loggedIn) {
+    return (
+      <div className="rounded-xl border border-[#8a7c62]/24 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#6f6759]">
+        登录后可查看今日免费额度。
+      </div>
+    );
+  }
+
+  const isEmpty = usage.remaining === 0;
+  const isLow = usage.remaining > 0 && usage.remaining <= 2;
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border px-3 py-3 text-xs leading-relaxed",
+        isEmpty
+          ? "border-[#8a3f30]/25 bg-[#f3d8cc] text-[#7f3326]"
+          : isLow
+            ? "border-[#9a7f45]/35 bg-[#efe2c7] text-[#6f5f3f]"
+            : "border-[#53613b]/30 bg-[#e7ead4] text-[#3f4b2f]",
+      )}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-medium">
+          今日免费额度：剩余 {usage.remaining} / {usage.limit}
+        </span>
+        <span className="text-[10px] opacity-80">已用 {usage.totalUsed}</span>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] opacity-90">
+        <span>情绪切片已用：{usage.sliceUsed}</span>
+        <span>章节写作已用：{usage.chapterUsed}</span>
+      </div>
+      {isLow ? (
+        <p className="mt-2">免费额度即将用完，可切换高级模型 BYOK。</p>
+      ) : null}
+      {isEmpty ? (
+        <p className="mt-2">今日免费额度已用完，请切换高级模型或明天再试。</p>
+      ) : null}
+    </div>
+  );
 }
 
 function SettingsManual({
