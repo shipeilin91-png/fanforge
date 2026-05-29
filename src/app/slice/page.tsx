@@ -59,6 +59,13 @@ type SlicePreview = {
   fragment: string;
   structure: string[];
   constraints: string[];
+  usedCanonDocuments: string[];
+};
+
+type UsageInfo = {
+  limit: number;
+  used: number;
+  remaining: number;
 };
 
 type FeedbackRecord = {
@@ -156,6 +163,7 @@ function buildPreviewFallback(p: SliceParams, runIndex: number): SlicePreview {
     fragment: fragments[variant]!,
     structure: structureSets[variant]!,
     constraints: constraintSets[variant]!,
+    usedCanonDocuments: [],
   };
 }
 
@@ -207,6 +215,7 @@ export default function SlicePage() {
   const [generationRun, setGenerationRun] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
   const [preview, setPreview] = useState<SlicePreview>(() =>
     buildPreviewFallback(defaultParams, 1),
   );
@@ -377,12 +386,25 @@ export default function SlicePage() {
         }),
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as {
+          error?: string;
+          message?: string;
+        } | null;
+
+        throw new Error(
+          res.status === 429
+            ? "今日免费生成额度已用完，请前往模型设置切换高级模型，或明天再试。"
+            : payload?.error || payload?.message || `HTTP ${res.status}`,
+        );
+      }
 
       const data = (await res.json()) as {
         text: string;
         emotionStructure: string | string[];
         characterConstraints: string | string[];
+        usage?: UsageInfo;
+        usedCanonDocuments?: string[];
       };
       const toLines = (value: string | string[]) =>
         Array.isArray(value)
@@ -393,13 +415,26 @@ export default function SlicePage() {
         fragment: data.text,
         structure: toLines(data.emotionStructure),
         constraints: toLines(data.characterConstraints),
+        usedCanonDocuments: data.usedCanonDocuments ?? [],
       });
+      if (data.usage) setUsageInfo(data.usage);
       setGenerationRun((n) => n + 1);
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message ===
+          "今日免费生成额度已用完，请前往模型设置切换高级模型，或明天再试。"
+      ) {
+        setErrorMsg(error.message);
+        return;
+      }
+
       const nextRun = generationRun + 1;
       setPreview(buildPreviewFallback(currentParams(), nextRun));
       setGenerationRun(nextRun);
-      setErrorMsg("已生成预览，请检查参数与输出。");
+      setErrorMsg(
+        error instanceof Error ? error.message : "已生成预览，请检查参数与输出。",
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -621,6 +656,20 @@ export default function SlicePage() {
                 >
                   {isGenerating ? "Writer 生成中..." : "生成情绪切片"}
                 </Button>
+                {usageInfo ? (
+                  <div
+                    className={cn(
+                      "rounded-xl border px-3 py-2 text-xs leading-relaxed",
+                      usageInfo.remaining <= 2
+                        ? "border-[#9a7f45]/35 bg-[#efe2c7] text-[#6f5f3f]"
+                        : "border-[#53613b]/28 bg-[#e7ead4] text-[#3f4b2f]",
+                    )}
+                  >
+                    {usageInfo.remaining <= 2
+                      ? `今日免费额度仅剩 ${usageInfo.remaining} 次，可切换高级模型 BYOK。`
+                      : `今日免费额度：剩余 ${usageInfo.remaining} / ${usageInfo.limit}`}
+                  </div>
+                ) : null}
                 {errorMsg ? <p className="text-sm text-[#7f3326]">{errorMsg}</p> : null}
               </div>
             </div>
@@ -684,6 +733,21 @@ export default function SlicePage() {
                   ))}
                 </div>
               </InfoSection>
+
+              {preview.usedCanonDocuments.length ? (
+                <InfoSection title="使用到的 Canon 文档">
+                  <div className="grid gap-2">
+                    {preview.usedCanonDocuments.map((title) => (
+                      <div
+                        key={title}
+                        className="rounded-xl border border-[#53613b]/24 bg-[#f4f7ea] px-3 py-3 text-xs leading-relaxed text-[#3f4b2f]"
+                      >
+                        {title}
+                      </div>
+                    ))}
+                  </div>
+                </InfoSection>
+              ) : null}
 
               <InfoSection title="风格卡影响">
                 <p className="text-sm leading-7 text-[#5f5849]">

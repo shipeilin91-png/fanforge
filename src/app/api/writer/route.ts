@@ -5,6 +5,7 @@ type WriterResponse = {
   text: string;
   emotionStructure: string[];
   characterConstraints: string[];
+  usedCanonDocuments?: string[];
 };
 
 type ModelProvider =
@@ -45,6 +46,7 @@ type WriterRequestBody = {
   forbiddenItems?: string[];
   forbiddenCustom?: string;
   sceneDescription?: string;
+  canonContext?: string;
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -109,6 +111,13 @@ type NormalizedWriterInput = {
   styleDetail: string;
   forbiddenText: string;
   targetLength: number;
+  canonContext: string;
+  usedCanonDocuments: string[];
+};
+
+type CanonContextResult = {
+  text: string;
+  titles: string[];
 };
 
 function stringValue(value: unknown, fallback = "") {
@@ -247,6 +256,8 @@ function normalizeWriterInput(body: WriterRequestBody): NormalizedWriterInput {
       stringValue(body.customLength) ? body.customLength : body.expectedLength ?? body.expectedWordCount,
       500,
     ),
+    canonContext: stringValue(body.canonContext),
+    usedCanonDocuments: [],
   };
 }
 
@@ -365,6 +376,8 @@ function createFreeModelResponse(input: NormalizedWriterInput): WriterResponse {
     styleDetail,
     forbiddenText,
     targetLength,
+    canonContext,
+    usedCanonDocuments,
   } = input;
   const paragraphHint = getParagraphHint(targetLength);
 
@@ -434,9 +447,12 @@ function createFreeModelResponse(input: NormalizedWriterInput): WriterResponse {
     `关系约束：${relationshipDetail}；${stage}。`,
     `风格约束：${styleCard}；${styleDetail}。`,
     `边界约束：${forbiddenText}。`,
+    canonContext
+      ? "Canon 约束：已读取并作为隐性硬设定约束正文。"
+      : "Canon 约束：未读取到额外原作文档。",
   ];
 
-  return { text, emotionStructure, characterConstraints };
+  return { text, emotionStructure, characterConstraints, usedCanonDocuments };
 }
 
 function getBearerToken(request: Request) {
@@ -538,6 +554,55 @@ async function checkFreeQuota(
     allowed: true,
     count: usage.count,
     exists: usage.exists,
+  };
+}
+
+function mergeCanonContext(frontendCanonContext: unknown, documentCanonContext: string) {
+  return [stringValue(frontendCanonContext), documentCanonContext]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+async function getUserCanonContext(
+  client: NonNullable<typeof supabase>,
+  userId: string,
+): Promise<CanonContextResult> {
+  const { data, error } = await client
+    .from("user_canon_documents")
+    .select("title, content")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(3);
+
+  if (error) {
+    console.error("Writer Canon context read failed", error.message);
+    return { text: "", titles: [] };
+  }
+
+  const documents = (data ?? [])
+    .map((item, index) => {
+      const title =
+        typeof item.title === "string" && item.title.trim()
+          ? item.title.trim()
+          : `未命名原作文档 ${index + 1}`;
+      const content =
+        typeof item.content === "string" ? item.content.trim().slice(0, 1200) : "";
+
+      return content ? { title, content } : null;
+    })
+    .filter((item): item is { title: string; content: string } => item !== null);
+
+  const text = documents
+    .map(
+      (item, index) =>
+        `【Canon 文档 ${index + 1}：${item.title}】\n${item.content}`,
+    )
+    .join("\n\n")
+    .slice(0, 3600);
+
+  return {
+    text,
+    titles: documents.map((item) => item.title),
   };
 }
 
@@ -644,6 +709,10 @@ const PRODUCT_TERMS_IN_TEXT = [
   "自定义瞬间",
   "自定义阶段",
   "自定义张力",
+  "根据 Canon 文档",
+  "根据Canon文档",
+  "资料显示",
+  "设定中写道",
 ] as const;
 
 function sanitizeLiteraryText(text: string, nameA = "沈砚", nameB = "林栀") {
@@ -696,8 +765,22 @@ export async function POST(request: Request) {
   const normalized = normalizeWriterInput(body);
   const paragraphHint = getParagraphHint(normalized.targetLength);
   const lengthRange = getLengthRange(normalized.targetLength);
-  const freeModelResponse = createFreeModelResponse(normalized);
   const settings = await getUserModelSettings(request);
+  let canonDocuments: CanonContextResult = { text: "", titles: [] };
+
+  if (settings.user_id && settings.access_token) {
+    const userSupabase = createSupabaseClientForToken(settings.access_token);
+    if (userSupabase) {
+      canonDocuments = await getUserCanonContext(userSupabase, settings.user_id);
+    }
+  }
+
+  const normalizedWithCanon: NormalizedWriterInput = {
+    ...normalized,
+    canonContext: mergeCanonContext(body.canonContext, canonDocuments.text),
+    usedCanonDocuments: canonDocuments.titles,
+  };
+  const freeModelResponse = createFreeModelResponse(normalizedWithCanon);
 
   if (settings.provider === "fanforge_free") {
     if (settings.user_id && settings.access_token) {
@@ -740,6 +823,7 @@ export async function POST(request: Request) {
 
       return Response.json({
         ...freeModelResponse,
+        usedCanonDocuments: canonDocuments.titles,
         usage: {
           limit: FREE_DAILY_LIMIT,
           used: usage.count,
@@ -748,7 +832,10 @@ export async function POST(request: Request) {
       });
     }
 
-    return Response.json(freeModelResponse);
+    return Response.json({
+      ...freeModelResponse,
+      usedCanonDocuments: canonDocuments.titles,
+    });
   }
 
   if (
@@ -781,8 +868,14 @@ export async function POST(request: Request) {
         "你的目标不是写剧情梗概，也不是解释人物关系，而是写一个可以直接放进正文里的文学片段。",
         "你擅长关系瞬间、潜台词、留白、动作暗示、短句对话、克制的情绪推进，以及场景中的关系张力。",
         "优先遵守用户自由输入，其次遵守 select 选项。",
-        `正文必须使用具体人物名：${normalized.nameA}、${normalized.nameB}。`,
-        `text 字段目标字数约为 ${normalized.targetLength} 个中文字符，最终正文必须尽量落在 ${lengthRange.min} 到 ${lengthRange.max} 个中文字符之间，并写成 ${paragraphHint.label}。`,
+        `正文必须使用具体人物名：${normalizedWithCanon.nameA}、${normalizedWithCanon.nameB}。`,
+        normalizedWithCanon.canonContext
+          ? `Canon 上下文：\n${normalizedWithCanon.canonContext}`
+          : "Canon 上下文：",
+        "如果 Canon 上下文存在，生成时要优先遵守其中的硬设定，不得主动改写其中明确的人物身份、时间线、阵营和世界观规则。",
+        "如果用户输入和 Canon 上下文冲突，优先保持 Canon 一致性，但不要在正文里解释冲突。",
+        "text 正文里不要出现“根据 Canon 文档”“资料显示”“设定中写道”等说明性语言；Canon 只作为隐性约束进入正文。",
+        `text 字段目标字数约为 ${normalizedWithCanon.targetLength} 个中文字符，最终正文必须尽量落在 ${lengthRange.min} 到 ${lengthRange.max} 个中文字符之间，并写成 ${paragraphHint.label}。`,
         "不要因为分段变短而大幅缩水。如果目标是 500 字，不能只写 200 字；如果目标是 1000 字，不能只写 400 字。",
         `段落规则：每段 1-4 句话；不允许超过 160 个中文字符的超长段落；如果目标约 400-600 字，至少 7 个自然段；如果目标约 700-1000 字，至少 10 个自然段。`,
         "对话必须单独成段，至少包含 3 句自然、克制的短对话；每句对话尽量不超过 20 个字。",
@@ -799,43 +892,45 @@ export async function POST(request: Request) {
         "输出必须是符合 schema 的 JSON，不要输出 Markdown 或额外解释。",
       ].join("\n"),
       input: JSON.stringify({
-        characterNames: `${normalized.nameA} × ${normalized.nameB}`,
+        characterNames: `${normalizedWithCanon.nameA} × ${normalizedWithCanon.nameB}`,
         relationshipType: body.relationshipType,
         relationshipTypeCustom: body.relationshipTypeCustom,
         relationshipTypeFinal: body.relationshipTypeFinal,
-        relationshipDetail: normalized.relationshipDetail,
+        relationshipDetail: normalizedWithCanon.relationshipDetail,
+        canonContext: normalizedWithCanon.canonContext,
+        usedCanonDocuments: canonDocuments.titles,
         moment: body.moment,
         momentCustom: body.momentCustom,
         momentFinal: body.momentFinal,
         sceneDescription: body.sceneDescription,
-        effectiveMoment: normalized.moment,
+        effectiveMoment: normalizedWithCanon.moment,
         stage: body.stage,
         stageCustom: body.stageCustom,
         stageFinal: body.stageFinal,
-        effectiveStage: normalized.stage,
+        effectiveStage: normalizedWithCanon.stage,
         tension: body.tension,
         tensionCustom: body.tensionCustom,
         tensionFinal: body.tensionFinal,
-        effectiveTension: normalized.tension,
+        effectiveTension: normalizedWithCanon.tension,
         expectedLength: body.expectedLength ?? body.expectedWordCount,
         customLength: body.customLength,
-        effectiveTargetLength: normalized.targetLength,
+        effectiveTargetLength: normalizedWithCanon.targetLength,
         minLength: lengthRange.min,
         maxLength: lengthRange.max,
         paragraphHint: paragraphHint.label,
-        styleCard: normalized.styleCard,
+        styleCard: normalizedWithCanon.styleCard,
         styleCustom: body.styleCustom ?? body.styleRequirement,
-        effectiveStyleDetail: normalized.styleDetail,
+        effectiveStyleDetail: normalizedWithCanon.styleDetail,
         forbiddenItems: body.forbiddenItems,
         forbiddenCustom: body.forbiddenCustom,
-        forbiddenText: normalized.forbiddenText,
+        forbiddenText: normalizedWithCanon.forbiddenText,
         task: [
           "生成一个关系情绪短片段。",
           "text 只写正文，不写任何解释。",
           "emotionStructure 和 characterConstraints 单独输出，不要混入 text。",
         ].join("\n"),
       }),
-      max_output_tokens: Math.min(4200, Math.max(1400, normalized.targetLength * 3)),
+      max_output_tokens: Math.min(4200, Math.max(1400, normalizedWithCanon.targetLength * 3)),
       store: false,
       text: {
         format: {
@@ -855,14 +950,22 @@ export async function POST(request: Request) {
 
     const sanitizedResponse: WriterResponse = {
       ...parsed,
-      text: sanitizeLiteraryText(parsed.text, normalized.nameA, normalized.nameB),
+      text: sanitizeLiteraryText(
+        parsed.text,
+        normalizedWithCanon.nameA,
+        normalizedWithCanon.nameB,
+      ),
+      usedCanonDocuments: canonDocuments.titles,
     };
 
     if (containsProhibitedExplanation(sanitizedResponse.text)) {
       return Response.json(freeModelResponse);
     }
 
-    return Response.json(sanitizedResponse);
+    return Response.json({
+      ...sanitizedResponse,
+      usedCanonDocuments: canonDocuments.titles,
+    });
   } catch (error) {
     console.error("Writer API error", error);
 

@@ -6,6 +6,7 @@ type ChapterResponse = {
   usedContext: string[];
   foreshadowingNotes: string[];
   nextChapterHooks: string[];
+  usedCanonDocuments?: string[];
 };
 
 type ModelProvider =
@@ -49,6 +50,12 @@ type NormalizedChapterInput = {
   personaContext: string;
   relationshipContext: string;
   previousChapterSummary: string;
+  usedCanonDocuments: string[];
+};
+
+type CanonContextResult = {
+  text: string;
+  titles: string[];
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -166,6 +173,7 @@ function normalizeChapterInput(body: ChapterRequestBody): NormalizedChapterInput
       body.previousChapterSummary,
       "上一章留下未解释的旧物和未完成的对话。",
     ),
+    usedCanonDocuments: [],
   };
 }
 
@@ -271,6 +279,55 @@ async function checkFreeQuota(
   };
 }
 
+function mergeCanonContext(frontendCanonContext: unknown, documentCanonContext: string) {
+  return [stringValue(frontendCanonContext), documentCanonContext]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+async function getUserCanonContext(
+  client: NonNullable<typeof supabase>,
+  userId: string,
+): Promise<CanonContextResult> {
+  const { data, error } = await client
+    .from("user_canon_documents")
+    .select("title, content")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(3);
+
+  if (error) {
+    console.error("Chapter Canon context read failed", error.message);
+    return { text: "", titles: [] };
+  }
+
+  const documents = (data ?? [])
+    .map((item, index) => {
+      const title =
+        typeof item.title === "string" && item.title.trim()
+          ? item.title.trim()
+          : `未命名原作文档 ${index + 1}`;
+      const content =
+        typeof item.content === "string" ? item.content.trim().slice(0, 1200) : "";
+
+      return content ? { title, content } : null;
+    })
+    .filter((item): item is { title: string; content: string } => item !== null);
+
+  const text = documents
+    .map(
+      (item, index) =>
+        `【Canon 文档 ${index + 1}：${item.title}】\n${item.content}`,
+    )
+    .join("\n\n")
+    .slice(0, 3600);
+
+  return {
+    text,
+    titles: documents.map((item) => item.title),
+  };
+}
+
 function normalizeProvider(value: unknown): ModelProvider {
   if (
     value === "openai" ||
@@ -350,6 +407,10 @@ const BANNED_DRAFT_TERMS = [
   "参数",
   "禁止项",
   "设定说明",
+  "根据 Canon 文档",
+  "根据Canon文档",
+  "资料显示",
+  "设定中写道",
 ] as const;
 
 function sanitizeDraft(draft: string) {
@@ -423,6 +484,11 @@ function createFreeChapterResponse(input: NormalizedChapterInput): ChapterRespon
       `章节目标：${input.chapterGoal}`,
       `剧情输入：${input.plotInput}`,
       `Canon 约束：${input.canonContext}`,
+      ...(input.usedCanonDocuments.length
+        ? [
+            `使用了最近保存的 Canon 文档：${input.usedCanonDocuments.join("、")}`,
+          ]
+        : []),
       `人格与关系上下文：${input.personaContext}；${input.relationshipContext}`,
     ],
     foreshadowingNotes: [
@@ -435,6 +501,7 @@ function createFreeChapterResponse(input: NormalizedChapterInput): ChapterRespon
       "沈砚为什么把旧徽章推回原处，而不是带走。",
       "林栀是否会选择开门，或先与沈砚共同隐瞒行踪。",
     ],
+    usedCanonDocuments: input.usedCanonDocuments,
   };
 }
 
@@ -465,8 +532,22 @@ export async function POST(request: Request) {
 
   const normalized = normalizeChapterInput(body);
   const lengthRange = getLengthRange(normalized.expectedLength);
-  const freeModelResponse = createFreeChapterResponse(normalized);
   const settings = await getUserModelSettings(request);
+  let canonDocuments: CanonContextResult = { text: "", titles: [] };
+
+  if (settings.user_id && settings.access_token) {
+    const userSupabase = createSupabaseClientForToken(settings.access_token);
+    if (userSupabase) {
+      canonDocuments = await getUserCanonContext(userSupabase, settings.user_id);
+    }
+  }
+
+  const normalizedWithCanon: NormalizedChapterInput = {
+    ...normalized,
+    canonContext: mergeCanonContext(body.canonContext, canonDocuments.text),
+    usedCanonDocuments: canonDocuments.titles,
+  };
+  const freeModelResponse = createFreeChapterResponse(normalizedWithCanon);
 
   if (settings.provider === "fanforge_free") {
     if (settings.user_id && settings.access_token) {
@@ -509,6 +590,7 @@ export async function POST(request: Request) {
 
       return Response.json({
         ...freeModelResponse,
+        usedCanonDocuments: canonDocuments.titles,
         usage: {
           limit: FREE_DAILY_LIMIT,
           used: usage.count,
@@ -517,7 +599,10 @@ export async function POST(request: Request) {
       });
     }
 
-    return Response.json(freeModelResponse);
+    return Response.json({
+      ...freeModelResponse,
+      usedCanonDocuments: canonDocuments.titles,
+    });
   }
 
   if (
@@ -549,7 +634,13 @@ export async function POST(request: Request) {
         "你是 FanForge 的章节写作 Agent，专门负责同人长文和连载章节草稿。",
         "你的任务不是写情绪切片，而是写一个可继续扩展的章节片段。",
         "你要关注剧情推进、人物状态变化、伏笔埋设、上下文连续性、角色关系阶段、下一章钩子、Canon 和人格一致性。",
-        `draft 字段目标字数约为 ${normalized.expectedLength} 个中文字符，章节正文必须尽量落在 ${lengthRange.min} 到 ${lengthRange.max} 个中文字符之间。`,
+        normalizedWithCanon.canonContext
+          ? `Canon 上下文：\n${normalizedWithCanon.canonContext}`
+          : "Canon 上下文：",
+        "章节正文 draft 应遵守 Canon 硬设定。如果 Canon 文档中有人物经历、身份、世界观规则，章节正文不能随意改掉。",
+        "如果用户输入和 Canon 上下文冲突，优先保持 Canon 一致性，但不要在 draft 正文里解释冲突。",
+        "draft 正文里不要写“根据设定”“根据 Canon 文档”“资料显示”等解释性语言；Canon 只作为隐性约束。",
+        `draft 字段目标字数约为 ${normalizedWithCanon.expectedLength} 个中文字符，章节正文必须尽量落在 ${lengthRange.min} 到 ${lengthRange.max} 个中文字符之间。`,
         "不要只输出短片段。如果用户选择 1000 字，应至少写到 850 字左右。",
         "draft 字段只能是小说正文，不要混入解释说明、写作策略、上下文列表或大纲。",
         "draft 必须有明确场景开端、人物行动、至少 3 句自然对话、短段落和下一章钩子。",
@@ -560,12 +651,14 @@ export async function POST(request: Request) {
       ].join("\n"),
       input: JSON.stringify({
         ...normalized,
-        targetLength: normalized.expectedLength,
+        ...normalizedWithCanon,
+        targetLength: normalizedWithCanon.expectedLength,
         minLength: lengthRange.min,
         maxLength: lengthRange.max,
+        usedCanonDocuments: canonDocuments.titles,
         task: "生成一个章节草稿片段，并返回上下文、伏笔提示和下一章钩子。",
       }),
-      max_output_tokens: Math.min(7000, Math.max(2200, normalized.expectedLength * 3)),
+      max_output_tokens: Math.min(7000, Math.max(2200, normalizedWithCanon.expectedLength * 3)),
       store: false,
       text: {
         format: {
@@ -586,6 +679,15 @@ export async function POST(request: Request) {
     return Response.json({
       ...parsed,
       draft: sanitizeDraft(parsed.draft),
+      usedContext: [
+        ...parsed.usedContext,
+        ...(canonDocuments.titles.length
+          ? [
+              `使用了最近保存的 Canon 文档：${canonDocuments.titles.join("、")}`,
+            ]
+          : []),
+      ],
+      usedCanonDocuments: canonDocuments.titles,
     });
   } catch (error) {
     console.error("Chapter API error", error);

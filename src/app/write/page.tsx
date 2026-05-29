@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 
 const writingModes = ["单章续写", "长篇大纲", "场景扩写", "结局改写"] as const;
 const wordCounts = ["1000 字", "2000 字", "3000 字", "自定义"] as const;
@@ -58,6 +59,14 @@ type ChapterResult = {
   usedContext: string[];
   foreshadowingNotes: string[];
   nextChapterHooks: string[];
+  usage?: UsageInfo;
+  usedCanonDocuments?: string[];
+};
+
+type UsageInfo = {
+  limit: number;
+  used: number;
+  remaining: number;
 };
 
 function parseTargetLength(input: string, fallback = 1000) {
@@ -87,6 +96,7 @@ export default function WritePage() {
   const [result, setResult] = useState<ChapterResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
 
   useEffect(() => {
     setIsCheckingAuth(false);
@@ -141,11 +151,16 @@ export default function WritePage() {
           message?: string;
         } | null;
 
-        throw new Error(payload?.error || payload?.message || `HTTP ${response.status}`);
+        throw new Error(
+          response.status === 429
+            ? "今日免费生成额度已用完，请前往模型设置切换高级模型，或明天再试。"
+            : payload?.error || payload?.message || `HTTP ${response.status}`,
+        );
       }
 
       const chapterData = (await response.json()) as ChapterResult;
       setResult(chapterData);
+      if (chapterData.usage) setUsageInfo(chapterData.usage);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "章节生成失败，请稍后重试。";
@@ -294,6 +309,20 @@ export default function WritePage() {
                 >
                   {isGenerating ? "生成中..." : "生成章节草稿"}
                 </Button>
+                {usageInfo ? (
+                  <div
+                    className={cn(
+                      "rounded-xl border px-3 py-2 text-xs leading-relaxed",
+                      usageInfo.remaining <= 2
+                        ? "border-[#9a7f45]/35 bg-[#efe2c7] text-[#6f5f3f]"
+                        : "border-[#53613b]/28 bg-[#e7ead4] text-[#3f4b2f]",
+                    )}
+                  >
+                    {usageInfo.remaining <= 2
+                      ? `今日免费额度仅剩 ${usageInfo.remaining} 次，可切换高级模型 BYOK。`
+                      : `今日免费额度：剩余 ${usageInfo.remaining} / ${usageInfo.limit}`}
+                  </div>
+                ) : null}
                 {errorMsg ? <p className="text-sm text-[#7f3326]">{errorMsg}</p> : null}
               </div>
             </div>
@@ -378,6 +407,12 @@ export default function WritePage() {
                       ))}
                     </div>
                     <ResultList title="使用到的上下文" items={result.usedContext} />
+                    {result.usedCanonDocuments?.length ? (
+                      <ResultList
+                        title="使用到的 Canon 文档"
+                        items={result.usedCanonDocuments}
+                      />
+                    ) : null}
                     <ResultList title="伏笔提示" items={result.foreshadowingNotes} />
                     <ResultList title="下一章钩子" items={result.nextChapterHooks} />
                   </>
