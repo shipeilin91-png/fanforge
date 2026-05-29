@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
 
 const navLinks = [
-  { label: "首页", href: "/dashboard" },
+  { label: "首页", href: "/" },
   { label: "创作室", href: "/studio" },
   { label: "Canon 证据", href: "/canon" },
   { label: "章节写作", href: "/write" },
@@ -51,7 +51,7 @@ export function SiteNav() {
     <header className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-[#080806]">
       <div className="mx-auto flex h-14 w-full max-w-[1440px] items-center justify-between gap-6 px-5 sm:px-8 lg:px-12">
         <Link
-          href="/dashboard"
+          href="/"
           className="font-serif text-lg font-semibold tracking-[-0.02em] text-[#fff8ea] transition-colors hover:text-[#e7ead4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#53613b]"
         >
           FanForge
