@@ -25,7 +25,12 @@ const TENSIONS = ["克制", "酸涩", "旧情未了", "保护欲", "共犯感", 
 const VIBES = ["冷艳华美", "温润烟火", "疏离克制", "浪漫诗性"] as const;
 const FORBIDDEN = ["禁止告白", "禁止拥抱", "禁止亲吻", "禁止心理解释", "禁止过度甜腻"] as const;
 const WORD_COUNTS = ["300 字", "500 字", "800 字", "自定义"] as const;
-const FEEDBACK_TAGS = ["满意", "OOC", "情绪不够", "风格不对", "Canon 冲突", "想要更克制"] as const;
+const RATING_OPTIONS = [
+  { label: "满意", value: "satisfied" },
+  { label: "一般", value: "neutral" },
+  { label: "不满意", value: "dissatisfied" },
+] as const;
+const FEEDBACK_TAGS = ["OOC", "Canon 冲突", "情绪不足", "风格不匹配", "想要更克制"] as const;
 
 const STYLE_DESCRIPTIONS: Record<(typeof VIBES)[number], string> = {
   冷艳华美: "语言更冷、更锋利，意象偏金属、雨、灯影、冷色。",
@@ -68,6 +73,8 @@ type UsageInfo = {
   used: number;
   remaining: number;
 };
+
+type FeedbackRating = (typeof RATING_OPTIONS)[number]["value"];
 
 type FeedbackRecord = {
   id: string;
@@ -211,9 +218,12 @@ export default function SlicePage() {
   const [customLength, setCustomLength] = useState("500");
   const [styleCustom, setStyleCustom] = useState("");
   const [forbiddenCustom, setForbiddenCustom] = useState("");
+  const [feedbackRating, setFeedbackRating] = useState<FeedbackRating>("neutral");
   const [feedbackTags, setFeedbackTags] = useState<(typeof FEEDBACK_TAGS)[number][]>([]);
   const [feedbackText, setFeedbackText] = useState("");
   const [savedFeedback, setSavedFeedback] = useState<FeedbackRecord | null>(null);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [isSavingFeedback, setIsSavingFeedback] = useState(false);
   const [generationRun, setGenerationRun] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -278,8 +288,7 @@ export default function SlicePage() {
   const targetRange = getLengthRange(targetLength);
 
   function saveFeedbackRecord(tags: string[] = feedbackTags, comment = feedbackText) {
-    if (typeof window === "undefined") return;
-    if (tags.length === 0 && comment.trim() === "") return;
+    if (typeof window === "undefined") return null;
 
     const record: FeedbackRecord = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -287,7 +296,10 @@ export default function SlicePage() {
       scenarioText: momentCustom || sceneDescription,
       targetLength: getTargetLength(),
       styleRequirement: styleCustom,
-      selectedTags: tags,
+      selectedTags: [
+        RATING_OPTIONS.find((item) => item.value === feedbackRating)?.label ?? "一般",
+        ...tags,
+      ],
       comment,
       generatedPreview: preview.fragment.replace(/\s+/g, " ").slice(0, 80),
     };
@@ -307,6 +319,7 @@ export default function SlicePage() {
       JSON.stringify([record, ...existing]),
     );
     setSavedFeedback(record);
+    return record;
   }
 
   function toggleFeedbackTag(item: (typeof FEEDBACK_TAGS)[number]) {
@@ -315,7 +328,62 @@ export default function SlicePage() {
       : [...feedbackTags, item];
 
     setFeedbackTags(next);
-    saveFeedbackRecord(next, feedbackText);
+    setFeedbackError(null);
+  }
+
+  async function handleSubmitFeedback() {
+    if (isSavingFeedback) return;
+
+    setFeedbackError(null);
+    setSavedFeedback(null);
+    setIsSavingFeedback(true);
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
+
+      if (!user) {
+        setFeedbackError("请先登录后提交反馈。");
+        return;
+      }
+
+      const params = currentParams();
+      const { error } = await supabase.from("user_feedback").insert({
+        user_id: user.id,
+        feature: "slice",
+        rating: feedbackRating,
+        issue_tags: feedbackTags,
+        comment: feedbackText,
+        generated_text: preview.fragment,
+        metadata: {
+          relationshipType: params.relation,
+          moment: params.moment,
+          stage: params.stage,
+          tension: params.tension,
+          expectedLength: getTargetLength(),
+          styleCard: params.vibe,
+          characterNames,
+          usedCanonDocuments: preview.usedCanonDocuments,
+          usedPersonaProfiles: preview.usedPersonaProfiles,
+          modelProvider: usageInfo ? "fanforge_free" : "configured_model",
+          createdFrom: "slice-page",
+        },
+      });
+
+      if (error) {
+        setFeedbackError(error.message);
+        return;
+      }
+
+      saveFeedbackRecord(feedbackTags, feedbackText);
+      setFeedbackError(null);
+    } catch (error) {
+      setFeedbackError(
+        error instanceof Error ? error.message : "反馈保存失败，请稍后重试。",
+      );
+    } finally {
+      setIsSavingFeedback(false);
+    }
   }
 
   async function handleGenerate() {
@@ -783,6 +851,26 @@ export default function SlicePage() {
                     本次生成反馈
                   </h3>
                 </div>
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {RATING_OPTIONS.map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => {
+                        setFeedbackRating(item.value);
+                        setFeedbackError(null);
+                      }}
+                      className={cn(
+                        "rounded-xl border px-3 py-1.5 text-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#e7ead4]",
+                        feedbackRating === item.value
+                          ? "border-[#53613b]/45 bg-[#e7ead4] text-[#3f4b2f]"
+                          : "border-[#8a7c62]/28 bg-[#fffdf7] text-[#6f6759]",
+                      )}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {FEEDBACK_TAGS.map((item) => (
                     <Badge
@@ -808,14 +896,19 @@ export default function SlicePage() {
                 <Button
                   variant="outline"
                   className="mt-3 h-10 w-full rounded-xl border-[#53613b]/35 bg-[#fffaf0] text-[#28331f] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#e7ead4] sm:w-fit"
-                  onClick={() => saveFeedbackRecord()}
-                  disabled={feedbackTags.length === 0 && !feedbackText.trim()}
+                  onClick={handleSubmitFeedback}
+                  disabled={isSavingFeedback}
                 >
-                  记录本轮反馈
+                  {isSavingFeedback ? "提交中..." : "提交反馈"}
                 </Button>
+                {feedbackError ? (
+                  <p className="mt-3 text-sm text-[#7f3326]">{feedbackError}</p>
+                ) : null}
                 {savedFeedback ? (
                   <div className="mt-4 rounded-xl border border-dashed border-[#53613b]/30 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#5f5849]">
-                    <p className="font-medium text-[#171410]">已记录本轮反馈</p>
+                    <p className="font-medium text-[#171410]">
+                      反馈已保存，感谢你的标注。
+                    </p>
                     {(savedFeedback?.selectedTags.length ?? 0) > 0 ? (
                       <p className="mt-2">反馈标签：{savedFeedback?.selectedTags.join("、")}</p>
                     ) : null}

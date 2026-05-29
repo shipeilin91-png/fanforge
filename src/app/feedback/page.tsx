@@ -7,20 +7,19 @@ import { useRouter } from "next/navigation";
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
-const FEEDBACK_STORAGE_KEY = "fanforge-feedback-records";
 const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
 
 type FeedbackRecord = {
   id: string;
-  createdAt: string;
-  scenarioText: string;
-  targetLength: string;
-  styleRequirement: string;
-  selectedTags: string[];
+  feature: string;
+  rating: string;
+  issue_tags: string[];
   comment: string;
-  generatedPreview: string;
+  generated_text: string;
+  created_at: string;
 };
 
 const loopSteps = [
@@ -67,8 +66,12 @@ function getPercent(count: number, total: number) {
   return `${Math.round((count / total) * 100)}%`;
 }
 
-function countTag(records: FeedbackRecord[], tag: string) {
-  return records.filter((record) => record.selectedTags.includes(tag)).length;
+function countTag(records: FeedbackRecord[], matcher: string | ((tag: string) => boolean)) {
+  return records.filter((record) =>
+    record.issue_tags.some((tag) =>
+      typeof matcher === "string" ? tag === matcher : matcher(tag),
+    ),
+  ).length;
 }
 
 function formatTime(value: string) {
@@ -86,76 +89,115 @@ function formatTime(value: string) {
 function normalizeRecords(value: unknown): FeedbackRecord[] {
   if (!Array.isArray(value)) return [];
 
-  return value
-    .filter(
-      (
-        record,
-      ): record is Partial<FeedbackRecord> & { selectedTags: unknown[] } =>
-        typeof record === "object" &&
-        record !== null &&
-        Array.isArray(record.selectedTags),
-    )
-    .map((record, index) => ({
-      id: typeof record.id === "string" ? record.id : `local-${index}`,
-      createdAt:
-        typeof record.createdAt === "string"
-          ? record.createdAt
+  return value.map((record, index) => {
+    const item = record as Record<string, unknown>;
+    const issueTags = Array.isArray(item.issue_tags)
+      ? item.issue_tags.filter((tag): tag is string => typeof tag === "string")
+      : [];
+
+    return {
+      id: typeof item.id === "string" ? item.id : `feedback-${index}`,
+      feature: typeof item.feature === "string" ? item.feature : "slice",
+      rating: typeof item.rating === "string" ? item.rating : "neutral",
+      issue_tags: issueTags,
+      comment: typeof item.comment === "string" ? item.comment : "",
+      generated_text:
+        typeof item.generated_text === "string" ? item.generated_text : "",
+      created_at:
+        typeof item.created_at === "string"
+          ? item.created_at
           : new Date(0).toISOString(),
-      scenarioText:
-        typeof record.scenarioText === "string" ? record.scenarioText : "",
-      targetLength:
-        typeof record.targetLength === "string" ? record.targetLength : "",
-      styleRequirement:
-        typeof record.styleRequirement === "string"
-          ? record.styleRequirement
-          : "",
-      selectedTags: record.selectedTags.filter(
-        (tag): tag is string => typeof tag === "string",
-      ),
-      comment: typeof record.comment === "string" ? record.comment : "",
-      generatedPreview:
-        typeof record.generatedPreview === "string"
-          ? record.generatedPreview
-          : "",
-    }))
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+    };
+  });
+}
+
+function ratingLabel(value: string) {
+  if (value === "satisfied") return "满意";
+  if (value === "dissatisfied") return "不满意";
+  return "一般";
 }
 
 export default function FeedbackPage() {
   const router = useRouter();
   const [records, setRecords] = useState<FeedbackRecord[]>([]);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!window.localStorage.getItem(DEMO_USER_STORAGE_KEY)) {
-      router.replace("/");
+    let isMounted = true;
+
+    async function initializeFeedback() {
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
+
+      if (!user && !window.localStorage.getItem(DEMO_USER_STORAGE_KEY)) {
+        router.replace("/");
+        return;
+      }
+
+      if (!user) {
+        if (isMounted) {
+          setUserId(null);
+          setFeedbackMessage("登录后可查看你的真实反馈数据。");
+          setIsCheckingAuth(false);
+        }
+        return;
+      }
+
+      if (isMounted) setUserId(user.id);
+      await loadFeedbackRecords(user.id, isMounted);
+      if (isMounted) setIsCheckingAuth(false);
+    }
+
+    void initializeFeedback();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
+  async function loadFeedbackRecords(nextUserId: string, isMounted = true) {
+    setIsLoadingFeedback(true);
+    setFeedbackError(null);
+    setFeedbackMessage(null);
+
+    const { data, error } = await supabase
+      .from("user_feedback")
+      .select("id, feature, rating, issue_tags, comment, generated_text, created_at")
+      .eq("user_id", nextUserId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (!isMounted) return;
+
+    setIsLoadingFeedback(false);
+
+    if (error) {
+      setFeedbackError(error.message);
+      setRecords([]);
       return;
     }
 
-    setIsCheckingAuth(false);
-  }, [router]);
-
-  useEffect(() => {
-    const raw = window.localStorage.getItem(FEEDBACK_STORAGE_KEY);
-    if (!raw) return;
-
-    try {
-      setRecords(normalizeRecords(JSON.parse(raw)));
-    } catch {
-      setRecords([]);
+    const nextRecords = normalizeRecords(data);
+    setRecords(nextRecords);
+    if (nextRecords.length === 0) {
+      setFeedbackMessage("暂无反馈记录，先去情绪切片提交一次反馈。");
     }
-  }, []);
+  }
 
   const stats = useMemo(() => {
     const total = records.length;
-    const satisfied = countTag(records, "满意");
+    const satisfied = records.filter((record) => record.rating === "satisfied").length;
     const ooc = countTag(records, "OOC");
-    const weakEmotion = countTag(records, "情绪不够");
-    const styleMismatch = countTag(records, "风格不对");
-    const canonConflict = countTag(records, "Canon 冲突");
+    const weakEmotion = countTag(records, "情绪不足");
+    const styleMismatch = countTag(records, "风格不匹配");
+    const canonConflict = countTag(
+      records,
+      (tag) => tag === "Canon 冲突" || tag.toLowerCase() === "canon",
+    );
 
     return {
       total,
@@ -215,9 +257,21 @@ export default function FeedbackPage() {
 
   const recentRecords = records.slice(0, 5);
 
-  function handleClearRecords() {
-    window.localStorage.removeItem(FEEDBACK_STORAGE_KEY);
-    setRecords([]);
+  async function handleClearRecords() {
+    if (!userId) return;
+    if (!window.confirm("确定清空你的反馈记录吗？")) return;
+
+    const { error } = await supabase
+      .from("user_feedback")
+      .delete()
+      .eq("user_id", userId);
+
+    if (error) {
+      setFeedbackError(error.message);
+      return;
+    }
+
+    await loadFeedbackRecords(userId);
   }
 
   if (isCheckingAuth) {
@@ -260,11 +314,21 @@ export default function FeedbackPage() {
                     size="sm"
                     className="h-9 rounded-xl border-[#8a7c62]/28 bg-[#fffaf0] text-[#171410] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#e7ead4]"
                     onClick={handleClearRecords}
-                    disabled={records.length === 0}
+                    disabled={!userId || records.length === 0}
                   >
-                    清空本地反馈数据
+                    清空反馈数据
                   </Button>
                 </div>
+              {feedbackError ? (
+                <p className="mt-3 rounded-xl border border-[#8a3f30]/25 bg-[#f3d8cc] px-3 py-2 text-xs text-[#7f3326]">
+                  {feedbackError}
+                </p>
+              ) : null}
+              {feedbackMessage ? (
+                <p className="mt-3 rounded-xl border border-[#53613b]/25 bg-[#e7ead4] px-3 py-2 text-xs text-[#3f4b2f]">
+                  {feedbackMessage}
+                </p>
+              ) : null}
             </div>
           </div>
         </header>
@@ -294,9 +358,13 @@ export default function FeedbackPage() {
                 </h2>
               </div>
             </div>
-            {recentRecords.length === 0 ? (
+            {isLoadingFeedback ? (
               <div className="rounded-xl border border-dashed border-[#8a7c62]/32 bg-[#fffdf7]/74 px-6 py-10 text-center text-sm leading-7 text-[#7a705e]">
-                暂无反馈记录。
+                正在读取反馈记录……
+              </div>
+            ) : recentRecords.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[#8a7c62]/32 bg-[#fffdf7]/74 px-6 py-10 text-center text-sm leading-7 text-[#7a705e]">
+                暂无反馈记录，先去情绪切片提交一次反馈。
               </div>
             ) : (
               <div className="flex flex-col gap-3">
@@ -307,9 +375,21 @@ export default function FeedbackPage() {
                   >
                     <div className="mb-3 flex flex-wrap items-center gap-2">
                       <span className="text-xs text-[#8a7c62]">
-                        {formatTime(record.createdAt)}
+                        {formatTime(record.created_at)}
                       </span>
-                      {record.selectedTags.map((tag) => (
+                      <Badge
+                        variant="outline"
+                        className="border-[#8a7c62]/28 bg-[#fffaf0] text-[10px] text-[#6f6759]"
+                      >
+                        {record.feature}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className="border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
+                      >
+                        {ratingLabel(record.rating)}
+                      </Badge>
+                      {record.issue_tags.map((tag) => (
                         <Badge
                           key={tag}
                           variant="outline"
@@ -323,10 +403,7 @@ export default function FeedbackPage() {
                       用户文字反馈：{record.comment || "未填写文字反馈"}
                     </p>
                     <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
-                      场景描述：{record.scenarioText || "未填写"}
-                    </p>
-                    <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
-                      生成预览：{record.generatedPreview}
+                      生成预览：{record.generated_text.replace(/\s+/g, " ").slice(0, 60)}
                     </p>
                   </article>
                 ))}
