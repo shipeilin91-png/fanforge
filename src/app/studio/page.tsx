@@ -151,7 +151,7 @@ const assets: Record<AssetTab, Asset[]> = {
     {
       id: "drafts",
       title: "章节草稿",
-      description: "Studio 中保存的本地 Demo 草稿记录。",
+      description: "Studio 中保存的本地草稿记录。",
       meta: "Draft",
       status: "本地",
     },
@@ -195,7 +195,6 @@ const contextModules = [
     title: "Canon Evidence",
     source: "/canon",
     icon: SearchCheck,
-    description: "已启用，来自 /canon",
     cardClass:
       "border-[#53613b]/35 bg-[#eef1df]/80 hover:border-[#53613b]/60",
     dotClass: "bg-[#53613b]",
@@ -205,7 +204,6 @@ const contextModules = [
     title: "Persona Map",
     source: "/persona",
     icon: Brain,
-    description: "已启用，来自 /persona",
     cardClass:
       "border-[#9a7f45]/35 bg-[#f1e7cf]/80 hover:border-[#9a7f45]/60",
     dotClass: "bg-[#8a6f38]",
@@ -215,7 +213,6 @@ const contextModules = [
     title: "Relationship Map",
     source: "/persona",
     icon: GitBranch,
-    description: "已启用，来自 /persona",
     cardClass:
       "border-[#66745b]/35 bg-[#edf0e2]/80 hover:border-[#66745b]/60",
     dotClass: "bg-[#66745b]",
@@ -225,7 +222,6 @@ const contextModules = [
     title: "Style Card",
     source: null,
     icon: MessageSquareText,
-    description: "已启用，来自当前参数",
     cardClass:
       "border-[#8d6f58]/35 bg-[#f3e6d5]/80 hover:border-[#8d6f58]/60",
     dotClass: "bg-[#8d6f58]",

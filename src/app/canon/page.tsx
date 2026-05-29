@@ -26,7 +26,7 @@ type CanonEvidence = {
   usage: string;
 };
 
-const mockEvidence: CanonEvidence[] = [
+const sampleEvidence: CanonEvidence[] = [
   {
     type: "Hard Canon",
     title: "时间线锚点",
@@ -115,16 +115,16 @@ export default function CanonPage() {
   const [evidence, setEvidence] = useState<CanonEvidence[]>([]);
 
   function handleExtractEvidence() {
-    setEvidence(mockEvidence);
+    setEvidence(sampleEvidence);
   }
 
   const hardCanon = evidence.filter((item) => item.type === "Hard Canon");
   const softCanon = evidence.filter((item) => item.type === "Soft Canon");
 
   return (
-    <div className="min-h-full overflow-hidden bg-[#f4ecd9] text-[#191611]">
+    <div className="min-h-full overflow-hidden bg-[#f6efdf] text-[#191611]">
       <SiteNav />
-      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-10 px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-6 px-5 py-5 sm:px-8 lg:px-12 lg:py-7">
         <div className="pointer-events-none absolute left-[-8vw] top-28 hidden text-[16vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] lg:block">
           CANON
         </div>
@@ -135,40 +135,28 @@ export default function CanonPage() {
           ARCHIVE
         </div>
 
-        <header className="relative border-b border-[#171410]/15 pb-8">
+        <header className="relative border-b border-[#b9aa83]/70 pb-5">
           <div className="max-w-5xl">
-            <div className="mb-7 inline-flex border border-[#2d281f]/20 bg-[#fffaf0]/45 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
+            <div className="mb-4 inline-flex rounded-xl border border-[#2d281f]/20 bg-[#fffaf0]/60 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
               CANON EVIDENCE · RAG READY
             </div>
-            <h1 className="font-serif text-[clamp(4rem,11vw,11rem)] font-semibold leading-[0.82] tracking-[-0.045em] text-[#171410]">
+            <h1 className="font-serif text-[clamp(3.3rem,7vw,7.5rem)] font-semibold leading-[0.86] tracking-[-0.04em] text-[#171410]">
               Canon Evidence Engine
             </h1>
-            <div className="mt-7 grid gap-6 lg:grid-cols-[0.85fr_1fr]">
-              <p className="max-w-xl font-serif text-[clamp(1.85rem,3.2vw,4rem)] leading-[0.96] tracking-[-0.025em] text-[#211d17]">
+            <div className="mt-4">
+              <p className="max-w-3xl font-serif text-[clamp(1.55rem,2.5vw,2.8rem)] leading-[1.02] tracking-[-0.02em] text-[#211d17]">
                 上传或粘贴原作文档，提取原作硬设定、时间线、角色经历和风格证据。
               </p>
-              <div className="flex max-w-2xl flex-col justify-end gap-4">
-                <p className="text-sm leading-7 text-[#5f5849] sm:text-base">
-                  Canon 证据页是深度编辑页，Studio 会轻量调用这里的 Hard /
-                  Soft Canon 作为 Context Engine 输入。
-                </p>
-                <Badge
-                  variant="outline"
-                  className="w-fit border-[#171410]/20 bg-[#fbf5e8] text-xs text-[#6f6759]"
-                >
-                  MVP Demo，不接真实向量数据库、文件解析或 AI。
-                </Badge>
-              </div>
             </div>
           </div>
         </header>
 
-        <section className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="border border-[#171410]/15 bg-[#efe2c7]/72 p-4 shadow-[0_20px_60px_rgba(49,39,24,0.06)]">
-            <div className="border border-[#171410]/12 bg-[#fbf5e8]">
-              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#171410]/12 px-5 py-4">
+        <section className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="rounded-[14px] border border-[#9a7f45]/28 bg-[#f7efe0]/78 p-4 shadow-[0_20px_60px_rgba(92,69,42,0.06)]">
+            <div className="rounded-[14px] border border-[#8a7c62]/24 bg-[#fffaf0]">
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#b9aa83]/45 px-5 py-4">
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex size-10 items-center justify-center border border-[#171410]/15 bg-[#f0e4cc]">
+                  <span className="inline-flex size-10 items-center justify-center rounded-xl border border-[#9a7f45]/28 bg-[#f0e4cc]">
                     <FileText className="size-4 text-[#53613b]" />
                   </span>
                   <div>
@@ -176,15 +164,15 @@ export default function CanonPage() {
                       原作文档输入区
                     </h2>
                     <p className="text-xs leading-relaxed text-[#6f6759]">
-                      档案录入台：粘贴片段或选择文件后，点击按钮生成 mock Canon 证据。
+                      粘贴片段或选择文件，提取可用于写作约束的 Canon 证据。
                     </p>
                   </div>
                 </div>
                 <Badge
                   variant="outline"
-                  className="border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
+                  className="rounded-xl border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
                 >
-                  Archive Intake
+                  Intake
                 </Badge>
               </div>
 
@@ -193,17 +181,17 @@ export default function CanonPage() {
                   value={sourceText}
                   onChange={(event) => setSourceText(event.target.value)}
                   placeholder="粘贴原作片段 / 世界观设定 / 角色资料"
-                  className="min-h-52 resize-y border-[#171410]/15 bg-[#fffaf0] px-5 py-5 font-serif text-[15px] leading-8 text-[#211d17] shadow-inner shadow-[#4d3f24]/5 placeholder:text-[#9a8f78] focus-visible:ring-[#53613b]"
+                  className="min-h-48 resize-y rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] px-5 py-5 font-serif text-[15px] leading-8 text-[#211d17] shadow-inner shadow-[#4d3f24]/5 placeholder:text-[#9a8f78] focus-visible:ring-[#53613b]"
                 />
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-center">
                   <Input
                     type="file"
                     accept=".txt,.md"
                     aria-label="上传 .txt 或 .md 原作文档"
-                    className="border-[#171410]/15 bg-[#f8f0df] text-[#5f5849] file:text-[#171410]"
+                    className="rounded-xl border-[#8a7c62]/28 bg-[#fffaf0] text-[#5f5849] file:text-[#171410]"
                   />
                   <Button
-                    className="h-10 bg-[#171410] px-5 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
+                    className="h-10 rounded-xl bg-[#171410] px-5 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
                     onClick={handleExtractEvidence}
                   >
                     提取 Canon 证据
@@ -213,9 +201,9 @@ export default function CanonPage() {
             </div>
           </div>
 
-          <aside className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]">
+          <aside className="rounded-[14px] border border-[#8a7c62]/30 bg-[#fffaf0]/86 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.05)]">
             <div className="flex items-center gap-3">
-              <span className="inline-flex size-10 items-center justify-center border border-[#171410]/15 bg-[#f0e4cc]">
+              <span className="inline-flex size-10 items-center justify-center rounded-xl border border-[#9a7f45]/28 bg-[#f0e4cc]">
                 <ShieldCheck className="size-4 text-[#53613b]" />
               </span>
               <div>
@@ -227,7 +215,7 @@ export default function CanonPage() {
                 </h2>
               </div>
             </div>
-            <div className="mt-6 divide-y divide-[#171410]/12 border-y border-[#171410]/12">
+            <div className="mt-5 divide-y divide-[#b9aa83]/45 rounded-xl border-y border-[#b9aa83]/45">
               {conflictRules.map((rule, index) => (
                 <div
                   key={rule}
@@ -257,10 +245,10 @@ export default function CanonPage() {
         </section>
 
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]">
+          <div className="rounded-[14px] border border-[#8a7c62]/28 bg-[#fffaf0]/86 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.05)]">
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-center gap-3">
-                <span className="inline-flex size-10 items-center justify-center border border-[#171410]/15 bg-[#f0e4cc]">
+                <span className="inline-flex size-10 items-center justify-center rounded-xl border border-[#9a7f45]/28 bg-[#f0e4cc]">
                   <Search className="size-4 text-[#53613b]" />
                 </span>
                 <div>
@@ -274,16 +262,16 @@ export default function CanonPage() {
               </div>
               <Badge
                 variant="outline"
-                className="border-[#171410]/20 bg-[#f8f0df] text-xs text-[#6f6759]"
+                className="rounded-xl border-[#8a7c62]/28 bg-[#fbf7ed] text-xs text-[#6f6759]"
               >
-                Writer / Reviewer Context
+                Retrieval
               </Badge>
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {retrievalStrategies.map((strategy, index) => (
                 <div
                   key={strategy.title}
-                  className="group border border-[#171410]/12 bg-[#f8f0df] px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#fff8ea]"
+                  className="group rounded-xl border border-[#7b8359]/22 bg-[#fffdf7] px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#f4f7ea]"
                 >
                   <div className="flex items-start gap-3">
                     <span className="font-serif text-3xl leading-none text-[#53613b]">
@@ -303,9 +291,9 @@ export default function CanonPage() {
             </div>
           </div>
 
-          <div className="border border-[#171410]/15 bg-[#efe2c7]/65 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
+          <div className="rounded-[14px] border border-[#9a7f45]/28 bg-[#fbf7ed]/84 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.04)]">
             <div className="flex items-center gap-3">
-              <span className="inline-flex size-10 items-center justify-center border border-[#171410]/15 bg-[#f8f0df]">
+              <span className="inline-flex size-10 items-center justify-center rounded-xl border border-[#8a7c62]/28 bg-[#fffaf0]">
                 <Database className="size-4 text-[#53613b]" />
               </span>
               <div>
@@ -317,11 +305,11 @@ export default function CanonPage() {
                 </h2>
               </div>
             </div>
-            <div className="mt-6 flex flex-col gap-0 border-y border-[#171410]/12">
+            <div className="mt-6 flex flex-col gap-0 overflow-hidden rounded-xl border border-[#b9aa83]/45 bg-[#fffaf0]/72">
               {generationFlow.map((step, index) => (
                 <div
                   key={step}
-                  className="group flex items-center justify-between gap-3 border-b border-[#171410]/12 py-4 last:border-b-0"
+                  className="group flex items-center justify-between gap-3 border-b border-[#b9aa83]/38 px-4 py-4 last:border-b-0"
                 >
                   <div className="flex items-center gap-3">
                     <span className="font-serif text-2xl leading-none text-[#53613b]">
@@ -358,13 +346,13 @@ function EvidenceColumn({
   return (
     <section
       className={cn(
-        "border p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]",
+        "rounded-[14px] border p-5 shadow-[0_18px_50px_rgba(92,69,42,0.05)]",
         isHard
-          ? "border-[#7f3326]/25 bg-[#f2dfd3]"
-          : "border-[#53613b]/22 bg-[#fbf5e8]/85",
+          ? "border-[#7f3326]/25 bg-[#f5e7dd]"
+          : "border-[#53613b]/22 bg-[#fffaf0]/88",
       )}
     >
-      <div className="flex items-start justify-between gap-4 border-b border-[#171410]/12 pb-5">
+      <div className="flex items-start justify-between gap-4 border-b border-[#b9aa83]/42 pb-5">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
             {isHard ? "Non-negotiable rule" : "Atmosphere reference"}
@@ -379,7 +367,7 @@ function EvidenceColumn({
         <Badge
           variant="outline"
           className={cn(
-            "border-[#171410]/20 bg-[#f8f0df] text-[#171410]",
+            "rounded-xl border-[#8a7c62]/28 bg-[#fffaf0] text-[#171410]",
             isHard && "border-[#7f3326]/30 bg-[#edd1c5] text-[#7f3326]",
           )}
         >
@@ -389,18 +377,18 @@ function EvidenceColumn({
 
       <div className="mt-5 flex flex-col gap-3">
         {items.length === 0 ? (
-          <div className="border border-dashed border-[#171410]/20 bg-[#f8f0df]/65 px-4 py-10 text-center text-sm leading-7 text-[#7a705e]">
-            点击「提取 Canon 证据」后展示 mock 证据卡片。
+          <div className="rounded-xl border border-dashed border-[#8a7c62]/32 bg-[#fffdf7]/74 px-4 py-10 text-center text-sm leading-7 text-[#7a705e]">
+            等待文档分析。
           </div>
         ) : (
           items.map((item) => (
             <article
               key={`${item.type}-${item.title}`}
               className={cn(
-                "group border px-4 py-4 transition-all duration-200 hover:-translate-y-0.5",
+                "group rounded-xl border px-4 py-4 transition-all duration-200 hover:-translate-y-0.5",
                 isHard
                   ? "border-[#7f3326]/25 bg-[#fff4ed] hover:border-[#7f3326]/45"
-                  : "border-[#53613b]/18 bg-[#fffaf0] hover:border-[#53613b]/45",
+                  : "border-[#53613b]/18 bg-[#fffdf7] hover:border-[#53613b]/45",
               )}
             >
               <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -409,8 +397,8 @@ function EvidenceColumn({
                   className={cn(
                     "text-[10px]",
                     isHard
-                      ? "border-[#7f3326]/35 bg-[#edd1c5] text-[#7f3326]"
-                      : "border-[#53613b]/35 bg-[#e7ead4] text-[#3f4b2f]",
+                      ? "rounded-xl border-[#7f3326]/35 bg-[#edd1c5] text-[#7f3326]"
+                      : "rounded-xl border-[#53613b]/35 bg-[#e7ead4] text-[#3f4b2f]",
                   )}
                 >
                   {item.type}

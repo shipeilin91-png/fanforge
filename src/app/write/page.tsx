@@ -62,7 +62,7 @@ type ChapterResult = {
   nextChapterSuggestions: string[];
 };
 
-function buildMockChapterDraft(mode: string, target: string, plot: string): ChapterResult {
+function buildChapterDraft(mode: string, target: string, plot: string): ChapterResult {
   const chapterGoal =
     target.trim() || "让主角在回到帝都后完成一次身份隐藏下的关系试探";
   const plotSeed =
@@ -118,7 +118,7 @@ export default function WritePage() {
   }, [router]);
 
   function handleGenerateDraft() {
-    setResult(buildMockChapterDraft(mode, chapterGoal, plotInput));
+    setResult(buildChapterDraft(mode, chapterGoal, plotInput));
   }
 
   if (isCheckingAuth) {
@@ -130,9 +130,9 @@ export default function WritePage() {
   }
 
   return (
-    <div className="min-h-full overflow-hidden bg-[#f4ecd9] text-[#191611]">
+    <div className="min-h-full overflow-hidden bg-[#f6efdf] text-[#191611]">
       <SiteNav />
-      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-10 px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-6 px-5 py-5 sm:px-8 lg:px-12 lg:py-7">
         <div className="pointer-events-none absolute left-[-8vw] top-28 hidden text-[14vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] lg:block">
           CHAPTER
         </div>
@@ -143,40 +143,26 @@ export default function WritePage() {
           LONGFORM
         </div>
 
-        <header className="relative border-b border-[#171410]/15 pb-8">
+        <header className="relative border-b border-[#b9aa83]/70 pb-5">
           <div className="max-w-5xl">
-            <div className="mb-7 inline-flex border border-[#2d281f]/20 bg-[#fffaf0]/45 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
+            <div className="mb-4 inline-flex rounded-xl border border-[#2d281f]/20 bg-[#fffaf0]/60 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
               LONGFORM WRITING · CHAPTER DRAFT
             </div>
-            <h1 className="font-serif text-[clamp(4.7rem,13vw,12rem)] font-semibold leading-[0.82] tracking-[-0.045em] text-[#171410]">
+            <h1 className="font-serif text-[clamp(3.3rem,7vw,7.5rem)] font-semibold leading-[0.86] tracking-[-0.04em] text-[#171410]">
               Chapter Desk
             </h1>
-            <div className="mt-7 grid gap-6 lg:grid-cols-[0.9fr_1fr]">
-              <p className="max-w-2xl font-serif text-[clamp(1.85rem,3.2vw,4rem)] leading-[0.96] tracking-[-0.025em] text-[#211d17]">
-                面向长文、章节续写和连载创作，基于 Context Engine 组织原作、角色、关系和风格上下文。
+            <div className="mt-4">
+              <p className="max-w-3xl font-serif text-[clamp(1.55rem,2.5vw,2.8rem)] leading-[1.02] tracking-[-0.02em] text-[#211d17]">
+                面向长文、章节续写和连载创作，组织原作、角色、关系和风格上下文。
               </p>
-              <div className="flex max-w-2xl flex-col justify-end gap-4">
-                <p className="text-sm leading-7 text-[#5f5849] sm:text-base">
-                  Write 页面是长文/章节写作页，Studio 可以轻量调用它。
-                </p>
-                <p className="text-sm leading-7 text-[#5f5849]">
-                  章节写作不同于情绪切片，它更关注剧情推进、伏笔回收、人物状态变化和下一章钩子。
-                </p>
-                <Badge
-                  variant="outline"
-                  className="w-fit border-[#53613b]/35 bg-[#e7ead4] text-xs text-[#3f4b2f]"
-                >
-                  MVP Demo · React state mock draft
-                </Badge>
-              </div>
             </div>
           </div>
         </header>
 
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-[0.86fr_1.14fr]">
-          <section className="border border-[#171410]/15 bg-[#efe2c7]/72 p-4 shadow-[0_20px_60px_rgba(49,39,24,0.06)]">
-            <div className="border border-[#171410]/12 bg-[#fbf5e8]">
-              <div className="border-b border-[#171410]/12 px-5 py-4">
+          <section className="rounded-[14px] border border-[#9a7f45]/28 bg-[#f7efe0]/78 p-4 shadow-[0_20px_60px_rgba(92,69,42,0.06)]">
+            <div className="rounded-[14px] border border-[#8a7c62]/24 bg-[#fffaf0]">
+              <div className="border-b border-[#b9aa83]/45 px-5 py-4">
                 <div className="flex items-center gap-2">
                   <PenLine className="size-4 text-[#53613b]" />
                   <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
@@ -187,7 +173,7 @@ export default function WritePage() {
                   章节计划手稿
                 </h2>
                 <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
-                  长文模式会先组织章节目标和上下文，再生成草稿。
+                  先组织章节目标和上下文，再生成草稿。
                 </p>
               </div>
               <div className="flex flex-col gap-5 p-5">
@@ -220,7 +206,7 @@ export default function WritePage() {
                     value={wordCount}
                     onValueChange={(value) => setWordCount(value as (typeof wordCounts)[number])}
                   >
-                    <SelectTrigger className="w-full border-[#171410]/15 bg-[#fffaf0] text-[#211d17]">
+                    <SelectTrigger className="w-full rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-[#211d17]">
                       <SelectValue placeholder="选择期望字数" />
                     </SelectTrigger>
                     <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)]">
@@ -236,7 +222,7 @@ export default function WritePage() {
                       value={customWordCount}
                       onChange={(event) => setCustomWordCount(event.target.value)}
                       placeholder="例如：4500 字"
-                      className="border-[#171410]/15 bg-[#fffaf0] text-[#211d17]"
+                      className="rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-[#211d17]"
                     />
                   ) : null}
                 </div>
@@ -258,7 +244,7 @@ export default function WritePage() {
                 />
 
                 <Button
-                  className="h-11 w-full bg-[#171410] text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
+                  className="h-11 w-full rounded-xl bg-[#171410] text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
                   onClick={handleGenerateDraft}
                 >
                   生成章节草稿
@@ -268,8 +254,8 @@ export default function WritePage() {
           </section>
 
           <div className="flex flex-col gap-6">
-            <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]">
-              <div className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-[#171410]/12 pb-5">
+            <section className="rounded-[14px] border border-[#8a7c62]/28 bg-[#fffaf0]/86 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.05)]">
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-[#b9aa83]/45 pb-5">
                 <div>
                   <div className="flex items-center gap-2">
                     <Layers className="size-4 text-[#53613b]" />
@@ -280,11 +266,8 @@ export default function WritePage() {
                   <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
                     Context Engine
                   </h2>
-                  <p className="mt-2 text-xs text-[#6f6759]">
-                    本次章节生成会把这些上下文传递给 Writer Agent。
-                  </p>
                 </div>
-                <Badge variant="outline" className="border-[#53613b]/35 bg-[#e7ead4] text-[#3f4b2f]">
+                <Badge variant="outline" className="rounded-xl border-[#53613b]/35 bg-[#e7ead4] text-[#3f4b2f]">
                   已启用
                 </Badge>
               </div>
@@ -292,7 +275,7 @@ export default function WritePage() {
                 {contextItems.map((item, index) => (
                   <div
                     key={item.title}
-                    className="group border border-[#171410]/12 bg-[#f8f0df] px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#fff8ea]"
+                    className="group rounded-xl border border-[#7b8359]/22 bg-[#fffdf7] px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#f4f7ea]"
                   >
                     <div className="mb-3 flex items-start justify-between gap-2">
                       <div className="flex items-start gap-3">
@@ -310,21 +293,18 @@ export default function WritePage() {
                       </div>
                       <Badge
                         variant="outline"
-                        className="shrink-0 border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
+                        className="shrink-0 rounded-xl border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
                       >
                         {item.enabled ? "已启用" : "未启用"}
                       </Badge>
                     </div>
-                    <p className="text-xs leading-relaxed text-[#5f5849]">
-                      影响 Writer：{item.writerImpact}
-                    </p>
                   </div>
                 ))}
               </div>
             </section>
 
-            <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]">
-              <div className="mb-5 flex items-center gap-2 border-b border-[#171410]/12 pb-5">
+            <section className="rounded-[14px] border border-[#8a7c62]/28 bg-[#fffaf0]/86 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.05)]">
+              <div className="mb-5 flex items-center gap-2 border-b border-[#b9aa83]/45 pb-5">
                 <BookOpenText className="size-4 text-[#53613b]" />
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
@@ -333,15 +313,12 @@ export default function WritePage() {
                   <h2 className="mt-2 font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
                     章节生成结果
                   </h2>
-                  <p className="mt-2 text-xs text-[#6f6759]">
-                    输出长文结构草稿、上下文说明、伏笔和下一章衔接建议。
-                  </p>
                 </div>
               </div>
               <div className="flex flex-col gap-5">
                 {result ? (
                   <>
-                    <div className="border border-[#171410]/15 bg-[#fffaf0] px-6 py-6 font-serif text-[16px] leading-9 text-[#211d17] shadow-[0_16px_40px_rgba(49,39,24,0.06)]">
+                    <div className="rounded-xl border border-[#8a7c62]/28 bg-[#fffdf7] px-6 py-6 font-serif text-[16px] leading-9 text-[#211d17] shadow-[0_16px_40px_rgba(92,69,42,0.06)]">
                       {result.draft.split("\n\n").map((paragraph) => (
                         <p key={paragraph} className="mb-5 whitespace-pre-line last:mb-0">
                           {paragraph}
@@ -353,8 +330,8 @@ export default function WritePage() {
                     <ResultList title="下一章衔接建议" items={result.nextChapterSuggestions} />
                   </>
                 ) : (
-                  <div className="flex min-h-56 items-center justify-center border border-dashed border-[#171410]/20 bg-[#f8f0df]/70 px-4 py-8 text-center text-sm leading-7 text-[#7a705e]">
-                    点击「生成章节草稿」后，这里会展示开场段、冲突推进、情绪转折、结尾钩子和 Context Engine 使用说明。
+                  <div className="flex min-h-56 items-center justify-center rounded-xl border border-dashed border-[#8a7c62]/32 bg-[#fffdf7]/74 px-4 py-8 text-center text-sm leading-7 text-[#7a705e]">
+                    尚未生成章节草稿。
                   </div>
                 )}
               </div>
@@ -389,7 +366,7 @@ function ParamSelect({
     <div className="flex flex-col gap-2">
       <FieldLabel>{label}</FieldLabel>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-full border-[#171410]/15 bg-[#fffaf0] text-[#211d17]">
+        <SelectTrigger className="w-full rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-[#211d17]">
           <SelectValue placeholder={label} />
         </SelectTrigger>
         <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)]">
@@ -424,7 +401,7 @@ function TextAreaField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className={`${minHeight} resize-none border-[#171410]/15 bg-[#fffaf0] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]`}
+        className={`${minHeight} resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]`}
       />
     </div>
   );
@@ -432,7 +409,7 @@ function TextAreaField({
 
 function ResultList({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="border border-[#171410]/12 bg-[#fbf5e8] px-4 py-4">
+    <div className="rounded-xl border border-[#8a7c62]/24 bg-[#fffaf0] px-4 py-4">
       <div className="mb-3 flex items-center gap-2">
         <Sparkles className="size-3.5 text-[#53613b]" />
         <h3 className="font-serif text-3xl leading-none tracking-[-0.02em] text-[#171410]">
@@ -443,7 +420,7 @@ function ResultList({ title, items }: { title: string; items: string[] }) {
         {items.map((item, index) => (
           <div
             key={item}
-            className="grid grid-cols-[42px_minmax(0,1fr)] gap-3 border border-dashed border-[#53613b]/30 bg-[#f8f0df] px-3 py-3 text-xs leading-relaxed text-[#5f5849]"
+            className="grid grid-cols-[42px_minmax(0,1fr)] gap-3 rounded-xl border border-dashed border-[#53613b]/30 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#5f5849]"
           >
             <span className="font-serif text-2xl leading-none text-[#53613b]">
               {String(index + 1).padStart(2, "0")}

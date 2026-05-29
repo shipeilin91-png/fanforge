@@ -37,7 +37,7 @@ const handleClassName =
 
 function CoreNode({ data }: NodeProps<CoreNode>) {
   return (
-    <div className="w-[300px] border border-[#171410]/20 bg-[#fffaf0] px-5 py-4 shadow-[0_12px_34px_rgba(49,39,24,0.08)]">
+    <div className="w-[300px] rounded-xl border border-[#8a7c62]/28 bg-[#fffaf0] px-5 py-4 shadow-[0_12px_34px_rgba(49,39,24,0.08)]">
       <Badge
         variant="outline"
         className="mb-2 border-[#53613b]/35 bg-[#e7ead4] text-[10px] uppercase tracking-widest text-[#3f4b2f]"
@@ -59,7 +59,7 @@ function CoreNode({ data }: NodeProps<CoreNode>) {
 
 function StageNode({ data }: NodeProps<StageNode>) {
   return (
-    <div className="w-[220px] border border-[#53613b]/20 bg-[#fbf5e8] px-4 py-3 shadow-[0_8px_24px_rgba(49,39,24,0.06)]">
+    <div className="w-[220px] rounded-xl border border-[#53613b]/22 bg-[#fffaf0] px-4 py-3 shadow-[0_8px_24px_rgba(49,39,24,0.06)]">
       <Badge
         variant="outline"
         className="mb-2 border-[#171410]/15 bg-[#f0e4cc] text-[10px] text-[#6f6759]"
@@ -86,7 +86,7 @@ function StageNode({ data }: NodeProps<StageNode>) {
 
 function EventNode({ data }: NodeProps<EventNode>) {
   return (
-    <div className="w-[240px] border border-[#8a7c62]/30 bg-[#f8f0df] px-4 py-3">
+    <div className="w-[240px] rounded-xl border border-[#8a7c62]/30 bg-[#fbf7ed] px-4 py-3">
       <Badge
         variant="outline"
         className="mb-2 border-[#8a7c62]/30 bg-transparent text-[10px] text-[#8a7c62]"
@@ -113,7 +113,7 @@ function EventNode({ data }: NodeProps<EventNode>) {
 
 function ThreadNode({ data }: NodeProps<ThreadNode>) {
   return (
-    <div className="w-[260px] border border-dashed border-[#53613b]/35 bg-[#e7ead4] px-4 py-3">
+    <div className="w-[260px] rounded-xl border border-dashed border-[#53613b]/35 bg-[#e7ead4] px-4 py-3">
       <Badge
         variant="outline"
         className="mb-2 border-dashed border-[#53613b]/45 text-[10px] text-[#3f4b2f]"
@@ -501,9 +501,9 @@ export default function PersonaPage() {
   }
 
   return (
-    <div className="min-h-full overflow-hidden bg-[#f4ecd9] text-[#191611]">
+    <div className="min-h-full overflow-hidden bg-[#f6efdf] text-[#191611]">
       <SiteNav />
-      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-10 px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-6 px-5 py-5 sm:px-8 lg:px-12 lg:py-7">
         <div className="pointer-events-none absolute left-[-8vw] top-28 hidden text-[14vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] lg:block">
           PERSONA
         </div>
@@ -514,36 +514,21 @@ export default function PersonaPage() {
           OOC
         </div>
 
-        <header className="relative border-b border-[#171410]/15 pb-8">
+        <header className="relative border-b border-[#b9aa83]/70 pb-5">
           <div className="max-w-5xl">
-            <div className="mb-7 inline-flex border border-[#2d281f]/20 bg-[#fffaf0]/45 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
+            <div className="mb-4 inline-flex rounded-xl border border-[#2d281f]/20 bg-[#fffaf0]/60 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
               PERSONA MAP · OOC BOUNDARY
             </div>
-            <h1 className="font-serif text-[clamp(4.4rem,13vw,12rem)] font-semibold leading-[0.82] tracking-[-0.045em] text-[#171410]">
+            <h1 className="font-serif text-[clamp(3.3rem,7vw,7.5rem)] font-semibold leading-[0.86] tracking-[-0.04em] text-[#171410]">
               Persona Archive
             </h1>
-            <div className="mt-7 grid gap-6 lg:grid-cols-[0.9fr_1fr]">
-              <p className="max-w-2xl font-serif text-[clamp(1.85rem,3.2vw,4rem)] leading-[0.96] tracking-[-0.025em] text-[#211d17]">
-                把角色人格、人生阶段、人物关系和写作禁区结构化，作为 Writer /
-                Reviewer 的上下文输入。
+            <div className="mt-4">
+              <p className="max-w-3xl font-serif text-[clamp(1.55rem,2.5vw,2.8rem)] leading-[1.02] tracking-[-0.02em] text-[#211d17]">
+                结构化角色人格、人生阶段、人物关系和写作禁区。
               </p>
-              <div className="flex max-w-2xl flex-col justify-end gap-4">
-                <p className="text-sm leading-7 text-[#5f5849] sm:text-base">
-                  Persona 页面是深度编辑页，Studio 会轻量调用这里的角色人格和人物关系作为 Context Engine 输入。
-                </p>
-                <p className="text-sm leading-7 text-[#5f5849]">
-                  Persona Map 不是静态角色卡，而是用于约束 Writer 生成和 Reviewer OOC 检查的角色上下文结构。
-                </p>
-                <Badge
-                  variant="outline"
-                  className="w-fit border-[#53613b]/35 bg-[#e7ead4] text-sm text-[#3f4b2f]"
-                >
-                  当前角色 · {activeName}
-                </Badge>
-              </div>
             </div>
           </div>
-          <div className="mt-7 flex flex-wrap gap-4">
+          <div className="mt-4 flex flex-wrap gap-4">
             {legend.map((item) => (
               <div
                 key={item.label}
@@ -556,9 +541,9 @@ export default function PersonaPage() {
           </div>
         </header>
 
-        <section className="border border-[#171410]/15 bg-[#efe2c7]/72 p-4 shadow-[0_20px_60px_rgba(49,39,24,0.06)]">
-          <div className="border border-[#171410]/12 bg-[#fbf5e8]">
-            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#171410]/12 px-5 py-4">
+        <section className="rounded-[14px] border border-[#9a7f45]/28 bg-[#f7efe0]/78 p-4 shadow-[0_20px_60px_rgba(92,69,42,0.06)]">
+          <div className="rounded-[14px] border border-[#8a7c62]/24 bg-[#fffaf0]">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#b9aa83]/45 px-5 py-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
                   Character Manuscript
@@ -566,12 +551,9 @@ export default function PersonaPage() {
                 <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
                   角色信息输入区
                 </h2>
-                <p className="mt-2 max-w-3xl text-sm leading-7 text-[#6f6759]">
-                  当前为 MVP Demo：人格图由结构化输入生成，后续可接入 LLM 自动抽取角色人格。
-                </p>
               </div>
               <Button
-                className="h-10 shrink-0 bg-[#171410] px-5 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
+                className="h-10 shrink-0 rounded-xl bg-[#171410] px-5 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
                 onClick={handleGeneratePersonaMap}
               >
                 生成人格思维导图
@@ -584,7 +566,7 @@ export default function PersonaPage() {
                   value={form.name}
                   onChange={(event) => updateField("name", event.target.value)}
                   placeholder="例如：苏砚"
-                  className="border-[#171410]/15 bg-[#fffaf0] text-[#211d17]"
+                  className="rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-[#211d17]"
                 />
               </div>
               <div className="flex flex-col gap-2">
@@ -595,7 +577,7 @@ export default function PersonaPage() {
                     updateField("identity", event.target.value)
                   }
                   placeholder="例如：没落帝国王子 / 流亡阵营"
-                  className="border-[#171410]/15 bg-[#fffaf0] text-[#211d17]"
+                  className="rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-[#211d17]"
                 />
               </div>
               <div className="flex flex-col gap-2">
@@ -633,7 +615,7 @@ export default function PersonaPage() {
                   onChange={(event) =>
                     updateField("oocBoundaries", event.target.value)
                   }
-                  className="min-h-20 resize-none border-[#171410]/15 bg-[#fffaf0] text-sm leading-relaxed text-[#211d17]"
+                  className="min-h-20 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17]"
                 />
               </div>
             </div>
@@ -652,7 +634,7 @@ export default function PersonaPage() {
               自上而下：人格内核 → 原作身份 / 人生阶段 / 关系模式 → 关键事件 / OOC 边界 → 伏笔暗线。可拖拽画布、滚轮缩放。
             </p>
           </div>
-          <div className="h-[min(72vh,760px)] w-full overflow-hidden border border-[#171410]/15 bg-[#fbf5e8] shadow-[0_18px_54px_rgba(49,39,24,0.06)]">
+          <div className="h-[min(72vh,760px)] w-full overflow-hidden rounded-[14px] border border-[#8a7c62]/28 bg-[#fffaf0] shadow-[0_18px_54px_rgba(92,69,42,0.06)]">
             <ReactFlow
               nodes={nodes}
               edges={edges}
@@ -691,9 +673,9 @@ export default function PersonaPage() {
             </p>
           </div>
 
-          <div className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]">
+          <div className="rounded-[14px] border border-[#8a7c62]/28 bg-[#fffaf0]/86 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.05)]">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="relative min-h-[460px] overflow-hidden border border-[#171410]/12 bg-[#fffaf0]">
+              <div className="relative min-h-[460px] overflow-hidden rounded-xl border border-[#b9aa83]/45 bg-[#fffdf7]">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(83,97,59,0.12),transparent_55%)]" />
                 <div className="absolute left-1/2 top-1/2 z-20 flex size-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#171410]/20 bg-[#f8f0df] px-4 text-center shadow-[0_12px_30px_rgba(49,39,24,0.08)]">
                   <span className="text-sm font-semibold leading-snug text-[#171410]">
@@ -719,18 +701,15 @@ export default function PersonaPage() {
             </div>
           </div>
 
-          <section className="border border-[#171410]/15 bg-[#efe2c7]/72 p-4 shadow-[0_20px_60px_rgba(49,39,24,0.05)]">
-            <div className="border border-[#171410]/12 bg-[#fbf5e8]">
-              <div className="border-b border-[#171410]/12 px-5 py-4">
+          <section className="rounded-[14px] border border-[#9a7f45]/28 bg-[#f7efe0]/78 p-4 shadow-[0_20px_60px_rgba(92,69,42,0.05)]">
+            <div className="rounded-[14px] border border-[#8a7c62]/24 bg-[#fffaf0]">
+              <div className="border-b border-[#b9aa83]/45 px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
                   Relationship Intake
                 </p>
                 <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
                   添加人物关系
                 </h2>
-                <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
-                  先用前端状态维护关系图，后续可接入项目数据库和关系抽取 Agent。
-                </p>
               </div>
               <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
                 <RelationshipInput
@@ -790,7 +769,7 @@ export default function PersonaPage() {
                     onChange={(value) => updateRelationshipField("taboo", value)}
                   />
                   <Button
-                    className="mt-2 h-10 w-full bg-[#171410] px-5 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f] sm:w-fit"
+                    className="mt-2 h-10 w-full rounded-xl bg-[#171410] px-5 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f] sm:w-fit"
                     onClick={handleAddRelationshipPerson}
                   >
                     添加到关系图
@@ -800,7 +779,7 @@ export default function PersonaPage() {
             </div>
           </section>
 
-          <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
+          <section className="rounded-[14px] border border-[#8a7c62]/28 bg-[#fffaf0]/86 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.04)]">
             <div className="mb-5">
               <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
                 Foreshadow Notes
@@ -816,7 +795,7 @@ export default function PersonaPage() {
               {foreshadowSuggestions.map((item, index) => (
                 <div
                   key={item}
-                  className="border border-dashed border-[#53613b]/30 bg-[#f8f0df] px-3 py-3 text-xs leading-relaxed text-[#5f5849] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/55 hover:bg-[#fff8ea]"
+                  className="rounded-xl border border-dashed border-[#53613b]/30 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#5f5849] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/55 hover:bg-[#f4f7ea]"
                 >
                   <span className="mb-2 block font-serif text-2xl leading-none text-[#53613b]">
                     {String(index + 1).padStart(2, "0")}
@@ -843,7 +822,7 @@ function PersonaTextarea({
     <Textarea
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="min-h-24 resize-none border-[#171410]/15 bg-[#fffaf0] text-sm leading-relaxed text-[#211d17]"
+      className="min-h-24 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17]"
     />
   );
 }
@@ -906,8 +885,8 @@ function RelationshipNode({
 
 function RelationshipDetailCard({ person }: { person: RelationshipPerson }) {
   return (
-    <div className="border border-[#171410]/12 bg-[#f8f0df] px-4 py-4">
-      <div className="mb-4 flex items-start justify-between gap-3 border-b border-[#171410]/12 pb-4">
+    <div className="rounded-xl border border-[#8a7c62]/28 bg-[#fffdf7] px-4 py-4">
+      <div className="mb-4 flex items-start justify-between gap-3 border-b border-[#b9aa83]/45 pb-4">
         <div>
           <p className="font-serif text-3xl leading-none tracking-[-0.02em] text-[#171410]">
             {person.name}
@@ -917,8 +896,8 @@ function RelationshipDetailCard({ person }: { person: RelationshipPerson }) {
           </p>
         </div>
         <Badge
-          variant="outline"
-          className="border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
+        variant="outline"
+          className="rounded-xl border-[#53613b]/35 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
         >
           {person.label}
         </Badge>
@@ -953,7 +932,7 @@ function RelationshipInput({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="border-[#171410]/15 bg-[#fffaf0] text-[#211d17]"
+        className="rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-[#211d17]"
       />
     </div>
   );
@@ -974,7 +953,7 @@ function RelationshipTextarea({
       <Textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-20 resize-none border-[#171410]/15 bg-[#fffaf0] text-sm leading-relaxed text-[#211d17]"
+        className="min-h-20 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17]"
       />
     </div>
   );

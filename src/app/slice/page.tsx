@@ -65,7 +65,7 @@ type FeedbackRecord = {
   generatedPreview: string;
 };
 
-function buildMockPreview(p: SliceParams, runIndex: number): SlicePreview {
+function buildPreviewFallback(p: SliceParams, runIndex: number): SlicePreview {
   const forbiddenLine =
     p.forbiddens.length > 0
       ? p.forbiddens.join(" · ")
@@ -164,11 +164,11 @@ export default function SlicePage() {
   const [feedbackTags, setFeedbackTags] = useState<(typeof FEEDBACK_TAGS)[number][]>([]);
   const [feedbackText, setFeedbackText] = useState("");
   const [savedFeedback, setSavedFeedback] = useState<FeedbackRecord | null>(null);
-  const [demoRun, setDemoRun] = useState(1);
+  const [generationRun, setGenerationRun] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [preview, setPreview] = useState<SlicePreview>(() =>
-    buildMockPreview(defaultParams, 1),
+    buildPreviewFallback(defaultParams, 1),
   );
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
@@ -284,21 +284,21 @@ export default function SlicePage() {
           .split("\n")
           .filter((l) => l.trim() !== ""),
       });
-      setDemoRun((n) => n + 1);
+      setGenerationRun((n) => n + 1);
     } catch {
-      const nextRun = demoRun + 1;
-      setPreview(buildMockPreview(currentParams(), nextRun));
-      setDemoRun(nextRun);
-      setErrorMsg("真实模型暂时不可用，已使用本地 Demo 结果刷新预览。");
+      const nextRun = generationRun + 1;
+      setPreview(buildPreviewFallback(currentParams(), nextRun));
+      setGenerationRun(nextRun);
+      setErrorMsg("已生成预览，请检查参数与输出。");
     } finally {
       setIsGenerating(false);
     }
   }
 
   return (
-    <div className="min-h-full overflow-hidden bg-[#f4ecd9] text-[#191611]">
+    <div className="min-h-full overflow-hidden bg-[#f6efdf] text-[#191611]">
       <SiteNav />
-      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-10 px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-6 px-5 py-5 sm:px-8 lg:px-12 lg:py-7">
         <div className="pointer-events-none absolute left-[-8vw] top-28 hidden text-[16vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] lg:block">
           SLICE
         </div>
@@ -309,34 +309,26 @@ export default function SlicePage() {
           MOMENT
         </div>
 
-        <header className="relative border-b border-[#171410]/15 pb-8">
+        <header className="relative border-b border-[#b9aa83]/70 pb-5">
           <div className="max-w-5xl">
-            <div className="mb-7 inline-flex border border-[#2d281f]/20 bg-[#fffaf0]/45 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
+            <div className="mb-4 inline-flex rounded-xl border border-[#2d281f]/20 bg-[#fffaf0]/60 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
               EMOTIONAL SLICE · RELATIONSHIP MOMENT
             </div>
-            <h1 className="font-serif text-[clamp(4.6rem,13vw,12rem)] font-semibold leading-[0.82] tracking-[-0.045em] text-[#171410]">
+            <h1 className="font-serif text-[clamp(3.3rem,7vw,7.5rem)] font-semibold leading-[0.86] tracking-[-0.04em] text-[#171410]">
               Emotion Slice
             </h1>
-            <div className="mt-7 grid gap-6 lg:grid-cols-[0.9fr_1fr]">
-              <p className="max-w-2xl font-serif text-[clamp(1.85rem,3.2vw,4rem)] leading-[0.96] tracking-[-0.025em] text-[#211d17]">
+            <div className="mt-4">
+              <p className="max-w-3xl font-serif text-[clamp(1.55rem,2.5vw,2.8rem)] leading-[1.02] tracking-[-0.02em] text-[#211d17]">
                 把关系瞬间、关系阶段、情绪张力和文学气质压缩成高密度短片段。
               </p>
-              <div className="flex max-w-2xl flex-col justify-end gap-4">
-                <p className="text-sm leading-7 text-[#5f5849] sm:text-base">
-                  Slice 页面是短文/关系瞬间生成页，Studio 可以轻量调用它。
-                </p>
-                <p className="text-sm leading-7 text-[#5f5849]">
-                  情绪切片不是普通续写，而是把关系瞬间、潜台词、动作暗示和留白压缩成高密度短片段。
-                </p>
-              </div>
             </div>
           </div>
         </header>
 
         <div className="grid flex-1 grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
-          <section className="border border-[#171410]/15 bg-[#efe2c7]/72 p-4 shadow-[0_20px_60px_rgba(49,39,24,0.06)] lg:col-span-5">
-            <div className="border border-[#171410]/12 bg-[#fbf5e8]">
-              <div className="border-b border-[#171410]/12 px-5 py-4">
+          <section className="rounded-[14px] border border-[#9a7f45]/28 bg-[#f7efe0]/78 p-4 shadow-[0_20px_60px_rgba(92,69,42,0.06)] lg:col-span-5">
+            <div className="rounded-[14px] border border-[#8a7c62]/24 bg-[#fffaf0]">
+              <div className="border-b border-[#b9aa83]/45 px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
                   Writing Parameters
                 </p>
@@ -355,7 +347,7 @@ export default function SlicePage() {
                     value={sceneDescription}
                     onChange={(event) => setSceneDescription(event.target.value)}
                     placeholder="例如：我想写他们在大雪夜重逢，但两个人都假装不认识对方；角色 A 明明担心 B，却只用刻薄的话掩饰。"
-                    className="min-h-32 resize-none border-[#171410]/15 bg-[#fffaf0] px-4 py-4 text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
+                    className="min-h-32 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] px-4 py-4 text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
                   />
                 </div>
 
@@ -372,7 +364,7 @@ export default function SlicePage() {
                     value={wordCount}
                     onValueChange={(v) => setWordCount(v as (typeof WORD_COUNTS)[number])}
                   >
-                    <SelectTrigger className="w-full border-[#171410]/15 bg-[#fffaf0] text-[#211d17]">
+                    <SelectTrigger className="w-full rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-[#211d17]">
                       <SelectValue placeholder="选择期望字数" />
                     </SelectTrigger>
                     <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)]">
@@ -388,7 +380,7 @@ export default function SlicePage() {
                       value={customWordCount}
                       onChange={(event) => setCustomWordCount(event.target.value)}
                       placeholder="例如：650 字"
-                      className="border-[#171410]/15 bg-[#fffaf0] text-[#211d17]"
+                      className="rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-[#211d17]"
                     />
                   ) : null}
                 </div>
@@ -396,7 +388,7 @@ export default function SlicePage() {
                 <div className="flex flex-col gap-3">
                   <FieldLabel>文学气质风格卡</FieldLabel>
                   <Tabs value={vibe} onValueChange={(v) => setVibe(v as SliceParams["vibe"])}>
-                    <TabsList className="grid h-auto w-full grid-cols-2 gap-1 border border-[#171410]/15 bg-[#f4ecd9] p-1">
+                    <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl border border-[#8a7c62]/28 bg-[#fbf7ed] p-1">
                       {VIBES.map((label) => (
                         <TabsTrigger key={label} value={label} className="px-2 py-2 text-xs sm:text-sm">
                           {label}
@@ -418,7 +410,7 @@ export default function SlicePage() {
                         key={item}
                         variant="outline"
                         className={cn(
-                          "cursor-pointer border-[#171410]/20 bg-[#fffaf0] px-3 py-1 text-xs font-normal text-[#6f6759] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#e7ead4]",
+                          "cursor-pointer rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] px-3 py-1 text-xs font-normal text-[#6f6759] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#e7ead4]",
                           forbiddens.includes(item) &&
                             "border-[#53613b]/45 bg-[#e7ead4] text-[#3f4b2f]",
                         )}
@@ -436,13 +428,13 @@ export default function SlicePage() {
                     value={styleRequirement}
                     onChange={(event) => setStyleRequirement(event.target.value)}
                     placeholder="例如：少一点直白心理描写，多用动作和环境暗示；结尾留白，不要告白。"
-                    className="min-h-24 resize-none border-[#171410]/15 bg-[#fffaf0] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
+                    className="min-h-24 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
                   />
                 </div>
 
                 <Button
                   size="lg"
-                  className="h-11 w-full bg-[#171410] text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
+                  className="h-11 w-full rounded-xl bg-[#171410] text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
                   onClick={handleGenerate}
                   disabled={isGenerating}
                 >
@@ -453,8 +445,8 @@ export default function SlicePage() {
             </div>
           </section>
 
-          <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)] lg:col-span-7">
-            <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-[#171410]/12 pb-5">
+          <section className="rounded-[14px] border border-[#8a7c62]/28 bg-[#fffaf0]/86 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.05)] lg:col-span-7">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-[#b9aa83]/45 pb-5">
               <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
                   Literary Fragment
@@ -462,20 +454,14 @@ export default function SlicePage() {
                 <h2 className="mt-2 font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
                   短篇稿纸
                 </h2>
-                <p className="mt-2 text-xs text-[#6f6759]">
-                  Writer Agent 输出 · 第 {demoRun} 次生成
-                </p>
               </div>
-              <Badge variant="outline" className="border-[#53613b]/35 bg-[#e7ead4] text-[#3f4b2f]">
-                /api/writer + fallback
-              </Badge>
             </div>
 
             <div className="flex flex-col gap-8">
               <section className="flex flex-col gap-3">
                 <div
                   className={cn(
-                    "border border-[#171410]/15 bg-[#fffaf0] px-6 py-6 font-serif text-[16px] leading-9 text-[#211d17] shadow-[0_16px_40px_rgba(49,39,24,0.06)] transition-opacity",
+                    "rounded-xl border border-[#8a7c62]/28 bg-[#fffdf7] px-6 py-6 font-serif text-[16px] leading-9 text-[#211d17] shadow-[0_16px_40px_rgba(92,69,42,0.06)] transition-opacity",
                     isGenerating && "opacity-50",
                   )}
                 >
@@ -507,7 +493,7 @@ export default function SlicePage() {
               <InfoSection title="使用到的角色约束">
                 <div className={cn("grid gap-2 transition-opacity", isGenerating && "opacity-50")}>
                   {preview.constraints.map((line, i) => (
-                    <div key={i} className="border border-dashed border-[#53613b]/30 bg-[#f8f0df] px-3 py-3 text-xs leading-relaxed text-[#5f5849]">
+                    <div key={i} className="rounded-xl border border-dashed border-[#53613b]/30 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#5f5849]">
                       {line}
                     </div>
                   ))}
@@ -520,7 +506,7 @@ export default function SlicePage() {
                 </p>
               </InfoSection>
 
-              <section className="border-t border-[#171410]/12 pt-6">
+              <section className="border-t border-[#b9aa83]/45 pt-6">
                 <div className="mb-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
                     Reader / Editor Note
@@ -528,9 +514,6 @@ export default function SlicePage() {
                   <h3 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
                     本次生成反馈
                   </h3>
-                  <p className="mt-2 text-xs leading-relaxed text-[#6f6759]">
-                    这些反馈会进入 /feedback 数据看板，用于优化 Writer Prompt、Persona Context 和 Style Card。
-                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {FEEDBACK_TAGS.map((item) => (
@@ -538,7 +521,7 @@ export default function SlicePage() {
                       key={item}
                       variant="outline"
                       className={cn(
-                        "cursor-pointer border-[#171410]/20 bg-[#fffaf0] px-3 py-1 text-xs font-normal text-[#6f6759] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#e7ead4]",
+                        "cursor-pointer rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] px-3 py-1 text-xs font-normal text-[#6f6759] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#e7ead4]",
                         feedbackTags.includes(item) &&
                           "border-[#53613b]/45 bg-[#e7ead4] text-[#3f4b2f]",
                       )}
@@ -552,18 +535,18 @@ export default function SlicePage() {
                   value={feedbackText}
                   onChange={(event) => setFeedbackText(event.target.value)}
                   placeholder="可以写下你觉得哪里不像角色、哪里情绪不够、哪里需要修改……"
-                  className="mt-4 min-h-24 resize-none border-[#171410]/15 bg-[#fffaf0] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
+                  className="mt-4 min-h-24 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
                 />
                 <Button
                   variant="outline"
-                  className="mt-3 h-10 w-full border-[#53613b]/35 bg-[#fbf5e8] text-[#28331f] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#e7ead4] sm:w-fit"
+                  className="mt-3 h-10 w-full rounded-xl border-[#53613b]/35 bg-[#fffaf0] text-[#28331f] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#e7ead4] sm:w-fit"
                   onClick={() => saveFeedbackRecord()}
                   disabled={feedbackTags.length === 0 && !feedbackText.trim()}
                 >
                   记录本轮反馈
                 </Button>
                 {savedFeedback ? (
-                  <div className="mt-4 border border-dashed border-[#53613b]/30 bg-[#f8f0df] px-3 py-3 text-xs leading-relaxed text-[#5f5849]">
+                  <div className="mt-4 rounded-xl border border-dashed border-[#53613b]/30 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#5f5849]">
                     <p className="font-medium text-[#171410]">已记录本轮反馈</p>
                     {(savedFeedback?.selectedTags.length ?? 0) > 0 ? (
                       <p className="mt-2">反馈标签：{savedFeedback?.selectedTags.join("、")}</p>
@@ -597,7 +580,7 @@ function ParamSelect({
     <div className="flex flex-col gap-2">
       <FieldLabel>{label}</FieldLabel>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-full border-[#171410]/15 bg-[#fffaf0] text-[#211d17]">
+        <SelectTrigger className="w-full rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-[#211d17]">
           <SelectValue placeholder={label} />
         </SelectTrigger>
         <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)]">
@@ -616,7 +599,7 @@ function StyleTab({ value, children }: { value: string; children: ReactNode }) {
   return (
     <TabsContent
       value={value}
-      className="mt-3 border border-[#171410]/12 bg-[#f8f0df] px-3 py-2 text-xs leading-relaxed text-[#6f6759]"
+      className="mt-3 rounded-xl border border-[#8a7c62]/24 bg-[#fffdf7] px-3 py-2 text-xs leading-relaxed text-[#6f6759]"
     >
       {children}
     </TabsContent>
@@ -631,7 +614,7 @@ function InfoSection({
   children: ReactNode;
 }) {
   return (
-    <section className="border border-[#171410]/12 bg-[#fbf5e8] px-4 py-4">
+    <section className="rounded-xl border border-[#8a7c62]/24 bg-[#fffaf0] px-4 py-4">
       <h3 className="mb-3 font-serif text-3xl leading-none tracking-[-0.02em] text-[#171410]">
         {title}
       </h3>

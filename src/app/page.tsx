@@ -6,14 +6,14 @@ import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
+const USER_STORAGE_KEY = "fanforge-demo-user";
 
-function ensureDemoUser() {
-  const existing = window.localStorage.getItem(DEMO_USER_STORAGE_KEY);
+function ensureLocalUser() {
+  const existing = window.localStorage.getItem(USER_STORAGE_KEY);
   if (existing) return;
 
   window.localStorage.setItem(
-    DEMO_USER_STORAGE_KEY,
+    USER_STORAGE_KEY,
     JSON.stringify({
       nickname: "演示创作者",
       creatorIdentity: "新手同人创作者",
@@ -23,11 +23,11 @@ function ensureDemoUser() {
   );
 }
 
-export default function LoginPage() {
+export default function HomePage() {
   const router = useRouter();
 
   function handleEnterStudio() {
-    ensureDemoUser();
+    ensureLocalUser();
     router.push("/studio");
   }
 

@@ -139,7 +139,7 @@ function getCriticizerStatus(phase: WorkflowPhase): AgentStatus {
 function ScoreBar({ score }: { score: number }) {
   const pct = Math.min(100, Math.max(0, score * 10));
   return (
-    <div className="h-1.5 w-full overflow-hidden bg-[#e7dcc4]">
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#e7dcc4]">
       <div className="h-full bg-[#53613b] transition-all" style={{ width: `${pct}%` }} />
     </div>
   );
@@ -163,7 +163,7 @@ function AgentStatusBadge({ status }: { status: AgentStatus }) {
 
 function AgentPlaceholder({ message }: { message: string }) {
   return (
-    <div className="flex min-h-[200px] items-center justify-center border border-dashed border-[#171410]/20 bg-[#f8f0df]/70 px-4 py-8 text-center text-sm leading-7 text-[#7a705e]">
+    <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-[#8a7c62]/32 bg-[#fffdf7]/74 px-4 py-8 text-center text-sm leading-7 text-[#7a705e]">
       {message}
     </div>
   );
@@ -264,7 +264,7 @@ export default function AgentsPage() {
       setReviewerResult(result);
       void fetchCriticizerResult(result);
     } catch {
-      setReviewerError("Reviewer API 请求失败，已保留静态审稿结果。");
+      setReviewerError("Reviewer 暂未返回结果，已保留当前审稿内容。");
     }
   }
 
@@ -289,7 +289,7 @@ export default function AgentsPage() {
       const criticizerResponse = (await response.json()) as CriticizerResult;
       setCriticizerResult(criticizerResponse);
     } catch {
-      setCriticizerError("Criticizer API 请求失败，已保留静态修订结果。");
+      setCriticizerError("Criticizer 暂未返回结果，已保留当前修订内容。");
     }
   }
 
@@ -335,9 +335,9 @@ export default function AgentsPage() {
   }
 
   return (
-    <div className="min-h-full overflow-hidden bg-[#f4ecd9] text-[#191611]">
+    <div className="min-h-full overflow-hidden bg-[#f6efdf] text-[#191611]">
       <SiteNav />
-      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-10 px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-6 px-5 py-5 sm:px-8 lg:px-12 lg:py-7">
         <div className="pointer-events-none absolute left-[-8vw] top-28 hidden text-[15vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] lg:block">
           REVIEW
         </div>
@@ -348,39 +348,28 @@ export default function AgentsPage() {
           CRITIQUE
         </div>
 
-        <header className="relative border-b border-[#171410]/15 pb-8">
+        <header className="relative border-b border-[#b9aa83]/70 pb-5">
           <div className="max-w-5xl">
-            <div className="mb-7 inline-flex border border-[#2d281f]/20 bg-[#fffaf0]/45 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
+            <div className="mb-4 inline-flex rounded-xl border border-[#2d281f]/20 bg-[#fffaf0]/60 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
               MULTI-AGENT REVIEW · EDITORIAL DESK
             </div>
-            <h1 className="font-serif text-[clamp(4.7rem,13vw,12rem)] font-semibold leading-[0.82] tracking-[-0.045em] text-[#171410]">
+            <h1 className="font-serif text-[clamp(3.3rem,7vw,7.5rem)] font-semibold leading-[0.86] tracking-[-0.04em] text-[#171410]">
               Review Desk
             </h1>
-            <div className="mt-7 grid gap-6 lg:grid-cols-[0.9fr_1fr]">
-              <p className="max-w-2xl font-serif text-[clamp(1.85rem,3.2vw,4rem)] leading-[0.96] tracking-[-0.025em] text-[#211d17]">
+            <div className="mt-4">
+              <p className="max-w-3xl font-serif text-[clamp(1.55rem,2.5vw,2.8rem)] leading-[1.02] tracking-[-0.02em] text-[#211d17]">
                 把 Writer 生成、Reviewer 审核和 Criticizer 修订拆成可解释的多 Agent 审稿流程。
               </p>
-              <div className="flex max-w-2xl flex-col justify-end gap-4">
-                <p className="text-sm leading-7 text-[#5f5849] sm:text-base">
-                  Agents 页面是多 Agent 审稿详情页，Studio 可以轻量调用 Reviewer 检查。
-                </p>
-                <p className="text-sm leading-7 text-[#5f5849]">
-                  多 Agent 审稿不是让 AI 自写自评，而是把生成、评分和修订拆成不同职责，降低 OOC、Canon 冲突和风格漂移。
-                </p>
-                <div className="flex flex-wrap gap-3">
+                <div className="mt-4 flex flex-wrap gap-3">
                   <Button
                     size="lg"
-                    className="h-11 bg-[#171410] px-6 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
+                    className="h-11 rounded-xl bg-[#171410] px-6 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
                     onClick={handleStartReview}
                     disabled={isRunning}
                   >
                     {isRunning ? "审稿进行中..." : "开始多 Agent 审稿"}
                   </Button>
-                  <Badge variant="outline" className="border-[#53613b]/35 bg-[#e7ead4] px-3 py-2 text-[#3f4b2f]">
-                    mock / fallback chain
-                  </Badge>
                 </div>
-              </div>
             </div>
           </div>
         </header>
@@ -389,7 +378,7 @@ export default function AgentsPage() {
           {agentRoles.map((agent) => (
             <div
               key={agent.title}
-              className="border border-[#171410]/12 bg-[#fbf5e8] px-4 py-4 shadow-[0_12px_34px_rgba(49,39,24,0.04)]"
+              className="rounded-xl border border-[#8a7c62]/24 bg-[#fffaf0] px-4 py-4 shadow-[0_12px_34px_rgba(92,69,42,0.04)]"
             >
               <p className="font-serif text-3xl leading-none tracking-[-0.02em] text-[#171410]">
                 {agent.title}
@@ -400,7 +389,7 @@ export default function AgentsPage() {
           ))}
         </section>
 
-        <section className="border-y border-[#171410]/15 py-8">
+        <section className="rounded-[14px] border-y border-[#b9aa83]/70 py-6">
           <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
@@ -410,20 +399,19 @@ export default function AgentsPage() {
                 审稿流程线
               </h2>
             </div>
-            <p className="text-xs text-[#6f6759]">半动态演示 · 每阶段约 {STAGE_DELAY_MS}ms</p>
           </div>
           <div className="grid gap-0 md:grid-cols-4">
             {pipeline.map((step, index) => (
               <div
                 key={step}
                 className={cn(
-                  "relative border-t border-[#171410]/25 px-0 pb-5 pt-8 transition-colors",
+                  "relative border-t border-[#8a7c62]/30 px-0 pb-5 pt-8 transition-colors",
                   index <= activePipelineIndex && "border-[#53613b]",
                 )}
               >
                 <span
                   className={cn(
-                    "absolute -top-2 left-0 size-4 rounded-full border border-[#171410]/30 bg-[#f4ecd9] transition-all duration-200",
+                    "absolute -top-2 left-0 size-4 rounded-full border border-[#8a7c62]/30 bg-[#f6efdf] transition-all duration-200",
                     index <= activePipelineIndex && "scale-125 border-[#53613b] bg-[#53613b]",
                   )}
                 />
@@ -468,7 +456,7 @@ export default function AgentsPage() {
             ) : showReviewerContent ? (
               <>
                 {reviewerError ? (
-                  <div className="border border-[#8a3f30]/25 bg-[#f3d8cc] px-3 py-2 text-xs text-[#7f3326]">
+                  <div className="rounded-xl border border-[#8a3f30]/25 bg-[#f3d8cc] px-3 py-2 text-xs text-[#7f3326]">
                     {reviewerError}
                   </div>
                 ) : null}
@@ -485,7 +473,7 @@ export default function AgentsPage() {
                   </div>
                 ))}
                 {reviewerResult ? (
-                  <div className="border border-[#171410]/12 bg-[#f8f0df] px-3 py-3">
+                  <div className="rounded-xl border border-[#8a7c62]/24 bg-[#fffdf7] px-3 py-3">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-medium text-[#171410]">Issues</span>
                       <Badge variant="outline" className="border-[#53613b]/35 text-[10px] text-[#3f4b2f]">
@@ -502,7 +490,7 @@ export default function AgentsPage() {
                     </ul>
                   </div>
                 ) : null}
-                <div className="border border-dashed border-[#53613b]/30 bg-[#f8f0df] px-3 py-3 text-xs leading-relaxed text-[#5f5849]">
+                <div className="rounded-xl border border-dashed border-[#53613b]/30 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#5f5849]">
                   {reviewerResult?.summary ?? staticReviewSummary}
                 </div>
               </>
@@ -521,7 +509,7 @@ export default function AgentsPage() {
               <AgentPlaceholder message="Criticizer 正在整理批评意见并输出修订稿…" />
             ) : showCriticizerContent ? (
               <Tabs defaultValue="criticism" className="flex flex-1 flex-col">
-                <TabsList className="grid h-auto w-full grid-cols-3 border border-[#171410]/15 bg-[#f4ecd9] p-1">
+                <TabsList className="grid h-auto w-full grid-cols-3 rounded-xl border border-[#8a7c62]/28 bg-[#fbf7ed] p-1">
                   <TabsTrigger value="criticism" className="px-1 py-2 text-xs">
                     核心批评
                   </TabsTrigger>
@@ -534,7 +522,7 @@ export default function AgentsPage() {
                 </TabsList>
                 <TabsContent value="criticism" className="mt-4 flex-1 outline-none">
                   {criticizerError ? (
-                    <div className="mb-3 border border-[#8a3f30]/25 bg-[#f3d8cc] px-3 py-2 text-xs text-[#7f3326]">
+                    <div className="mb-3 rounded-xl border border-[#8a3f30]/25 bg-[#f3d8cc] px-3 py-2 text-xs text-[#7f3326]">
                       {criticizerError}
                     </div>
                   ) : null}
@@ -557,13 +545,6 @@ export default function AgentsPage() {
           </AgentPanel>
         </section>
 
-        <footer className="border-t border-[#171410]/15 pt-8">
-          <p className="text-xs leading-7 text-[#6f6759]">
-            {phase === "done"
-              ? "本轮审稿已完成。可再次点击顶部按钮重新模拟三 Agent 串联流程。当前为 mock / fallback 审稿链路，后续可接入真实多模型和更细粒度 Agent trace。"
-              : "点击「开始多 Agent 审稿」后，Writer → Reviewer → Criticizer 将依次进入工作状态。"}
-          </p>
-        </footer>
       </main>
     </div>
   );
@@ -585,11 +566,11 @@ function AgentPanel({
   return (
     <section
       className={cn(
-        "flex min-h-[560px] flex-col border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)] transition-all duration-200",
-        active && "border-[#53613b]/60 bg-[#fff8ea]",
+        "flex min-h-[560px] flex-col rounded-[14px] border border-[#8a7c62]/28 bg-[#fffaf0]/86 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.05)] transition-all duration-200",
+        active && "border-[#53613b]/60 bg-[#f4f7ea]",
       )}
     >
-      <div className="mb-5 flex items-start justify-between gap-3 border-b border-[#171410]/12 pb-5">
+      <div className="mb-5 flex items-start justify-between gap-3 border-b border-[#b9aa83]/45 pb-5">
         <div>
           <p className="font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
             {title}
@@ -607,7 +588,7 @@ function AgentPanel({
 
 function DraftPaper({ text }: { text: string }) {
   return (
-    <div className="border border-[#171410]/15 bg-[#fffaf0] px-4 py-4 font-serif text-[15px] leading-8 text-[#211d17] shadow-[0_12px_30px_rgba(49,39,24,0.05)]">
+    <div className="rounded-xl border border-[#8a7c62]/28 bg-[#fffdf7] px-4 py-4 font-serif text-[15px] leading-8 text-[#211d17] shadow-[0_12px_30px_rgba(92,69,42,0.05)]">
       {text.split("\n\n").map((para, i) => (
         <p key={i} className="mb-4 last:mb-0">
           {para}
@@ -621,7 +602,7 @@ function NumberedList({ items }: { items: string[] }) {
   return (
     <ul className="space-y-3 text-sm leading-relaxed text-[#5f5849]">
       {items.map((line, i) => (
-        <li key={i} className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 border border-[#171410]/12 bg-[#f8f0df] px-3 py-3">
+        <li key={i} className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 rounded-xl border border-[#8a7c62]/24 bg-[#fffdf7] px-3 py-3">
           <span className="font-serif text-2xl leading-none text-[#53613b]">
             {String(i + 1).padStart(2, "0")}
           </span>
@@ -634,7 +615,7 @@ function NumberedList({ items }: { items: string[] }) {
 
 function EditorNote({ note }: { note: string }) {
   return (
-    <div className="mt-3 border border-dashed border-[#53613b]/30 bg-[#f8f0df] px-3 py-3 text-xs leading-relaxed text-[#5f5849]">
+    <div className="mt-3 rounded-xl border border-dashed border-[#53613b]/30 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#5f5849]">
       <span className="font-medium text-[#171410]">编辑说明：</span>
       {note}
     </div>

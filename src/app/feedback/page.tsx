@@ -229,9 +229,9 @@ export default function FeedbackPage() {
   }
 
   return (
-    <div className="min-h-full overflow-hidden bg-[#f4ecd9] text-[#191611]">
+    <div className="min-h-full overflow-hidden bg-[#f6efdf] text-[#191611]">
       <SiteNav />
-      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-10 px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+      <main className="relative mx-auto flex min-h-full w-full max-w-[1440px] flex-col gap-6 px-5 py-5 sm:px-8 lg:px-12 lg:py-7">
         <div className="pointer-events-none absolute left-[-8vw] top-28 hidden text-[13vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] lg:block">
           FEEDBACK
         </div>
@@ -242,40 +242,29 @@ export default function FeedbackPage() {
           QUALITY
         </div>
 
-        <header className="relative border-b border-[#171410]/15 pb-8">
+        <header className="relative border-b border-[#b9aa83]/70 pb-5">
           <div className="max-w-5xl">
-            <div className="mb-7 inline-flex border border-[#2d281f]/20 bg-[#fffaf0]/45 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
+            <div className="mb-4 inline-flex rounded-xl border border-[#2d281f]/20 bg-[#fffaf0]/60 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
               FEEDBACK LOOP · QUALITY INSIGHT
             </div>
-            <h1 className="font-serif text-[clamp(4.5rem,12vw,11rem)] font-semibold leading-[0.82] tracking-[-0.045em] text-[#171410]">
+            <h1 className="font-serif text-[clamp(3.3rem,7vw,7.5rem)] font-semibold leading-[0.86] tracking-[-0.04em] text-[#171410]">
               Feedback Board
             </h1>
-            <div className="mt-7 grid gap-6 lg:grid-cols-[0.9fr_1fr]">
-              <p className="max-w-2xl font-serif text-[clamp(1.85rem,3.2vw,4rem)] leading-[0.96] tracking-[-0.025em] text-[#211d17]">
+            <div className="mt-4">
+              <p className="max-w-3xl font-serif text-[clamp(1.55rem,2.5vw,2.8rem)] leading-[1.02] tracking-[-0.02em] text-[#211d17]">
                 用用户反馈和 Reviewer Rubric 判断生成质量，把 OOC、Canon、情绪张力和风格问题归因到具体模块。
               </p>
-              <div className="flex max-w-2xl flex-col justify-end gap-4">
-                <p className="text-sm leading-7 text-[#5f5849] sm:text-base">
-                  当前读取浏览器 localStorage 中的 `fanforge-feedback-records`，用于演示 FanForge 的用户反馈闭环。
-                </p>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Badge
-                    variant="outline"
-                    className="w-fit border-[#53613b]/35 bg-[#e7ead4] text-xs text-[#3f4b2f]"
-                  >
-                    本地 MVP 数据，后续可接入真实登录、数据库、埋点和 A/B Test。
-                  </Badge>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 border-[#171410]/20 bg-[#fbf5e8] text-[#171410] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#e7ead4]"
+                    className="h-9 rounded-xl border-[#8a7c62]/28 bg-[#fffaf0] text-[#171410] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#e7ead4]"
                     onClick={handleClearRecords}
                     disabled={records.length === 0}
                   >
                     清空本地反馈数据
                   </Button>
                 </div>
-              </div>
             </div>
           </div>
         </header>
@@ -293,8 +282,8 @@ export default function FeedbackPage() {
         </section>
 
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.35fr_0.65fr]">
-          <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.05)]">
-            <div className="mb-5 flex items-center gap-3 border-b border-[#171410]/12 pb-5">
+          <section className="rounded-[14px] border border-[#8a7c62]/28 bg-[#fffaf0]/86 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.05)]">
+            <div className="mb-5 flex items-center gap-3 border-b border-[#b9aa83]/45 pb-5">
               <ClipboardList className="size-4 text-[#53613b]" />
               <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
@@ -303,21 +292,18 @@ export default function FeedbackPage() {
                 <h2 className="mt-2 font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
                   最近反馈
                 </h2>
-                <p className="mt-2 text-xs text-[#6f6759]">
-                  读取浏览器 localStorage 中最近 5 条反馈。
-                </p>
               </div>
             </div>
             {recentRecords.length === 0 ? (
-              <div className="border border-dashed border-[#171410]/20 bg-[#fffaf0] px-6 py-10 text-center text-sm leading-7 text-[#7a705e]">
-                暂无真实反馈记录。请先到情绪切片页面生成内容并提交反馈。
+              <div className="rounded-xl border border-dashed border-[#8a7c62]/32 bg-[#fffdf7]/74 px-6 py-10 text-center text-sm leading-7 text-[#7a705e]">
+                暂无反馈记录。
               </div>
             ) : (
               <div className="flex flex-col gap-3">
                 {recentRecords.map((record) => (
                   <article
                     key={record.id}
-                    className="border border-[#171410]/12 bg-[#fffaf0] px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#fff8ea]"
+                    className="rounded-xl border border-[#8a7c62]/24 bg-[#fffdf7] px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#f4f7ea]"
                   >
                     <div className="mb-3 flex flex-wrap items-center gap-2">
                       <span className="text-xs text-[#8a7c62]">
@@ -348,28 +334,28 @@ export default function FeedbackPage() {
             )}
           </section>
 
-          <section className="border border-[#171410]/15 bg-[#efe2c7]/65 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
+          <section className="rounded-[14px] border border-[#9a7f45]/28 bg-[#fbf7ed]/84 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.04)]">
             <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
               Optimization Signal
             </p>
             <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
               下一步优化判断
             </h2>
-            <div className="mt-5 border border-dashed border-[#53613b]/30 bg-[#f8f0df] px-4 py-4 text-sm leading-7 text-[#5f5849]">
+            <div className="mt-5 rounded-xl border border-dashed border-[#53613b]/30 bg-[#fffdf7] px-4 py-4 text-sm leading-7 text-[#5f5849]">
               {optimizationAdvice}
             </div>
           </section>
         </section>
 
-        <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
+        <section className="rounded-[14px] border border-[#8a7c62]/28 bg-[#fffaf0]/86 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.04)]">
           <div className="mb-6 flex items-center gap-3">
             <GitBranch className="size-4 text-[#53613b]" />
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
-                MVP Feedback Loop
+                Feedback Loop
               </p>
               <h2 className="mt-2 font-serif text-5xl leading-none tracking-[-0.025em] text-[#171410]">
-                MVP 数据闭环
+                数据闭环
               </h2>
               <p className="mt-2 text-xs text-[#6f6759]">
                 用反馈持续校准 Prompt、Agent 分工和上下文工程。
@@ -380,7 +366,7 @@ export default function FeedbackPage() {
             {loopSteps.map((step, index) => (
               <div
                 key={step}
-                className="relative border-t border-[#171410]/25 px-0 pb-5 pt-8"
+                className="relative border-t border-[#8a7c62]/30 px-0 pb-5 pt-8"
               >
                 <span className="absolute -top-2 left-0 size-4 rounded-full border border-[#53613b]/45 bg-[#53613b]" />
                 <span className="block font-serif text-3xl leading-none text-[#171410]">
@@ -398,8 +384,8 @@ export default function FeedbackPage() {
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-          <section className="border border-[#171410]/15 bg-[#fbf5e8]/82 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
-            <div className="mb-5 flex items-center gap-3 border-b border-[#171410]/12 pb-5">
+          <section className="rounded-[14px] border border-[#8a7c62]/28 bg-[#fffaf0]/86 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.04)]">
+            <div className="mb-5 flex items-center gap-3 border-b border-[#b9aa83]/45 pb-5">
               <BarChart3 className="size-4 text-[#53613b]" />
               <div>
                 <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
@@ -414,7 +400,7 @@ export default function FeedbackPage() {
               {standardItems.map((item, index) => (
                 <div
                   key={item.title}
-                  className="grid grid-cols-[42px_minmax(0,1fr)] gap-3 border border-[#171410]/12 bg-[#f8f0df] px-3 py-3 text-sm leading-7 text-[#5f5849]"
+                  className="grid grid-cols-[42px_minmax(0,1fr)] gap-3 rounded-xl border border-[#8a7c62]/24 bg-[#fffdf7] px-3 py-3 text-sm leading-7 text-[#5f5849]"
                 >
                   <span className="font-serif text-2xl leading-none text-[#53613b]">
                     {String(index + 1).padStart(2, "0")}
@@ -428,7 +414,7 @@ export default function FeedbackPage() {
             </div>
           </section>
 
-          <section className="border border-[#171410]/15 bg-[#efe2c7]/65 p-5 shadow-[0_18px_50px_rgba(49,39,24,0.04)]">
+          <section className="rounded-[14px] border border-[#9a7f45]/28 bg-[#fbf7ed]/84 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.04)]">
             <p className="text-xs uppercase tracking-[0.18em] text-[#8a7c62]">
               Cold Start Validation
             </p>
@@ -446,7 +432,7 @@ export default function FeedbackPage() {
                 AI Reviewer 评分不是最终真理，它用于早期发现问题方向，最终需要用用户反馈、复制率、重新生成率、二次修改率等行为数据校准。
               </p>
             </div>
-            <div className="mt-6 border-t border-[#171410]/12 pt-5">
+            <div className="mt-6 border-t border-[#b9aa83]/45 pt-5">
               <h3 className="font-serif text-3xl leading-none tracking-[-0.02em] text-[#171410]">
                 Reviewer Rubric
               </h3>
@@ -483,7 +469,7 @@ function MetricNote({
   return (
     <section
       className={cn(
-        "group border border-[#171410]/15 bg-[#fbf5e8]/82 px-5 py-5 shadow-[0_14px_38px_rgba(49,39,24,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#fff8ea]",
+        "group rounded-[14px] border border-[#8a7c62]/28 bg-[#fffaf0]/86 px-5 py-5 shadow-[0_14px_38px_rgba(92,69,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#f4f7ea]",
         muted && "opacity-75",
       )}
     >
