@@ -84,12 +84,14 @@ type ChapterGenerationResult = {
   foreshadowingNotes: string[];
   nextChapterHooks: string[];
   usedCanonDocuments: string[];
+  usedPersonaProfiles: string[];
 };
 
 type SliceGenerationResult = {
   emotionStructure: string[];
   characterConstraints: string[];
   usedCanonDocuments: string[];
+  usedPersonaProfiles: string[];
 };
 
 const assets: Record<AssetTab, Asset[]> = {
@@ -672,6 +674,7 @@ export default function StudioPage() {
         nextChapterHooks: string[];
         usage?: UsageInfo;
         usedCanonDocuments?: string[];
+        usedPersonaProfiles?: string[];
       };
 
       appendDraft(data.draft);
@@ -681,6 +684,7 @@ export default function StudioPage() {
         foreshadowingNotes: data.foreshadowingNotes,
         nextChapterHooks: data.nextChapterHooks,
         usedCanonDocuments: data.usedCanonDocuments ?? [],
+        usedPersonaProfiles: data.usedPersonaProfiles ?? [],
       });
       setSliceGenerationResult(null);
       setLastToolCall(kind === "continue" ? "本次调用：单章续写" : "本次调用：场景扩写");
@@ -755,6 +759,7 @@ export default function StudioPage() {
         characterConstraints: string[];
         usage?: UsageInfo;
         usedCanonDocuments?: string[];
+        usedPersonaProfiles?: string[];
       };
 
       appendDraft(data.text);
@@ -763,6 +768,7 @@ export default function StudioPage() {
         emotionStructure: data.emotionStructure,
         characterConstraints: data.characterConstraints,
         usedCanonDocuments: data.usedCanonDocuments ?? [],
+        usedPersonaProfiles: data.usedPersonaProfiles ?? [],
       });
       setChapterGenerationResult(null);
       setLastToolCall("本次调用：Slice 模式");
@@ -1431,6 +1437,12 @@ export default function StudioPage() {
                         items={chapterGenerationResult.usedCanonDocuments}
                       />
                     ) : null}
+                    {chapterGenerationResult.usedPersonaProfiles.length ? (
+                      <GenerationList
+                        title="使用到的角色档案"
+                        items={chapterGenerationResult.usedPersonaProfiles}
+                      />
+                    ) : null}
                     <GenerationList
                       title="伏笔提示"
                       items={chapterGenerationResult.foreshadowingNotes}
@@ -1455,6 +1467,12 @@ export default function StudioPage() {
                       <GenerationList
                         title="Canon 文档已注入"
                         items={sliceGenerationResult.usedCanonDocuments}
+                      />
+                    ) : null}
+                    {sliceGenerationResult.usedPersonaProfiles.length ? (
+                      <GenerationList
+                        title="使用到的角色档案"
+                        items={sliceGenerationResult.usedPersonaProfiles}
                       />
                     ) : null}
                   </div>

@@ -61,6 +61,7 @@ type ChapterResult = {
   nextChapterHooks: string[];
   usage?: UsageInfo;
   usedCanonDocuments?: string[];
+  usedPersonaProfiles?: string[];
 };
 
 type UsageInfo = {
@@ -411,6 +412,12 @@ export default function WritePage() {
                       <ResultList
                         title="使用到的 Canon 文档"
                         items={result.usedCanonDocuments}
+                      />
+                    ) : null}
+                    {result.usedPersonaProfiles?.length ? (
+                      <ResultList
+                        title="使用到的角色档案"
+                        items={result.usedPersonaProfiles}
                       />
                     ) : null}
                     <ResultList title="伏笔提示" items={result.foreshadowingNotes} />

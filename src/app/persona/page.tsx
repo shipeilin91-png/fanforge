@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 type PersonaNodeData = {
@@ -344,6 +345,19 @@ type RelationshipPerson = {
 
 type RelationshipForm = Omit<RelationshipPerson, "id">;
 
+type PersonaProfile = {
+  id: string;
+  title: string;
+  character_name: string;
+  core_profile: string;
+  persona_nodes: Node<PersonaNodeData>[];
+  relationship_nodes: RelationshipPerson[];
+  relationship_edges: Edge[];
+  ooc_boundaries: unknown;
+  metadata: Record<string, unknown> | null;
+  updated_at: string | null;
+};
+
 const defaultRelationshipForm: RelationshipForm = {
   name: "",
   identity: "",
@@ -415,6 +429,37 @@ const foreshadowSuggestions = [
 
 const DEMO_USER_STORAGE_KEY = "fanforge-demo-user";
 
+function formatProfileDate(value: string | null) {
+  if (!value) return "未记录";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "未记录";
+
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function safeString(value: unknown, fallback = "") {
+  return typeof value === "string" ? value : fallback;
+}
+
+function normalizePersonaNodes(value: unknown) {
+  return Array.isArray(value) ? (value as Node<PersonaNodeData>[]) : createPersonaNodes(defaultPersona);
+}
+
+function normalizeRelationshipPeople(value: unknown) {
+  return Array.isArray(value) ? (value as RelationshipPerson[]) : [...defaultRelationshipPeople];
+}
+
+function normalizeRelationshipEdges(value: unknown) {
+  return Array.isArray(value) ? (value as Edge[]) : generatedEdges;
+}
+
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
     <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#6f6759]">
@@ -426,6 +471,13 @@ function FieldLabel({ children }: { children: ReactNode }) {
 export default function PersonaPage() {
   const router = useRouter();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [profileTitle, setProfileTitle] = useState("");
+  const [profiles, setProfiles] = useState<PersonaProfile[]>([]);
+  const [currentPersonaId, setCurrentPersonaId] = useState<string | null>(null);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMessage, setProfileMessage] = useState("登录后可保存和加载角色档案。");
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [form, setForm] = useState<PersonaForm>(defaultPersona);
   const [nodes, setNodes] = useState<Node<PersonaNodeData>[]>(() =>
     createPersonaNodes(defaultPersona),
@@ -448,12 +500,31 @@ export default function PersonaPage() {
   const relationshipCenterName = form.name.trim() || defaultPersona.name;
 
   useEffect(() => {
-    if (!window.localStorage.getItem(DEMO_USER_STORAGE_KEY)) {
-      router.replace("/");
-      return;
+    let isMounted = true;
+
+    async function initializeProfiles() {
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
+
+      if (!user && !window.localStorage.getItem(DEMO_USER_STORAGE_KEY)) {
+        router.replace("/");
+        return;
+      }
+
+      if (user) {
+        await loadPersonaProfiles(user.id, isMounted);
+      } else if (isMounted) {
+        setProfileMessage("登录后可保存和加载角色档案。");
+      }
+
+      if (isMounted) setIsCheckingAuth(false);
     }
 
-    setIsCheckingAuth(false);
+    void initializeProfiles();
+
+    return () => {
+      isMounted = false;
+    };
   }, [router]);
 
   if (isCheckingAuth) {
@@ -462,6 +533,208 @@ export default function PersonaPage() {
         正在检查登录状态……
       </div>
     );
+  }
+
+  async function loadPersonaProfiles(userId: string, isMounted = true) {
+    setLoadingProfiles(true);
+    setProfileError(null);
+
+    const { data, error } = await supabase
+      .from("user_persona_profiles")
+      .select(
+        "id, title, character_name, core_profile, persona_nodes, relationship_nodes, relationship_edges, ooc_boundaries, metadata, updated_at",
+      )
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(10);
+
+    if (!isMounted) return;
+
+    setLoadingProfiles(false);
+
+    if (error) {
+      setProfileError("角色档案读取失败。");
+      setProfiles([]);
+      return;
+    }
+
+    const nextProfiles = (data ?? []).map((item) => ({
+      id: String(item.id),
+      title: safeString(item.title, "未命名角色档案"),
+      character_name: safeString(item.character_name),
+      core_profile: safeString(item.core_profile),
+      persona_nodes: normalizePersonaNodes(item.persona_nodes),
+      relationship_nodes: normalizeRelationshipPeople(item.relationship_nodes),
+      relationship_edges: normalizeRelationshipEdges(item.relationship_edges),
+      ooc_boundaries: item.ooc_boundaries,
+      metadata:
+        item.metadata && typeof item.metadata === "object"
+          ? (item.metadata as Record<string, unknown>)
+          : null,
+      updated_at: safeString(item.updated_at) || null,
+    }));
+
+    setProfiles(nextProfiles);
+    setProfileMessage(nextProfiles.length ? "" : "暂无角色档案。");
+  }
+
+  async function refreshPersonaProfiles() {
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
+
+    if (!user) {
+      setProfiles([]);
+      setProfileMessage("登录后可保存和加载角色档案。");
+      return;
+    }
+
+    await loadPersonaProfiles(user.id);
+  }
+
+  function loadProfile(profile: PersonaProfile) {
+    const metadataForm =
+      profile.metadata?.form && typeof profile.metadata.form === "object"
+        ? (profile.metadata.form as Partial<PersonaForm>)
+        : {};
+    const nextForm: PersonaForm = {
+      name: profile.character_name || safeString(metadataForm.name, defaultPersona.name),
+      identity: safeString(metadataForm.identity, defaultPersona.identity),
+      corePersonality:
+        profile.core_profile || safeString(metadataForm.corePersonality, defaultPersona.corePersonality),
+      lifeStages: safeString(metadataForm.lifeStages, defaultPersona.lifeStages),
+      keyEvents: safeString(metadataForm.keyEvents, defaultPersona.keyEvents),
+      relationshipPattern: safeString(
+        metadataForm.relationshipPattern,
+        defaultPersona.relationshipPattern,
+      ),
+      oocBoundaries:
+        typeof profile.ooc_boundaries === "string"
+          ? profile.ooc_boundaries
+          : safeString(metadataForm.oocBoundaries, defaultPersona.oocBoundaries),
+    };
+
+    setCurrentPersonaId(profile.id);
+    setProfileTitle(profile.title);
+    setForm(nextForm);
+    setNodes(profile.persona_nodes.length ? profile.persona_nodes : createPersonaNodes(nextForm));
+    setEdges(profile.relationship_edges.length ? profile.relationship_edges : generatedEdges);
+    setRelationshipPeople(
+      profile.relationship_nodes.length ? profile.relationship_nodes : [...defaultRelationshipPeople],
+    );
+    setSelectedPersonId(
+      profile.relationship_nodes[0]?.id ?? defaultRelationshipPeople[0].id,
+    );
+    setActiveName(nextForm.name.trim() || defaultPersona.name);
+    setProfileMessage("角色档案已加载。");
+    setProfileError(null);
+  }
+
+  function buildProfilePayload(userId: string) {
+    const now = new Date().toISOString();
+
+    return {
+      user_id: userId,
+      title: profileTitle.trim() || "未命名角色档案",
+      character_name: form.name.trim(),
+      core_profile: form.corePersonality.trim(),
+      persona_nodes: nodes,
+      relationship_nodes: relationshipPeople,
+      relationship_edges: edges,
+      ooc_boundaries: {
+        oocBoundaries: form.oocBoundaries,
+        hiddenEmotions: relationshipPeople.map((person) => ({
+          name: person.name,
+          hiddenEmotion: person.hiddenEmotion,
+        })),
+        unresolvedConflicts: relationshipPeople.map((person) => ({
+          name: person.name,
+          conflict: person.conflict,
+        })),
+        writingTaboos: relationshipPeople.map((person) => ({
+          name: person.name,
+          taboo: person.taboo,
+        })),
+      },
+      metadata: {
+        savedFrom: "persona-page",
+        updatedAt: now,
+        notes: {
+          form,
+          relationshipForm,
+          activeName,
+        },
+      },
+      updated_at: now,
+    };
+  }
+
+  async function handleSavePersonaProfile() {
+    if (savingProfile) return;
+
+    setProfileMessage("");
+    setProfileError(null);
+    setSavingProfile(true);
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
+
+      if (!user) {
+        setProfileError("请先登录后保存角色档案。");
+        return;
+      }
+
+      if (!form.name.trim() && !form.corePersonality.trim()) {
+        setProfileError("请先输入角色信息。");
+        return;
+      }
+
+      const payload = buildProfilePayload(user.id);
+
+      if (currentPersonaId) {
+        const { error } = await supabase
+          .from("user_persona_profiles")
+          .update(payload)
+          .eq("id", currentPersonaId)
+          .eq("user_id", user.id);
+
+        if (error) {
+          setProfileError(error.message);
+          return;
+        }
+      } else {
+        const { data: insertedProfile, error } = await supabase
+          .from("user_persona_profiles")
+          .insert(payload)
+          .select("id")
+          .single();
+
+        if (error) {
+          setProfileError(error.message);
+          return;
+        }
+
+        if (insertedProfile?.id) {
+          setCurrentPersonaId(String(insertedProfile.id));
+        }
+      }
+
+      setProfileMessage("角色档案已保存。");
+      await refreshPersonaProfiles();
+    } catch (error) {
+      setProfileError(
+        error instanceof Error ? error.message : "保存失败，请稍后重试。",
+      );
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  function handleNewPersonaProfile() {
+    setCurrentPersonaId(null);
+    setProfileTitle("");
+    setProfileMessage("");
+    setProfileError(null);
   }
 
   function updateField(field: keyof PersonaForm, value: string) {
@@ -558,6 +831,108 @@ export default function PersonaPage() {
               >
                 生成人格思维导图
               </Button>
+            </div>
+            <div className="grid grid-cols-1 gap-4 border-b border-[#b9aa83]/45 p-5 lg:grid-cols-[1fr_360px]">
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
+                  <FieldLabel>角色档案名</FieldLabel>
+                  <Input
+                    value={profileTitle}
+                    onChange={(event) => setProfileTitle(event.target.value)}
+                    placeholder="例如：苏砚人格时间树 / 林晚关系档案 / 双主角关系图"
+                    className="rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-[#211d17]"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 rounded-xl border-[#53613b]/35 bg-[#e7ead4] px-5 text-[#3f4b2f] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/65 hover:bg-[#dfe6c7]"
+                    onClick={handleSavePersonaProfile}
+                    disabled={savingProfile}
+                  >
+                    {savingProfile ? "保存中..." : "保存角色档案"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] px-4 text-[#5f5849] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#f4f7ea]"
+                    onClick={handleNewPersonaProfile}
+                  >
+                    新建档案
+                  </Button>
+                  {profileMessage ? (
+                    <span className="text-xs text-[#3f4b2f]">
+                      {profileMessage}
+                    </span>
+                  ) : null}
+                  {profileError ? (
+                    <span className="text-xs text-[#7f3326]">
+                      {profileError}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[#8a7c62]/24 bg-[#fffdf7] px-3 py-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6f6759]">
+                      角色档案库
+                    </p>
+                    <p className="mt-1 text-[11px] text-[#8a7c62]">
+                      Persona profiles
+                    </p>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="rounded-xl border-[#53613b]/28 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
+                  >
+                    {profiles.length}/10
+                  </Badge>
+                </div>
+                {loadingProfiles ? (
+                  <div className="rounded-xl border border-dashed border-[#8a7c62]/28 bg-[#fffaf0]/70 px-3 py-4 text-center text-xs text-[#7a705e]">
+                    正在读取角色档案……
+                  </div>
+                ) : profiles.length ? (
+                  <div className="flex max-h-56 flex-col gap-2 overflow-y-auto pr-1">
+                    {profiles.map((profile) => {
+                      const isCurrent = currentPersonaId === profile.id;
+
+                      return (
+                        <button
+                          key={profile.id}
+                          type="button"
+                          onClick={() => loadProfile(profile)}
+                          className={cn(
+                            "rounded-xl border px-3 py-3 text-left transition-all duration-200 hover:-translate-y-0.5",
+                            isCurrent
+                              ? "border-[#53613b]/60 bg-[#e7ead4] shadow-[0_8px_20px_rgba(63,75,47,0.12)]"
+                              : "border-[#9a7f45]/18 bg-[#fffaf0]/80 hover:border-[#53613b]/35 hover:bg-[#fffdf7]",
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <span className="line-clamp-2 text-sm font-medium leading-5 text-[#171410]">
+                              {profile.title}
+                            </span>
+                            <span className="shrink-0 text-[10px] text-[#8a7c62]">
+                              {formatProfileDate(profile.updated_at)}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-5 text-[#6f6759]">
+                            {profile.character_name || "未填写角色名"}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-[#8a7c62]/28 bg-[#fffaf0]/70 px-3 py-4 text-center text-xs text-[#7a705e]">
+                    {profileMessage || "暂无角色档案。"}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
               <div className="flex flex-col gap-2">

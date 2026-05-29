@@ -60,6 +60,7 @@ type SlicePreview = {
   structure: string[];
   constraints: string[];
   usedCanonDocuments: string[];
+  usedPersonaProfiles: string[];
 };
 
 type UsageInfo = {
@@ -164,6 +165,7 @@ function buildPreviewFallback(p: SliceParams, runIndex: number): SlicePreview {
     structure: structureSets[variant]!,
     constraints: constraintSets[variant]!,
     usedCanonDocuments: [],
+    usedPersonaProfiles: [],
   };
 }
 
@@ -405,6 +407,7 @@ export default function SlicePage() {
         characterConstraints: string | string[];
         usage?: UsageInfo;
         usedCanonDocuments?: string[];
+        usedPersonaProfiles?: string[];
       };
       const toLines = (value: string | string[]) =>
         Array.isArray(value)
@@ -416,6 +419,7 @@ export default function SlicePage() {
         structure: toLines(data.emotionStructure),
         constraints: toLines(data.characterConstraints),
         usedCanonDocuments: data.usedCanonDocuments ?? [],
+        usedPersonaProfiles: data.usedPersonaProfiles ?? [],
       });
       if (data.usage) setUsageInfo(data.usage);
       setGenerationRun((n) => n + 1);
@@ -741,6 +745,21 @@ export default function SlicePage() {
                       <div
                         key={title}
                         className="rounded-xl border border-[#53613b]/24 bg-[#f4f7ea] px-3 py-3 text-xs leading-relaxed text-[#3f4b2f]"
+                      >
+                        {title}
+                      </div>
+                    ))}
+                  </div>
+                </InfoSection>
+              ) : null}
+
+              {preview.usedPersonaProfiles.length ? (
+                <InfoSection title="使用到的角色档案">
+                  <div className="grid gap-2">
+                    {preview.usedPersonaProfiles.map((title) => (
+                      <div
+                        key={title}
+                        className="rounded-xl border border-[#8a7c62]/24 bg-[#fffaf0] px-3 py-3 text-xs leading-relaxed text-[#5f5849]"
                       >
                         {title}
                       </div>

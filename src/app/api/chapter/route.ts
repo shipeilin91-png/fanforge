@@ -7,6 +7,7 @@ type ChapterResponse = {
   foreshadowingNotes: string[];
   nextChapterHooks: string[];
   usedCanonDocuments?: string[];
+  usedPersonaProfiles?: string[];
 };
 
 type ModelProvider =
@@ -51,9 +52,15 @@ type NormalizedChapterInput = {
   relationshipContext: string;
   previousChapterSummary: string;
   usedCanonDocuments: string[];
+  usedPersonaProfiles: string[];
 };
 
 type CanonContextResult = {
+  text: string;
+  titles: string[];
+};
+
+type PersonaContextResult = {
   text: string;
   titles: string[];
 };
@@ -174,6 +181,7 @@ function normalizeChapterInput(body: ChapterRequestBody): NormalizedChapterInput
       "上一章留下未解释的旧物和未完成的对话。",
     ),
     usedCanonDocuments: [],
+    usedPersonaProfiles: [],
   };
 }
 
@@ -285,6 +293,12 @@ function mergeCanonContext(frontendCanonContext: unknown, documentCanonContext: 
     .join("\n\n");
 }
 
+function mergePersonaContext(frontendPersonaContext: unknown, profilePersonaContext: string) {
+  return [stringValue(frontendPersonaContext), profilePersonaContext]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 async function getUserCanonContext(
   client: NonNullable<typeof supabase>,
   userId: string,
@@ -325,6 +339,113 @@ async function getUserCanonContext(
   return {
     text,
     titles: documents.map((item) => item.title),
+  };
+}
+
+function readableLine(value: unknown) {
+  if (!value) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return [
+      stringValue(record.label),
+      stringValue(record.tag),
+      stringValue(record.title),
+      stringValue(record.name),
+      stringValue(record.description),
+      stringValue(record.body),
+      stringValue(record.identity),
+      stringValue(record.stage),
+      stringValue(record.connection),
+      stringValue(record.hiddenEmotion),
+      stringValue(record.conflict),
+      stringValue(record.foreshadow),
+      stringValue(record.taboo),
+    ]
+      .filter(Boolean)
+      .join("：");
+  }
+
+  return "";
+}
+
+function readableList(value: unknown, limit: number) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (item && typeof item === "object" && "data" in item) {
+          return readableLine((item as Record<string, unknown>).data);
+        }
+        return readableLine(item);
+      })
+      .filter(Boolean)
+      .slice(0, limit);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .flatMap(([key, item]) => {
+        if (Array.isArray(item)) {
+          return item.map((entry) => `${key}：${readableLine(entry)}`);
+        }
+        return `${key}：${readableLine(item)}`;
+      })
+      .filter((item) => item.replace(/^[^：]+：/, "").trim())
+      .slice(0, limit);
+  }
+
+  return stringValue(value) ? [stringValue(value)] : [];
+}
+
+async function getUserPersonaContext(
+  client: NonNullable<typeof supabase>,
+  userId: string,
+): Promise<PersonaContextResult> {
+  const { data, error } = await client
+    .from("user_persona_profiles")
+    .select(
+      "title, character_name, core_profile, persona_nodes, relationship_nodes, ooc_boundaries, metadata",
+    )
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(3);
+
+  if (error) {
+    console.error("Chapter Persona context read failed", error.message);
+    return { text: "", titles: [] };
+  }
+
+  const profiles = (data ?? []).map((item, index) => {
+    const title =
+      typeof item.title === "string" && item.title.trim()
+        ? item.title.trim()
+        : `未命名角色档案 ${index + 1}`;
+    const personaLines = readableList(item.persona_nodes, 8);
+    const relationLines = readableList(item.relationship_nodes, 8);
+    const oocLines = [
+      ...readableList(item.ooc_boundaries, 6),
+      ...readableList((item.metadata as Record<string, unknown> | null)?.notes, 6),
+    ].slice(0, 6);
+    const sections = [
+      `【角色档案 ${index + 1}：${title}】`,
+      `角色名：${stringValue(item.character_name, "未填写")}`,
+      `核心设定：${stringValue(item.core_profile, "未填写")}`,
+      personaLines.length ? `人格节点：\n${personaLines.join("\n")}` : "",
+      relationLines.length ? `关系节点：\n${relationLines.join("\n")}` : "",
+      oocLines.length ? `OOC 边界：\n${oocLines.join("\n")}` : "",
+    ].filter(Boolean);
+
+    return {
+      title,
+      text: sections.join("\n").slice(0, 1200),
+    };
+  });
+
+  return {
+    text: profiles.map((profile) => profile.text).join("\n\n").slice(0, 3600),
+    titles: profiles.map((profile) => profile.title),
   };
 }
 
@@ -411,6 +532,10 @@ const BANNED_DRAFT_TERMS = [
   "根据Canon文档",
   "资料显示",
   "设定中写道",
+  "根据 Persona",
+  "根据Persona",
+  "人格图显示",
+  "角色设定中写道",
 ] as const;
 
 function sanitizeDraft(draft: string) {
@@ -489,6 +614,11 @@ function createFreeChapterResponse(input: NormalizedChapterInput): ChapterRespon
             `使用了最近保存的 Canon 文档：${input.usedCanonDocuments.join("、")}`,
           ]
         : []),
+      ...(input.usedPersonaProfiles.length
+        ? [
+            `使用了最近保存的 Persona 档案：${input.usedPersonaProfiles.join("、")}`,
+          ]
+        : []),
       `人格与关系上下文：${input.personaContext}；${input.relationshipContext}`,
     ],
     foreshadowingNotes: [
@@ -502,6 +632,7 @@ function createFreeChapterResponse(input: NormalizedChapterInput): ChapterRespon
       "林栀是否会选择开门，或先与沈砚共同隐瞒行踪。",
     ],
     usedCanonDocuments: input.usedCanonDocuments,
+    usedPersonaProfiles: input.usedPersonaProfiles,
   };
 }
 
@@ -534,11 +665,13 @@ export async function POST(request: Request) {
   const lengthRange = getLengthRange(normalized.expectedLength);
   const settings = await getUserModelSettings(request);
   let canonDocuments: CanonContextResult = { text: "", titles: [] };
+  let personaProfiles: PersonaContextResult = { text: "", titles: [] };
 
   if (settings.user_id && settings.access_token) {
     const userSupabase = createSupabaseClientForToken(settings.access_token);
     if (userSupabase) {
       canonDocuments = await getUserCanonContext(userSupabase, settings.user_id);
+      personaProfiles = await getUserPersonaContext(userSupabase, settings.user_id);
     }
   }
 
@@ -546,6 +679,8 @@ export async function POST(request: Request) {
     ...normalized,
     canonContext: mergeCanonContext(body.canonContext, canonDocuments.text),
     usedCanonDocuments: canonDocuments.titles,
+    personaContext: mergePersonaContext(body.personaContext, personaProfiles.text),
+    usedPersonaProfiles: personaProfiles.titles,
   };
   const freeModelResponse = createFreeChapterResponse(normalizedWithCanon);
 
@@ -591,6 +726,7 @@ export async function POST(request: Request) {
       return Response.json({
         ...freeModelResponse,
         usedCanonDocuments: canonDocuments.titles,
+        usedPersonaProfiles: personaProfiles.titles,
         usage: {
           limit: FREE_DAILY_LIMIT,
           used: usage.count,
@@ -602,6 +738,7 @@ export async function POST(request: Request) {
     return Response.json({
       ...freeModelResponse,
       usedCanonDocuments: canonDocuments.titles,
+      usedPersonaProfiles: personaProfiles.titles,
     });
   }
 
@@ -640,6 +777,12 @@ export async function POST(request: Request) {
         "章节正文 draft 应遵守 Canon 硬设定。如果 Canon 文档中有人物经历、身份、世界观规则，章节正文不能随意改掉。",
         "如果用户输入和 Canon 上下文冲突，优先保持 Canon 一致性，但不要在 draft 正文里解释冲突。",
         "draft 正文里不要写“根据设定”“根据 Canon 文档”“资料显示”等解释性语言；Canon 只作为隐性约束。",
+        normalizedWithCanon.personaContext
+          ? `Persona 上下文：\n${normalizedWithCanon.personaContext}`
+          : "Persona 上下文：",
+        "章节正文 draft 应遵守角色人格和 OOC 边界，人物状态变化要有连续性。",
+        "不要为了推进剧情让角色突然崩坏；如果 Persona 中写明角色克制、冷静、不直接表白，就不要突然直白告白。",
+        "draft 正文里不要解释“根据人格图”“根据 Persona”“角色设定中写道”。",
         `draft 字段目标字数约为 ${normalizedWithCanon.expectedLength} 个中文字符，章节正文必须尽量落在 ${lengthRange.min} 到 ${lengthRange.max} 个中文字符之间。`,
         "不要只输出短片段。如果用户选择 1000 字，应至少写到 850 字左右。",
         "draft 字段只能是小说正文，不要混入解释说明、写作策略、上下文列表或大纲。",
@@ -656,6 +799,7 @@ export async function POST(request: Request) {
         minLength: lengthRange.min,
         maxLength: lengthRange.max,
         usedCanonDocuments: canonDocuments.titles,
+        usedPersonaProfiles: personaProfiles.titles,
         task: "生成一个章节草稿片段，并返回上下文、伏笔提示和下一章钩子。",
       }),
       max_output_tokens: Math.min(7000, Math.max(2200, normalizedWithCanon.expectedLength * 3)),
@@ -686,8 +830,14 @@ export async function POST(request: Request) {
               `使用了最近保存的 Canon 文档：${canonDocuments.titles.join("、")}`,
             ]
           : []),
+        ...(personaProfiles.titles.length
+          ? [
+              `使用了最近保存的 Persona 档案：${personaProfiles.titles.join("、")}`,
+            ]
+          : []),
       ],
       usedCanonDocuments: canonDocuments.titles,
+      usedPersonaProfiles: personaProfiles.titles,
     });
   } catch (error) {
     console.error("Chapter API error", error);
