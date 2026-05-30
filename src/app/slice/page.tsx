@@ -30,7 +30,27 @@ const RATING_OPTIONS = [
   { label: "一般", value: "neutral" },
   { label: "不满意", value: "dissatisfied" },
 ] as const;
-const FEEDBACK_TAGS = ["OOC", "Canon 冲突", "情绪不足", "风格不匹配", "想要更克制"] as const;
+const FEEDBACK_TAGS = [
+  "OOC",
+  "角色不像",
+  "Canon 冲突",
+  "情绪不足",
+  "风格不匹配",
+  "关系推进过快",
+  "太直白",
+  "心理描写过多",
+  "太 AI",
+  "对话不像角色",
+  "想要更克制",
+] as const;
+const REWRITE_INSTRUCTIONS = [
+  "更克制",
+  "更多对话",
+  "更有张力",
+  "更贴近角色",
+  "更像原作",
+  "少一点心理描写",
+] as const;
 
 const STYLE_DESCRIPTIONS: Record<(typeof VIBES)[number], string> = {
   冷艳华美: "语言更冷、更锋利，意象偏金属、雨、灯影、冷色。",
@@ -226,6 +246,9 @@ export default function SlicePage() {
   const [isSavingFeedback, setIsSavingFeedback] = useState(false);
   const [generationRun, setGenerationRun] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [rewriteInstruction, setRewriteInstruction] = useState<
+    (typeof REWRITE_INSTRUCTIONS)[number] | null
+  >(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
   const [preview, setPreview] = useState<SlicePreview>(() =>
@@ -331,6 +354,99 @@ export default function SlicePage() {
     setFeedbackError(null);
   }
 
+  function getFinalParams() {
+    return {
+      relationshipTypeFinal:
+        relation === "自定义关系" ? relationshipTypeCustom.trim() : relation,
+      momentFinal: moment === "自定义瞬间" ? momentCustom.trim() : moment,
+      stageFinal: stage === "自定义阶段" ? stageCustom.trim() : stage,
+      tensionFinal: tension === "自定义张力" ? tensionCustom.trim() : tension,
+    };
+  }
+
+  async function requestWriter(payload: Record<string, unknown>) {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (sessionData.session?.access_token) {
+      headers.Authorization = `Bearer ${sessionData.session.access_token}`;
+    }
+
+    const res = await fetch("/api/writer", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => null)) as {
+        error?: string;
+        message?: string;
+      } | null;
+
+      throw new Error(
+        res.status === 429
+          ? "今日免费生成额度已用完，请前往模型设置切换高级模型，或明天再试。"
+          : payload?.error || payload?.message || `HTTP ${res.status}`,
+      );
+    }
+
+    return (await res.json()) as {
+      text: string;
+      emotionStructure: string | string[];
+      characterConstraints: string | string[];
+      usage?: UsageInfo;
+      usedCanonDocuments?: string[];
+      usedPersonaProfiles?: string[];
+    };
+  }
+
+  function applyWriterData(data: Awaited<ReturnType<typeof requestWriter>>) {
+    const toLines = (value: string | string[]) =>
+      Array.isArray(value)
+        ? value.filter((line) => line.trim() !== "")
+        : value.split("\n").filter((line) => line.trim() !== "");
+
+    setPreview({
+      fragment: data.text,
+      structure: toLines(data.emotionStructure),
+      constraints: toLines(data.characterConstraints),
+      usedCanonDocuments: data.usedCanonDocuments ?? [],
+      usedPersonaProfiles: data.usedPersonaProfiles ?? [],
+    });
+    if (data.usage) setUsageInfo(data.usage);
+  }
+
+  function buildWriterPayload(extra?: Record<string, unknown>) {
+    const params = getFinalParams();
+
+    return {
+      characterNames,
+      relationshipType: relation,
+      relationshipTypeCustom,
+      relationshipTypeFinal: params.relationshipTypeFinal,
+      moment,
+      momentCustom,
+      momentFinal: params.momentFinal,
+      stage,
+      stageCustom,
+      stageFinal: params.stageFinal,
+      tension,
+      tensionCustom,
+      tensionFinal: params.tensionFinal,
+      expectedLength: wordCount,
+      customLength,
+      styleCard: vibe,
+      styleCustom,
+      forbiddenItems: [...forbiddens],
+      forbiddenCustom,
+      sceneDescription,
+      ...extra,
+    };
+  }
+
   async function handleSubmitFeedback() {
     if (isSavingFeedback) return;
 
@@ -391,11 +507,12 @@ export default function SlicePage() {
 
     setErrorMsg(null);
 
-    const relationshipTypeFinal =
-      relation === "自定义关系" ? relationshipTypeCustom.trim() : relation;
-    const momentFinal = moment === "自定义瞬间" ? momentCustom.trim() : moment;
-    const stageFinal = stage === "自定义阶段" ? stageCustom.trim() : stage;
-    const tensionFinal = tension === "自定义张力" ? tensionCustom.trim() : tension;
+    const {
+      relationshipTypeFinal,
+      momentFinal,
+      stageFinal,
+      tensionFinal,
+    } = getFinalParams();
 
     if (relation === "自定义关系" && !relationshipTypeFinal) {
       setErrorMsg("请填写自定义关系");
@@ -420,76 +537,8 @@ export default function SlicePage() {
     setIsGenerating(true);
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-
-      if (sessionData.session?.access_token) {
-        headers.Authorization = `Bearer ${sessionData.session.access_token}`;
-      }
-
-      const res = await fetch("/api/writer", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          characterNames,
-          relationshipType: relation,
-          relationshipTypeCustom,
-          relationshipTypeFinal,
-          moment,
-          momentCustom,
-          momentFinal,
-          stage,
-          stageCustom,
-          stageFinal,
-          tension,
-          tensionCustom,
-          tensionFinal,
-          expectedLength: wordCount,
-          customLength,
-          styleCard: vibe,
-          styleCustom,
-          forbiddenItems: [...forbiddens],
-          forbiddenCustom,
-          sceneDescription,
-        }),
-      });
-
-      if (!res.ok) {
-        const payload = (await res.json().catch(() => null)) as {
-          error?: string;
-          message?: string;
-        } | null;
-
-        throw new Error(
-          res.status === 429
-            ? "今日免费生成额度已用完，请前往模型设置切换高级模型，或明天再试。"
-            : payload?.error || payload?.message || `HTTP ${res.status}`,
-        );
-      }
-
-      const data = (await res.json()) as {
-        text: string;
-        emotionStructure: string | string[];
-        characterConstraints: string | string[];
-        usage?: UsageInfo;
-        usedCanonDocuments?: string[];
-        usedPersonaProfiles?: string[];
-      };
-      const toLines = (value: string | string[]) =>
-        Array.isArray(value)
-          ? value.filter((line) => line.trim() !== "")
-          : value.split("\n").filter((line) => line.trim() !== "");
-
-      setPreview({
-        fragment: data.text,
-        structure: toLines(data.emotionStructure),
-        constraints: toLines(data.characterConstraints),
-        usedCanonDocuments: data.usedCanonDocuments ?? [],
-        usedPersonaProfiles: data.usedPersonaProfiles ?? [],
-      });
-      if (data.usage) setUsageInfo(data.usage);
+      const data = await requestWriter(buildWriterPayload());
+      applyWriterData(data);
       setGenerationRun((n) => n + 1);
     } catch (error) {
       if (
@@ -509,6 +558,29 @@ export default function SlicePage() {
       );
     } finally {
       setIsGenerating(false);
+    }
+  }
+
+  async function handleRewrite(instruction: (typeof REWRITE_INSTRUCTIONS)[number]) {
+    if (isGenerating || rewriteInstruction) return;
+
+    setErrorMsg(null);
+    setRewriteInstruction(instruction);
+
+    try {
+      const data = await requestWriter(
+        buildWriterPayload({
+          mode: "rewrite",
+          rewriteInstruction: instruction,
+          previousText: preview.fragment,
+        }),
+      );
+      applyWriterData(data);
+      setGenerationRun((n) => n + 1);
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : "改写失败，请稍后重试。");
+    } finally {
+      setRewriteInstruction(null);
     }
   }
 
@@ -781,6 +853,35 @@ export default function SlicePage() {
                     ))
                   )}
                 </div>
+                {generationRun > 1 ? (
+                  <div className="rounded-xl border border-[#53613b]/20 bg-[#f7f4e9] px-4 py-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#53613b]">
+                        Rewrite Direction
+                      </p>
+                      {rewriteInstruction ? (
+                        <span className="text-xs text-[#7a705e]">改写中...</span>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {REWRITE_INSTRUCTIONS.map((instruction) => (
+                        <button
+                          key={instruction}
+                          type="button"
+                          onClick={() => handleRewrite(instruction)}
+                          disabled={isGenerating || rewriteInstruction !== null}
+                          className={cn(
+                            "rounded-full border border-[#8a7c62]/28 bg-[#fffdf7] px-3.5 py-2 text-xs font-medium text-[#5f5849] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#f4f7ea] disabled:cursor-not-allowed disabled:opacity-55",
+                            rewriteInstruction === instruction &&
+                              "border-[#53613b]/55 bg-[#e7ead4] text-[#3f4b2f]",
+                          )}
+                        >
+                          {rewriteInstruction === instruction ? "改写中..." : instruction}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </section>
 
               <InfoSection title="情绪结构">

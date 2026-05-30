@@ -11,6 +11,26 @@ import { supabase } from "@/lib/supabase";
 
 type AuthMode = "login" | "signup";
 
+type AuthUser = {
+  id: string;
+  email?: string | null;
+};
+
+async function upsertUserProfile(user: AuthUser) {
+  const { error } = await supabase.from("user_profiles").upsert(
+    {
+      id: user.id,
+      email: user.email ?? null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" },
+  );
+
+  if (error) {
+    console.error("User profile sync failed", error.message);
+  }
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [authMode, setAuthMode] = useState<AuthMode>("login");
@@ -32,6 +52,10 @@ export default function HomePage() {
 
       if (error) {
         setAuthError(error.message);
+      }
+
+      if (data.session?.user) {
+        await upsertUserProfile(data.session.user);
       }
 
       setHasSession(Boolean(data.session));
@@ -82,6 +106,10 @@ export default function HomePage() {
     if (error) {
       setAuthError(error.message);
       return;
+    }
+
+    if (data.user) {
+      await upsertUserProfile(data.user);
     }
 
     if (data.session) {

@@ -74,6 +74,15 @@ function countTag(records: FeedbackRecord[], matcher: string | ((tag: string) =>
   ).length;
 }
 
+function countFeedbackSignal(
+  records: FeedbackRecord[],
+  matcher: (text: string) => boolean,
+) {
+  return records.filter((record) =>
+    matcher([...record.issue_tags, record.comment].join(" ")),
+  ).length;
+}
+
 function formatTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "未知时间";
@@ -191,12 +200,29 @@ export default function FeedbackPage() {
   const stats = useMemo(() => {
     const total = records.length;
     const satisfied = records.filter((record) => record.rating === "satisfied").length;
-    const ooc = countTag(records, "OOC");
+    const ooc = countFeedbackSignal(
+      records,
+      (text) =>
+        text.includes("OOC") ||
+        text.includes("角色不像") ||
+        text.includes("对话不像角色"),
+    );
     const weakEmotion = countTag(records, "情绪不足");
     const styleMismatch = countTag(records, "风格不匹配");
     const canonConflict = countTag(
       records,
       (tag) => tag === "Canon 冲突" || tag.toLowerCase() === "canon",
+    );
+    const relationTooFast = countFeedbackSignal(records, (text) =>
+      text.includes("关系推进过快"),
+    );
+    const tooExplicit = countFeedbackSignal(
+      records,
+      (text) => text.includes("太直白") || text.includes("心理描写过多"),
+    );
+    const tooAi = countFeedbackSignal(
+      records,
+      (text) => text.includes("太 AI") || text.includes("AI 味"),
     );
 
     return {
@@ -206,6 +232,9 @@ export default function FeedbackPage() {
       weakEmotion,
       styleMismatch,
       canonConflict,
+      relationTooFast,
+      tooExplicit,
+      tooAi,
       metrics: [
         { label: "总反馈数", value: String(total), count: total },
         { label: "满意率", value: getPercent(satisfied, total), count: satisfied },
@@ -216,6 +245,51 @@ export default function FeedbackPage() {
       ],
     };
   }, [records]);
+
+  const generationImpactAdvice = useMemo(() => {
+    if (stats.total === 0) {
+      return ["提交反馈后，FanForge 会把问题标签转化为下一次生成的约束。"];
+    }
+
+    const signals = [
+      {
+        count: stats.ooc,
+        text: "OOC 反馈较高：下一次生成将更严格使用 Persona 档案和角色声线。",
+      },
+      {
+        count: stats.canonConflict,
+        text: "Canon 冲突较高：下一次生成将提高 Canon 文档优先级。",
+      },
+      {
+        count: stats.weakEmotion,
+        text: "情绪不足较高：下一次生成将增加动作、停顿和短对话。",
+      },
+      {
+        count: stats.styleMismatch,
+        text: "风格不匹配较高：下一次生成将更严格遵守风格卡和用户风格补充。",
+      },
+      {
+        count: stats.relationTooFast,
+        text: "关系推进过快较高：下一次生成将降低关系推进速度。",
+      },
+      {
+        count: stats.tooExplicit,
+        text: "直白或心理描写过多：下一次生成将更多使用动作、物件和环境承载情绪。",
+      },
+      {
+        count: stats.tooAi,
+        text: "AI 味较高：下一次生成将减少抽象总结和套路化抒情。",
+      },
+    ]
+      .filter((item) => item.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+      .map((item) => item.text);
+
+    return signals.length
+      ? signals
+      : ["当前反馈暂未形成明显问题倾向，后续生成会继续参考新的标签。"];
+  }, [stats]);
 
   const optimizationAdvice = useMemo(() => {
     const candidates = [
@@ -343,6 +417,33 @@ export default function FeedbackPage() {
               muted={metric.count === 0}
             />
           ))}
+        </section>
+
+        <section className="rounded-[14px] border border-[#53613b]/24 bg-[#f4f7ea]/72 p-5 shadow-[0_18px_50px_rgba(92,69,42,0.04)]">
+          <div className="mb-5 flex items-center gap-3 border-b border-[#53613b]/20 pb-4">
+            <GitBranch className="size-4 text-[#53613b]" />
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-[#6f6759]">
+                Generation Learning
+              </p>
+              <h2 className="mt-2 font-serif text-4xl leading-none tracking-[-0.02em] text-[#171410]">
+                反馈如何影响下一次生成
+              </h2>
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {generationImpactAdvice.map((item, index) => (
+              <div
+                key={item}
+                className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 rounded-xl border border-[#53613b]/22 bg-[#fffdf7] px-3 py-3 text-sm leading-7 text-[#4f5841]"
+              >
+                <span className="font-serif text-2xl leading-none text-[#53613b]">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
         </section>
 
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.35fr_0.65fr]">

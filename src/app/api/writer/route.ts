@@ -25,6 +25,9 @@ type UserModelSettings = {
 };
 
 type WriterRequestBody = {
+  mode?: string;
+  rewriteInstruction?: string;
+  previousText?: string;
   characterNames?: string;
   relationshipType?: string;
   relationshipTypeCustom?: string;
@@ -101,6 +104,9 @@ const writerResponseSchema = {
 } as const;
 
 type NormalizedWriterInput = {
+  mode: string;
+  rewriteInstruction: string;
+  previousText: string;
   nameA: string;
   nameB: string;
   relationshipType: string;
@@ -117,6 +123,7 @@ type NormalizedWriterInput = {
   usedCanonDocuments: string[];
   personaContext: string;
   usedPersonaProfiles: string[];
+  feedbackLearningContext: string;
 };
 
 type CanonContextResult = {
@@ -127,6 +134,14 @@ type CanonContextResult = {
 type PersonaContextResult = {
   text: string;
   titles: string[];
+};
+
+type FeedbackRow = {
+  rating: string;
+  issue_tags: string[];
+  comment: string;
+  feature: string;
+  created_at: string;
 };
 
 function stringValue(value: unknown, fallback = "") {
@@ -245,6 +260,9 @@ function normalizeWriterInput(body: WriterRequestBody): NormalizedWriterInput {
   const forbiddenCustom = stringValue(body.forbiddenCustom);
 
   return {
+    mode: stringValue(body.mode, "generate"),
+    rewriteInstruction: stringValue(body.rewriteInstruction),
+    previousText: stringValue(body.previousText),
     nameA,
     nameB,
     relationshipType,
@@ -269,6 +287,7 @@ function normalizeWriterInput(body: WriterRequestBody): NormalizedWriterInput {
     usedCanonDocuments: [],
     personaContext: stringValue(body.personaContext),
     usedPersonaProfiles: [],
+    feedbackLearningContext: "",
   };
 }
 
@@ -374,6 +393,70 @@ function createStyleParagraph(styleCard: string, nameA: string, nameB: string) {
   return `周围的一切都安静下来。${nameB}低头整理被风吹乱的袖口，指尖绕过一道旧线头，忽然记起从前${nameA}也有这样的习惯：话说得少，却总在别人看不见的地方留一条退路。`;
 }
 
+function extractVoiceLine(personaContext: string) {
+  const match = personaContext.match(/常说的话：([^\n]+)/);
+  if (!match?.[1]) return "";
+
+  const raw = match[1].trim();
+  const quoted = raw.match(/[“‘'"]([^”’'"]+)[”’'"]?/);
+  return (quoted?.[1] || raw.split(/[。；;\/]/)[0] || "").trim().slice(0, 28);
+}
+
+function createFreeRewriteText(input: NormalizedWriterInput) {
+  const base = sanitizeLiteraryText(
+    input.previousText || createFreeModelResponse({ ...input, mode: "generate" }).text,
+    input.nameA,
+    input.nameB,
+  );
+  const paragraphs = base.split(/\n{2,}/).filter(Boolean);
+  const voiceLine = extractVoiceLine(input.personaContext);
+  const extraByInstruction: Record<string, string[]> = {
+    更克制: [
+      `${input.nameB}把话咽回去，只用指节蹭了蹭袖口的雨痕。`,
+      `“算了。”${input.nameA}说。`,
+      `${input.nameB}没有问算了什么。她往旁边让出半步，檐下的阴影也跟着空了一点。`,
+    ],
+    更多对话: [
+      `“你认出我了。”${input.nameA}说。`,
+      `“没有。”`,
+      `“那你为什么不看我？”`,
+      `${input.nameB}停了停：“因为雨太大。”`,
+    ],
+    更有张力: [
+      `${input.nameA}往前一步，伞影刚要覆过去，${input.nameB}却先退到了灯光边缘。`,
+      `“别过来。”`,
+      `这三个字没有落重，却比雨声更清楚。${input.nameA}停住，手指仍扣着伞柄，没有松开。`,
+    ],
+    更贴近角色: [
+      `${input.nameA}没有解释，只把伞柄转向她那边。动作很稳，像是在把所有多余的话都按回骨头里。`,
+      `“${voiceLine || "别把话说得太满"}。”${input.nameB}低声说。`,
+      `“我没说不管。”`,
+    ],
+    更像原作: [
+      `街角旧徽章的暗纹被雨水洗亮了一瞬。${input.nameA}看见它，神色比方才更冷。`,
+      `“这东西还在你这里？”`,
+      `${input.nameB}把徽章握进掌心，没有回答。`,
+    ],
+    少一点心理描写: [
+      `雨水顺着伞骨落下来，砸在两人中间。`,
+      `${input.nameB}抬手，像要接那把伞，又在碰到伞柄前停住。`,
+      `“不用。”她说。`,
+    ],
+  };
+  const additions = extraByInstruction[input.rewriteInstruction] ?? extraByInstruction.更克制;
+  const insertionIndex = Math.min(Math.max(3, Math.floor(paragraphs.length / 2)), paragraphs.length);
+  const rewritten = [
+    ...paragraphs.slice(0, insertionIndex),
+    ...additions,
+    ...paragraphs.slice(insertionIndex),
+  ].join("\n\n");
+
+  return trimToApproximateLength(
+    sanitizeLiteraryText(rewritten, input.nameA, input.nameB),
+    input.targetLength,
+  );
+}
+
 function createFreeModelResponse(input: NormalizedWriterInput): WriterResponse {
   const {
     nameA,
@@ -391,14 +474,45 @@ function createFreeModelResponse(input: NormalizedWriterInput): WriterResponse {
     usedCanonDocuments,
     personaContext,
     usedPersonaProfiles,
+    feedbackLearningContext,
   } = input;
   const paragraphHint = getParagraphHint(targetLength);
+  const voiceLine = extractVoiceLine(personaContext);
+
+  if (input.mode === "rewrite") {
+    const text = createFreeRewriteText(input);
+
+    return {
+      text,
+      emotionStructure: [
+        `起——保留原片段的「${moment}」和人物距离。`,
+        `承——按「${input.rewriteInstruction || "定向改写"}」调整对白、动作和留白比例。`,
+        `转——继续维持「${tension}」下的克制推进。`,
+        "合——结尾仍停在未完全越界的位置，不替角色总结感情。",
+      ],
+      characterConstraints: [
+        `人物姓名：正文固定使用 ${nameA} 和 ${nameB}。`,
+        `关系约束：${relationshipDetail}；${stage}。`,
+        `风格约束：${styleCard}；${styleDetail}。`,
+        `边界约束：${forbiddenText}。`,
+        personaContext
+          ? "Persona 约束：已读取角色档案和声线样本作为对白边界。"
+          : "Persona 约束：未读取到额外角色档案。",
+        feedbackLearningContext
+          ? "历史偏好：已参考近期反馈，降低重复问题。"
+          : "历史偏好：暂无反馈约束。",
+      ],
+      usedCanonDocuments,
+      usedPersonaProfiles,
+    };
+  }
 
   const baseParagraphs = [
     `${moment}。雨把街灯洗成旧金色，积水沿着砖缝往低处流，${nameA}和${nameB}停在同一处屋檐下，谁都没有先往外迈一步。`,
     `${nameB}先看见${nameA}肩头湿透的布料。檐角的水一滴一滴落到脚边，${literaryRelationshipCue}把两人的距离压得很窄，窄到任何一句寒暄都会显得多余。`,
     `“你怎么还走这条路？”${nameB}问。`,
     `“只是顺路。”${nameA}说。`,
+    voiceLine ? `“${voiceLine}。”${nameB}说。` : "",
     `“那你继续顺路。”${nameB}说。`,
     `${nameA}把伞沿往${nameB}那边偏了半寸。雨水顺着伞骨滑下来，刚好避开她的袖口，却把他自己的手背打湿。`,
     `${stage}没有给他们留下从容寒暄的余地。熟悉还在，分寸也还在，谁先开口都像认输，谁先退后又像承认从前真的断过。`,
@@ -439,10 +553,9 @@ function createFreeModelResponse(input: NormalizedWriterInput): WriterResponse {
     `这一次，${nameB}没有立刻移开目光。风把檐下的雨吹斜，像要把两个人重新推到同一处。`,
   ];
 
-  const neededParagraphs = [...baseParagraphs, ...expansionParagraphs].slice(
-    0,
-    paragraphHint.max,
-  );
+  const neededParagraphs = [...baseParagraphs, ...expansionParagraphs]
+    .filter(Boolean)
+    .slice(0, paragraphHint.max);
 
   const text = sanitizeLiteraryText(
     trimToApproximateLength(neededParagraphs.join("\n\n"), targetLength),
@@ -466,6 +579,9 @@ function createFreeModelResponse(input: NormalizedWriterInput): WriterResponse {
     personaContext
       ? "Persona 约束：已读取角色档案并作为 OOC 边界约束正文。"
       : "Persona 约束：未读取到额外角色档案。",
+    feedbackLearningContext
+      ? "历史偏好：已参考近期反馈，减少重复问题。"
+      : "历史偏好：暂无反馈约束。",
   ];
 
   return {
@@ -591,6 +707,138 @@ function mergePersonaContext(frontendPersonaContext: unknown, profilePersonaCont
     .join("\n\n");
 }
 
+function normalizeIssueTags(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((tag): tag is string => typeof tag === "string" && tag.trim() !== "");
+}
+
+async function getUserFeedbackRows(
+  client: NonNullable<typeof supabase>,
+  userId: string,
+): Promise<FeedbackRow[]> {
+  const { data, error } = await client
+    .from("user_feedback")
+    .select("rating, issue_tags, comment, feature, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error("Writer feedback context read failed", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((item) => ({
+    rating: stringValue(item.rating, "neutral"),
+    issue_tags: normalizeIssueTags(item.issue_tags),
+    comment: stringValue(item.comment).slice(0, 80),
+    feature: stringValue(item.feature, "slice"),
+    created_at: stringValue(item.created_at),
+  }));
+}
+
+const FEEDBACK_LEARNING_RULES = [
+  {
+    key: "OOC / 角色不像",
+    match: (text: string) =>
+      text.includes("OOC") ||
+      text.includes("角色不像") ||
+      text.includes("对话不像角色"),
+    strategies: [
+      "强化 Persona 上下文。",
+      "对话和行为必须更贴近角色声线。",
+      "不要让角色突然告白、突然和解、突然做违背人格的动作。",
+    ],
+  },
+  {
+    key: "Canon 冲突",
+    match: (text: string) => text.includes("Canon") || text.includes("canon"),
+    strategies: [
+      "强化 Canon 上下文优先级。",
+      "不得随意改写身份、时间线、世界观规则。",
+      "不确定时保持模糊，不主动创造硬设定。",
+    ],
+  },
+  {
+    key: "情绪不足",
+    match: (text: string) => text.includes("情绪不足"),
+    strategies: [
+      "增加关系张力。",
+      "增加停顿、动作、短对话、未说出口的话。",
+      "不要只写平铺直叙的剧情。",
+    ],
+  },
+  {
+    key: "风格不匹配",
+    match: (text: string) => text.includes("风格不匹配"),
+    strategies: [
+      "更严格遵守 styleCard 和 styleCustom。",
+      "减少与用户风格要求冲突的表达。",
+      "不要过度华丽或过度口语，按用户偏好调整。",
+    ],
+  },
+  {
+    key: "太直白 / 心理描写过多",
+    match: (text: string) => text.includes("太直白") || text.includes("心理描写过多"),
+    strategies: [
+      "减少解释性心理描写。",
+      "用动作、物件、环境和对话承载情绪。",
+      "避免直接总结感情。",
+    ],
+  },
+  {
+    key: "关系推进过快",
+    match: (text: string) => text.includes("关系推进过快"),
+    strategies: [
+      "关系推进更慢。",
+      "不要突然亲密、拥抱、告白或和解。",
+      "让关系停在快要越界但没有越界的位置。",
+    ],
+  },
+  {
+    key: "太 AI / AI 味",
+    match: (text: string) => text.includes("太 AI") || text.includes("AI 味"),
+    strategies: [
+      "减少抽象总结句。",
+      "减少排比和套路化抒情。",
+      "增加具体动作、物件、停顿和不完整对话。",
+    ],
+  },
+] as const;
+
+function buildFeedbackLearningContext(rows: FeedbackRow[]) {
+  if (rows.length === 0) return "";
+
+  const counts = FEEDBACK_LEARNING_RULES.map((rule) => ({
+    key: rule.key,
+    count: rows.reduce((sum, row) => {
+      const searchable = [...row.issue_tags, row.comment].join(" ");
+      return rule.match(searchable) ? sum + 1 : sum;
+    }, 0),
+    strategies: rule.strategies,
+  }))
+    .filter((item) => item.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+
+  if (counts.length === 0) return "";
+
+  const strategies = Array.from(
+    new Set(counts.flatMap((item) => item.strategies)),
+  ).slice(0, 6);
+
+  return [
+    "【用户历史反馈倾向】",
+    "最近反馈中常见问题：",
+    ...counts.map((item) => `- ${item.key}：${item.count} 次`),
+    "",
+    "下一次生成请自动调整：",
+    ...strategies.map((item) => `- ${item}`),
+  ]
+    .join("\n")
+    .slice(0, 800);
+}
+
 async function getUserCanonContext(
   client: NonNullable<typeof supabase>,
   userId: string,
@@ -691,6 +939,27 @@ function readableList(value: unknown, limit: number) {
   return stringValue(value) ? [stringValue(value)] : [];
 }
 
+function voiceProfileLines(metadata: Record<string, unknown> | null) {
+  const voiceProfile =
+    metadata?.voiceProfile && typeof metadata.voiceProfile === "object"
+      ? (metadata.voiceProfile as Record<string, unknown>)
+      : null;
+
+  if (!voiceProfile) return [];
+
+  return [
+    ["常说的话", voiceProfile.commonLines],
+    ["不会说的话", voiceProfile.forbiddenLines],
+    ["称呼习惯", voiceProfile.addressHabits],
+    ["语气关键词", voiceProfile.toneKeywords],
+  ]
+    .map(([label, value]) => {
+      const text = stringValue(value);
+      return text ? `${label}：${text}` : "";
+    })
+    .filter(Boolean);
+}
+
 async function getUserPersonaContext(
   client: NonNullable<typeof supabase>,
   userId: string,
@@ -710,6 +979,10 @@ async function getUserPersonaContext(
   }
 
   const profiles = (data ?? []).map((item, index) => {
+    const metadata =
+      item.metadata && typeof item.metadata === "object"
+        ? (item.metadata as Record<string, unknown>)
+        : null;
     const title =
       typeof item.title === "string" && item.title.trim()
         ? item.title.trim()
@@ -718,8 +991,9 @@ async function getUserPersonaContext(
     const relationLines = readableList(item.relationship_nodes, 8);
     const oocLines = [
       ...readableList(item.ooc_boundaries, 6),
-      ...readableList((item.metadata as Record<string, unknown> | null)?.notes, 6),
+      ...readableList(metadata?.notes, 6),
     ].slice(0, 6);
+    const voiceLines = voiceProfileLines(metadata);
     const sections = [
       `【角色档案 ${index + 1}：${title}】`,
       `角色名：${stringValue(item.character_name, "未填写")}`,
@@ -727,6 +1001,7 @@ async function getUserPersonaContext(
       personaLines.length ? `人格节点：\n${personaLines.join("\n")}` : "",
       relationLines.length ? `关系节点：\n${relationLines.join("\n")}` : "",
       oocLines.length ? `OOC 边界：\n${oocLines.join("\n")}` : "",
+      voiceLines.length ? `【角色声线】\n${voiceLines.join("\n")}` : "",
     ].filter(Boolean);
 
     return {
@@ -852,6 +1127,15 @@ const PRODUCT_TERMS_IN_TEXT = [
   "根据Persona",
   "人格图显示",
   "角色设定中写道",
+  "根据角色声线",
+  "voiceProfile",
+  "改写",
+  "改写说明",
+  "根据要求",
+  "根据你的历史反馈",
+  "反馈显示",
+  "用户认为",
+  "历史反馈",
 ] as const;
 
 function sanitizeLiteraryText(text: string, nameA = "沈砚", nameB = "林栀") {
@@ -907,12 +1191,16 @@ export async function POST(request: Request) {
   const settings = await getUserModelSettings(request);
   let canonDocuments: CanonContextResult = { text: "", titles: [] };
   let personaProfiles: PersonaContextResult = { text: "", titles: [] };
+  let feedbackLearningContext = "";
 
   if (settings.user_id && settings.access_token) {
     const userSupabase = createSupabaseClientForToken(settings.access_token);
     if (userSupabase) {
       canonDocuments = await getUserCanonContext(userSupabase, settings.user_id);
       personaProfiles = await getUserPersonaContext(userSupabase, settings.user_id);
+      feedbackLearningContext = buildFeedbackLearningContext(
+        await getUserFeedbackRows(userSupabase, settings.user_id),
+      );
     }
   }
 
@@ -922,6 +1210,7 @@ export async function POST(request: Request) {
     usedCanonDocuments: canonDocuments.titles,
     personaContext: mergePersonaContext(body.personaContext, personaProfiles.text),
     usedPersonaProfiles: personaProfiles.titles,
+    feedbackLearningContext,
   };
   const freeModelResponse = createFreeModelResponse(normalizedWithCanon);
 
@@ -1025,8 +1314,27 @@ export async function POST(request: Request) {
           : "Persona 上下文：",
         "生成时优先遵守角色核心设定，不得让角色做出明显违反 OOC 边界的行为。",
         "如果 Persona 中写明角色克制、冷静、不直接表白，正文不要突然直白告白。",
+        "如果 Persona 上下文包含【角色声线】，至少 3 句对话要参考常说的话的句式和语气，避免不会说的话中的表达，称呼遵守称呼习惯，语气关键词影响对白和叙述节奏。",
+        "不要在正文里写“根据角色声线”，不要把 voiceProfile 或声线样本原样堆进正文。",
         "用动作、语气、停顿体现人格，而不是在正文里解释“他是一个怎样的人”。",
         "text 正文里不要出现“根据 Persona”“人格图显示”“角色设定中写道”等说明性语言。",
+        normalizedWithCanon.feedbackLearningContext
+          ? `历史反馈学习：\n${normalizedWithCanon.feedbackLearningContext}`
+          : "历史反馈学习：",
+        "历史反馈学习只作为生成优化信号；text 正文里不要写“根据你的历史反馈”“反馈显示”“用户认为”等解释。",
+        normalizedWithCanon.mode === "rewrite"
+          ? [
+              "当前是定向改写模式：必须基于 previousText 改写，不要重新生成完全无关内容。",
+              `改写指令：${normalizedWithCanon.rewriteInstruction || "保持原意并优化文本"}`,
+              "text 字段仍然只输出小说正文，不要解释“已经帮你改写”。",
+              "如果指令是“更克制”，减少直白心理描写和情绪宣告，增加停顿、动作、未说出口的话。",
+              "如果指令是“更多对话”，增加自然短对话，对话单独成段，不要变成说明式对白。",
+              "如果指令是“更有张力”，增加距离变化、回避、试探和误解，不要直接拥抱、告白或和解。",
+              "如果指令是“更贴近角色”，更严格遵守 Persona 上下文、OOC 边界和角色声线。",
+              "如果指令是“更像原作”，更严格遵守 Canon 上下文，不改写原作硬设定。",
+              "如果指令是“少一点心理描写”，用动作、物件、环境和对话承载情绪，减少解释句。",
+            ].join("\n")
+          : "当前是首次生成模式。",
         `text 字段目标字数约为 ${normalizedWithCanon.targetLength} 个中文字符，最终正文必须尽量落在 ${lengthRange.min} 到 ${lengthRange.max} 个中文字符之间，并写成 ${paragraphHint.label}。`,
         "不要因为分段变短而大幅缩水。如果目标是 500 字，不能只写 200 字；如果目标是 1000 字，不能只写 400 字。",
         `段落规则：每段 1-4 句话；不允许超过 160 个中文字符的超长段落；如果目标约 400-600 字，至少 7 个自然段；如果目标约 700-1000 字，至少 10 个自然段。`,
@@ -1038,6 +1346,7 @@ export async function POST(request: Request) {
         "禁止写成一整坨散文，禁止总结人物关系，禁止写“他们之间的关系如何如何”或“这种距离象征着……”。",
         "text 字段只能是小说正文，不能写产品说明、规则解释、参数说明或生成策略。",
         "text 中绝对禁止出现：CP、关系类型、关系阶段、情绪张力、风格卡、禁止项、男主、女主、角色A、角色B、用户要求、参数、设定说明、本段、生成、mock、fallback、demo、自定义关系、自定义瞬间、自定义阶段、自定义张力。",
+        "改写模式下还禁止出现：改写、改写说明、根据要求、我已经、以下是。",
         "表达关系时，只能用人物动作、短对白、称呼、站位、距离和物件暗示，不要写任何产品参数词。",
         "必须体现用户输入的具体场景、关系设定、阶段细节、情绪推进、风格要求和边界要求，但不能直接说出这些字段名。",
         "emotionStructure 输出 3-5 条情绪结构说明；characterConstraints 输出 3-5 条使用到的角色、关系、风格约束。",
@@ -1045,6 +1354,9 @@ export async function POST(request: Request) {
       ].join("\n"),
       input: JSON.stringify({
         characterNames: `${normalizedWithCanon.nameA} × ${normalizedWithCanon.nameB}`,
+        mode: normalizedWithCanon.mode,
+        rewriteInstruction: normalizedWithCanon.rewriteInstruction,
+        previousText: normalizedWithCanon.previousText,
         relationshipType: body.relationshipType,
         relationshipTypeCustom: body.relationshipTypeCustom,
         relationshipTypeFinal: body.relationshipTypeFinal,
@@ -1053,6 +1365,7 @@ export async function POST(request: Request) {
         usedCanonDocuments: canonDocuments.titles,
         personaContext: normalizedWithCanon.personaContext,
         usedPersonaProfiles: personaProfiles.titles,
+        feedbackLearningContext: normalizedWithCanon.feedbackLearningContext,
         moment: body.moment,
         momentCustom: body.momentCustom,
         momentFinal: body.momentFinal,
@@ -1079,7 +1392,9 @@ export async function POST(request: Request) {
         forbiddenCustom: body.forbiddenCustom,
         forbiddenText: normalizedWithCanon.forbiddenText,
         task: [
-          "生成一个关系情绪短片段。",
+          normalizedWithCanon.mode === "rewrite"
+            ? "基于 previousText 做定向改写。"
+            : "生成一个关系情绪短片段。",
           "text 只写正文，不写任何解释。",
           "emotionStructure 和 characterConstraints 单独输出，不要混入 text。",
         ].join("\n"),

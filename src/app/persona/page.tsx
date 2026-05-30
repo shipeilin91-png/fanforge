@@ -163,6 +163,13 @@ type PersonaForm = {
   oocBoundaries: string;
 };
 
+type VoiceProfile = {
+  commonLines: string;
+  forbiddenLines: string;
+  addressHabits: string;
+  toneKeywords: string;
+};
+
 const defaultPersona: PersonaForm = {
   name: "苏砚",
   identity: "没落帝国王子 / 流亡阵营的名义继承人",
@@ -176,6 +183,13 @@ const defaultPersona: PersonaForm = {
     "亲密关系里先保持距离，用讽刺和礼貌作为防御机制；真正担心对方时会先处理危险，再解释情绪。",
   oocBoundaries:
     "禁止突然热烈告白；禁止轻易示弱求安慰；禁止在关系未推进前主动拥抱或撒娇；禁止把责任完全推给他人。",
+};
+
+const defaultVoiceProfile: VoiceProfile = {
+  commonLines: "",
+  forbiddenLines: "",
+  addressHabits: "",
+  toneKeywords: "",
 };
 
 const edgeStyle = { stroke: "#8a7c62", strokeWidth: 1.5 };
@@ -460,6 +474,19 @@ function normalizeRelationshipEdges(value: unknown) {
   return Array.isArray(value) ? (value as Edge[]) : generatedEdges;
 }
 
+function normalizeVoiceProfile(value: unknown): VoiceProfile {
+  if (!value || typeof value !== "object") return defaultVoiceProfile;
+
+  const voiceProfile = value as Partial<Record<keyof VoiceProfile, unknown>>;
+
+  return {
+    commonLines: safeString(voiceProfile.commonLines),
+    forbiddenLines: safeString(voiceProfile.forbiddenLines),
+    addressHabits: safeString(voiceProfile.addressHabits),
+    toneKeywords: safeString(voiceProfile.toneKeywords),
+  };
+}
+
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
     <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#6f6759]">
@@ -479,6 +506,8 @@ export default function PersonaPage() {
   const [profileMessage, setProfileMessage] = useState("登录后可保存和加载角色档案。");
   const [profileError, setProfileError] = useState<string | null>(null);
   const [form, setForm] = useState<PersonaForm>(defaultPersona);
+  const [voiceProfile, setVoiceProfile] =
+    useState<VoiceProfile>(defaultVoiceProfile);
   const [nodes, setNodes] = useState<Node<PersonaNodeData>[]>(() =>
     createPersonaNodes(defaultPersona),
   );
@@ -616,6 +645,7 @@ export default function PersonaPage() {
     setCurrentPersonaId(profile.id);
     setProfileTitle(profile.title);
     setForm(nextForm);
+    setVoiceProfile(normalizeVoiceProfile(profile.metadata?.voiceProfile));
     setNodes(profile.persona_nodes.length ? profile.persona_nodes : createPersonaNodes(nextForm));
     setEdges(profile.relationship_edges.length ? profile.relationship_edges : generatedEdges);
     setRelationshipPeople(
@@ -663,6 +693,7 @@ export default function PersonaPage() {
           relationshipForm,
           activeName,
         },
+        voiceProfile,
       },
       updated_at: now,
     };
@@ -733,12 +764,17 @@ export default function PersonaPage() {
   function handleNewPersonaProfile() {
     setCurrentPersonaId(null);
     setProfileTitle("");
+    setVoiceProfile(defaultVoiceProfile);
     setProfileMessage("");
     setProfileError(null);
   }
 
   function updateField(field: keyof PersonaForm, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function updateVoiceField(field: keyof VoiceProfile, value: string) {
+    setVoiceProfile((prev) => ({ ...prev, [field]: value }));
   }
 
   function updateRelationshipField(field: keyof RelationshipForm, value: string) {
@@ -992,6 +1028,70 @@ export default function PersonaPage() {
                   }
                   className="min-h-20 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17]"
                 />
+              </div>
+              <div className="rounded-xl border border-[#53613b]/24 bg-[#f7f4e9] p-4 md:col-span-2">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#53613b]">
+                      Voice Profile
+                    </p>
+                    <h3 className="mt-1 font-serif text-2xl leading-none text-[#171410]">
+                      角色声线样本
+                    </h3>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="rounded-xl border-[#53613b]/28 bg-[#e7ead4] text-[10px] text-[#3f4b2f]"
+                  >
+                    Dialogue
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <FieldLabel>常说的话</FieldLabel>
+                    <Textarea
+                      value={voiceProfile.commonLines}
+                      onChange={(event) =>
+                        updateVoiceField("commonLines", event.target.value)
+                      }
+                      placeholder="例如：‘别把话说得太满。’ / ‘我没说不管。’"
+                      className="min-h-20 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17]"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <FieldLabel>不会说的话</FieldLabel>
+                    <Textarea
+                      value={voiceProfile.forbiddenLines}
+                      onChange={(event) =>
+                        updateVoiceField("forbiddenLines", event.target.value)
+                      }
+                      placeholder="例如：不会直接说‘我爱你’，不会用过度现代网络语。"
+                      className="min-h-20 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17]"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <FieldLabel>称呼习惯</FieldLabel>
+                    <Textarea
+                      value={voiceProfile.addressHabits}
+                      onChange={(event) =>
+                        updateVoiceField("addressHabits", event.target.value)
+                      }
+                      placeholder="例如：对外人称全名，对亲近的人只叫姓；生气时会改用敬称。"
+                      className="min-h-20 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17]"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <FieldLabel>语气关键词</FieldLabel>
+                    <Textarea
+                      value={voiceProfile.toneKeywords}
+                      onChange={(event) =>
+                        updateVoiceField("toneKeywords", event.target.value)
+                      }
+                      placeholder="例如：克制、讽刺、短句、很少解释、习惯反问。"
+                      className="min-h-20 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-sm leading-relaxed text-[#211d17]"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>

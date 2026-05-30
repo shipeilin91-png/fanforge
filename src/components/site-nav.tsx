@@ -21,6 +21,26 @@ const navLinks = [
 const linkClassName =
   "px-3 py-1.5 text-sm text-[#c7c1b4] transition-colors hover:text-[#fff8ea] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#53613b]";
 
+type AuthUser = {
+  id: string;
+  email?: string | null;
+};
+
+async function upsertUserProfile(user: AuthUser) {
+  const { error } = await supabase.from("user_profiles").upsert(
+    {
+      id: user.id,
+      email: user.email ?? null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" },
+  );
+
+  if (error) {
+    console.error("User profile sync failed", error.message);
+  }
+}
+
 export function SiteNav() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -33,7 +53,12 @@ export function SiteNav() {
 
       if (!isMounted) return;
 
-      setUserEmail(data.session?.user.email ?? null);
+      const user = data.session?.user;
+      setUserEmail(user?.email ?? null);
+
+      if (user) {
+        await upsertUserProfile(user);
+      }
     }
 
     void loadSession();
@@ -41,7 +66,12 @@ export function SiteNav() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserEmail(session?.user.email ?? null);
+      const user = session?.user;
+      setUserEmail(user?.email ?? null);
+
+      if (user) {
+        void upsertUserProfile(user);
+      }
     });
 
     return () => {

@@ -53,6 +53,7 @@ type NormalizedChapterInput = {
   previousChapterSummary: string;
   usedCanonDocuments: string[];
   usedPersonaProfiles: string[];
+  feedbackLearningContext: string;
 };
 
 type CanonContextResult = {
@@ -63,6 +64,14 @@ type CanonContextResult = {
 type PersonaContextResult = {
   text: string;
   titles: string[];
+};
+
+type FeedbackRow = {
+  rating: string;
+  issue_tags: string[];
+  comment: string;
+  feature: string;
+  created_at: string;
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -182,6 +191,7 @@ function normalizeChapterInput(body: ChapterRequestBody): NormalizedChapterInput
     ),
     usedCanonDocuments: [],
     usedPersonaProfiles: [],
+    feedbackLearningContext: "",
   };
 }
 
@@ -299,6 +309,138 @@ function mergePersonaContext(frontendPersonaContext: unknown, profilePersonaCont
     .join("\n\n");
 }
 
+function normalizeIssueTags(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((tag): tag is string => typeof tag === "string" && tag.trim() !== "");
+}
+
+async function getUserFeedbackRows(
+  client: NonNullable<typeof supabase>,
+  userId: string,
+): Promise<FeedbackRow[]> {
+  const { data, error } = await client
+    .from("user_feedback")
+    .select("rating, issue_tags, comment, feature, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error("Chapter feedback context read failed", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((item) => ({
+    rating: stringValue(item.rating, "neutral"),
+    issue_tags: normalizeIssueTags(item.issue_tags),
+    comment: stringValue(item.comment).slice(0, 80),
+    feature: stringValue(item.feature, "chapter"),
+    created_at: stringValue(item.created_at),
+  }));
+}
+
+const FEEDBACK_LEARNING_RULES = [
+  {
+    key: "OOC / 角色不像",
+    match: (text: string) =>
+      text.includes("OOC") ||
+      text.includes("角色不像") ||
+      text.includes("对话不像角色"),
+    strategies: [
+      "强化 Persona 上下文。",
+      "对话和行为必须更贴近角色声线。",
+      "不要让角色突然告白、突然和解、突然做违背人格的动作。",
+    ],
+  },
+  {
+    key: "Canon 冲突",
+    match: (text: string) => text.includes("Canon") || text.includes("canon"),
+    strategies: [
+      "强化 Canon 上下文优先级。",
+      "不得随意改写身份、时间线、世界观规则。",
+      "不确定时保持模糊，不主动创造硬设定。",
+    ],
+  },
+  {
+    key: "情绪不足",
+    match: (text: string) => text.includes("情绪不足"),
+    strategies: [
+      "增加关系张力。",
+      "增加停顿、动作、短对话、未说出口的话。",
+      "不要只写平铺直叙的剧情。",
+    ],
+  },
+  {
+    key: "风格不匹配",
+    match: (text: string) => text.includes("风格不匹配"),
+    strategies: [
+      "更严格遵守 styleCard 和 styleCustom。",
+      "减少与用户风格要求冲突的表达。",
+      "不要过度华丽或过度口语，按用户偏好调整。",
+    ],
+  },
+  {
+    key: "太直白 / 心理描写过多",
+    match: (text: string) => text.includes("太直白") || text.includes("心理描写过多"),
+    strategies: [
+      "减少解释性心理描写。",
+      "用动作、物件、环境和对话承载情绪。",
+      "避免直接总结感情。",
+    ],
+  },
+  {
+    key: "关系推进过快",
+    match: (text: string) => text.includes("关系推进过快"),
+    strategies: [
+      "关系推进更慢。",
+      "不要突然亲密、拥抱、告白或和解。",
+      "让关系停在快要越界但没有越界的位置。",
+    ],
+  },
+  {
+    key: "太 AI / AI 味",
+    match: (text: string) => text.includes("太 AI") || text.includes("AI 味"),
+    strategies: [
+      "减少抽象总结句。",
+      "减少排比和套路化抒情。",
+      "增加具体动作、物件、停顿和不完整对话。",
+    ],
+  },
+] as const;
+
+function buildFeedbackLearningContext(rows: FeedbackRow[]) {
+  if (rows.length === 0) return "";
+
+  const counts = FEEDBACK_LEARNING_RULES.map((rule) => ({
+    key: rule.key,
+    count: rows.reduce((sum, row) => {
+      const searchable = [...row.issue_tags, row.comment].join(" ");
+      return rule.match(searchable) ? sum + 1 : sum;
+    }, 0),
+    strategies: rule.strategies,
+  }))
+    .filter((item) => item.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+
+  if (counts.length === 0) return "";
+
+  const strategies = Array.from(
+    new Set(counts.flatMap((item) => item.strategies)),
+  ).slice(0, 6);
+
+  return [
+    "【用户历史反馈倾向】",
+    "最近反馈中常见问题：",
+    ...counts.map((item) => `- ${item.key}：${item.count} 次`),
+    "",
+    "下一次生成请自动调整：",
+    ...strategies.map((item) => `- ${item}`),
+  ]
+    .join("\n")
+    .slice(0, 800);
+}
+
 async function getUserCanonContext(
   client: NonNullable<typeof supabase>,
   userId: string,
@@ -399,6 +541,27 @@ function readableList(value: unknown, limit: number) {
   return stringValue(value) ? [stringValue(value)] : [];
 }
 
+function voiceProfileLines(metadata: Record<string, unknown> | null) {
+  const voiceProfile =
+    metadata?.voiceProfile && typeof metadata.voiceProfile === "object"
+      ? (metadata.voiceProfile as Record<string, unknown>)
+      : null;
+
+  if (!voiceProfile) return [];
+
+  return [
+    ["常说的话", voiceProfile.commonLines],
+    ["不会说的话", voiceProfile.forbiddenLines],
+    ["称呼习惯", voiceProfile.addressHabits],
+    ["语气关键词", voiceProfile.toneKeywords],
+  ]
+    .map(([label, value]) => {
+      const text = stringValue(value);
+      return text ? `${label}：${text}` : "";
+    })
+    .filter(Boolean);
+}
+
 async function getUserPersonaContext(
   client: NonNullable<typeof supabase>,
   userId: string,
@@ -418,6 +581,10 @@ async function getUserPersonaContext(
   }
 
   const profiles = (data ?? []).map((item, index) => {
+    const metadata =
+      item.metadata && typeof item.metadata === "object"
+        ? (item.metadata as Record<string, unknown>)
+        : null;
     const title =
       typeof item.title === "string" && item.title.trim()
         ? item.title.trim()
@@ -426,8 +593,9 @@ async function getUserPersonaContext(
     const relationLines = readableList(item.relationship_nodes, 8);
     const oocLines = [
       ...readableList(item.ooc_boundaries, 6),
-      ...readableList((item.metadata as Record<string, unknown> | null)?.notes, 6),
+      ...readableList(metadata?.notes, 6),
     ].slice(0, 6);
+    const voiceLines = voiceProfileLines(metadata);
     const sections = [
       `【角色档案 ${index + 1}：${title}】`,
       `角色名：${stringValue(item.character_name, "未填写")}`,
@@ -435,6 +603,7 @@ async function getUserPersonaContext(
       personaLines.length ? `人格节点：\n${personaLines.join("\n")}` : "",
       relationLines.length ? `关系节点：\n${relationLines.join("\n")}` : "",
       oocLines.length ? `OOC 边界：\n${oocLines.join("\n")}` : "",
+      voiceLines.length ? `【角色声线】\n${voiceLines.join("\n")}` : "",
     ].filter(Boolean);
 
     return {
@@ -536,6 +705,12 @@ const BANNED_DRAFT_TERMS = [
   "根据Persona",
   "人格图显示",
   "角色设定中写道",
+  "根据角色声线",
+  "voiceProfile",
+  "根据你的历史反馈",
+  "反馈显示",
+  "用户认为",
+  "历史反馈",
 ] as const;
 
 function sanitizeDraft(draft: string) {
@@ -557,7 +732,18 @@ function getChapterParagraphCount(targetLength: number) {
   return { min: 20, max: 28 };
 }
 
+function extractVoiceLine(personaContext: string) {
+  const match = personaContext.match(/常说的话：([^\n]+)/);
+  if (!match?.[1]) return "";
+
+  const raw = match[1].trim();
+  const quoted = raw.match(/[“‘'"]([^”’'"]+)[”’'"]?/);
+  return (quoted?.[1] || raw.split(/[。；;\/]/)[0] || "").trim().slice(0, 28);
+}
+
 function createFreeChapterResponse(input: NormalizedChapterInput): ChapterResponse {
+  const voiceLine = extractVoiceLine(input.personaContext);
+  const hasFeedbackLearning = Boolean(input.feedbackLearningContext);
   const paragraphs = [
     `${input.chapterTitle}这一夜来得很迟。雨从城墙外压下来，把巷口的灯打得忽明忽暗，石阶上积着薄薄一层水。`,
     `林栀推门时，先听见了靴底踩过水面的声音。那声音停在门外，没有立刻靠近。`,
@@ -568,6 +754,7 @@ function createFreeChapterResponse(input: NormalizedChapterInput): ChapterRespon
     `林栀把门开得更窄：“你五年前也这么说。”`,
     `沈砚的手指停在袖口，那里有一道新划破的线。很短，却不像赶路时蹭出来的。`,
     `“这次不一样。”他说。`,
+    voiceLine ? `林栀看了他一眼：“${voiceLine}。”` : "",
     `院墙外传来一声短促的哨音。两个人同时静下来，雨声在这一刻显得太大。`,
     `林栀伸手按灭了桌边的灯。黑暗落下去之前，她看见沈砚把那枚旧徽章推回了原处。`,
     `“你到底惹上了谁？”`,
@@ -600,7 +787,9 @@ function createFreeChapterResponse(input: NormalizedChapterInput): ChapterRespon
 
   const paragraphCount = getChapterParagraphCount(input.expectedLength);
   const targetParagraphCount = Math.min(paragraphCount.max, paragraphs.length);
-  const draft = sanitizeDraft(paragraphs.slice(0, targetParagraphCount).join("\n\n"));
+  const draft = sanitizeDraft(
+    paragraphs.filter(Boolean).slice(0, targetParagraphCount).join("\n\n"),
+  );
 
   return {
     draft,
@@ -619,6 +808,7 @@ function createFreeChapterResponse(input: NormalizedChapterInput): ChapterRespon
             `使用了最近保存的 Persona 档案：${input.usedPersonaProfiles.join("、")}`,
           ]
         : []),
+      ...(hasFeedbackLearning ? ["已参考近期用户反馈倾向"] : []),
       `人格与关系上下文：${input.personaContext}；${input.relationshipContext}`,
     ],
     foreshadowingNotes: [
@@ -666,12 +856,16 @@ export async function POST(request: Request) {
   const settings = await getUserModelSettings(request);
   let canonDocuments: CanonContextResult = { text: "", titles: [] };
   let personaProfiles: PersonaContextResult = { text: "", titles: [] };
+  let feedbackLearningContext = "";
 
   if (settings.user_id && settings.access_token) {
     const userSupabase = createSupabaseClientForToken(settings.access_token);
     if (userSupabase) {
       canonDocuments = await getUserCanonContext(userSupabase, settings.user_id);
       personaProfiles = await getUserPersonaContext(userSupabase, settings.user_id);
+      feedbackLearningContext = buildFeedbackLearningContext(
+        await getUserFeedbackRows(userSupabase, settings.user_id),
+      );
     }
   }
 
@@ -681,6 +875,7 @@ export async function POST(request: Request) {
     usedCanonDocuments: canonDocuments.titles,
     personaContext: mergePersonaContext(body.personaContext, personaProfiles.text),
     usedPersonaProfiles: personaProfiles.titles,
+    feedbackLearningContext,
   };
   const freeModelResponse = createFreeChapterResponse(normalizedWithCanon);
 
@@ -782,7 +977,14 @@ export async function POST(request: Request) {
           : "Persona 上下文：",
         "章节正文 draft 应遵守角色人格和 OOC 边界，人物状态变化要有连续性。",
         "不要为了推进剧情让角色突然崩坏；如果 Persona 中写明角色克制、冷静、不直接表白，就不要突然直白告白。",
+        "如果 Persona 上下文包含【角色声线】，章节正文中的对话要参考常说的话的句式和语气，避免不会说的话中的表达，称呼遵守称呼习惯，语气关键词影响对白和叙述节奏。",
+        "不要让所有角色说话像同一个人；不要在 draft 正文里写“根据角色声线”，不要把 voiceProfile 或声线样本原样堆进正文。",
         "draft 正文里不要解释“根据人格图”“根据 Persona”“角色设定中写道”。",
+        normalizedWithCanon.feedbackLearningContext
+          ? `历史反馈学习：\n${normalizedWithCanon.feedbackLearningContext}`
+          : "历史反馈学习：",
+        "历史反馈学习只作为章节生成优化信号；draft 正文里不要写“根据你的历史反馈”“反馈显示”“用户认为”等解释。",
+        "如果历史反馈常见节奏太快，章节推进要更慢；如果常见 OOC，对话和行动更保守，更贴近 Persona；如果常见 Canon 冲突，更严格遵守 Canon 文档。",
         `draft 字段目标字数约为 ${normalizedWithCanon.expectedLength} 个中文字符，章节正文必须尽量落在 ${lengthRange.min} 到 ${lengthRange.max} 个中文字符之间。`,
         "不要只输出短片段。如果用户选择 1000 字，应至少写到 850 字左右。",
         "draft 字段只能是小说正文，不要混入解释说明、写作策略、上下文列表或大纲。",
@@ -800,6 +1002,7 @@ export async function POST(request: Request) {
         maxLength: lengthRange.max,
         usedCanonDocuments: canonDocuments.titles,
         usedPersonaProfiles: personaProfiles.titles,
+        feedbackLearningContext: normalizedWithCanon.feedbackLearningContext,
         task: "生成一个章节草稿片段，并返回上下文、伏笔提示和下一章钩子。",
       }),
       max_output_tokens: Math.min(7000, Math.max(2200, normalizedWithCanon.expectedLength * 3)),
@@ -834,6 +1037,9 @@ export async function POST(request: Request) {
           ? [
               `使用了最近保存的 Persona 档案：${personaProfiles.titles.join("、")}`,
             ]
+          : []),
+        ...(normalizedWithCanon.feedbackLearningContext
+          ? ["已参考近期用户反馈倾向"]
           : []),
       ],
       usedCanonDocuments: canonDocuments.titles,
