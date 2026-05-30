@@ -2,32 +2,81 @@
 
 **Canon-aware AI Writing Studio for Fanfiction Creators**
 
-FanForge is an AI co-writing platform for fanfiction creators. It helps writers generate more controllable stories within canon and character boundaries through a Canon Library, Persona Archive, relationship-focused Emotion Slice generation, Chapter Writing, Multi-Agent Review, and feedback-informed prompt optimization.
+FanForge is a Canon-aware AI co-writing platform for fanfiction creators. It helps writers generate more controllable stories within canon, character, and relationship boundaries by combining Canon RAG, Persona Timeline, Multi-Agent Review, Emotion Slice generation, and feedback-informed prompt optimization.
 
 ## Live Demo
 
 Live Demo: https://fanforge-three.vercel.app
 
+## Core Highlights
+
+- **Canon RAG with Gemini Embedding + Supabase pgvector**: saved Canon documents are chunked, embedded into 1536-dimensional vectors, retrieved by similarity, and injected into generation prompts as evidence.
+- **RAG Control Layer**: Slice and Chapter generation support `none`, `auto`, and `selected` Canon modes, a `0.65` similarity threshold, selected document control, and `canonUsage` metadata for explainability.
+- **Studio Context Engine**: the main writing workspace includes real toggles for Canon Context Agent, Persona Map, Relationship Map, and Style Card. Disabled context is not injected into generation requests.
+- **Multi-Agent Writing Workflow**: Writer, Reviewer, and Criticizer roles separate generation, evaluation, and revision strategy to reduce single-model self-confirmation bias.
+- **Persona Timeline System**: character profiles are modeled as dynamic persona timelines rather than static cards.
+- **Emotion Slice Generator**: relationship moments, stage, tension, style, forbidden items, and custom intent are parameterized for high-density fanfiction fragments.
+- **Feedback-informed Prompt Loop**: user feedback is stored, summarized, and used to adjust future Writer prompts.
+- **BYOK Model Strategy**: FanForge Free Model supports onboarding, while advanced models can use user-provided API keys.
+
 ## Product Positioning
 
-FanForge is not a generic AI writing tool. It is designed around the specific writing problems of fanfiction: canon consistency, character boundaries, relationship stages, and emotional tension.
+FanForge is not a generic AI writing tool. It is designed around fanfiction-specific constraints:
 
-FanForge is:
+- **Canon-aware**: original documents and retrieved evidence guide generation.
+- **Persona-aware**: character timelines, OOC boundaries, relationship maps, and voice samples constrain output.
+- **Feedback-informed**: user issue tags and comments become prompt optimization signals.
+- **Relationship-focused**: the product treats CP dynamics, emotional distance, and relationship progression as first-class writing controls.
 
-- **Canon-aware**: generation can reference saved canon documents and avoid hard-setting conflicts.
-- **Persona-aware**: character profiles, OOC boundaries, relationship maps, and voice samples guide generation.
-- **Feedback-informed**: user feedback is stored, analyzed, and injected into future prompts.
-- **Relationship-focused**: the core writing experience is optimized for CP dynamics, emotional slices, and long-form continuity.
+Sudowrite helps writers write; Novelcrafter helps writers organize; FanForge helps fanfiction creators write within canon and character boundaries.
 
 ## User Problems
 
 Fanfiction creators often face problems that generic AI writing tools do not handle well:
 
-- AI-generated text easily breaks character consistency and causes OOC.
+- AI-generated text can break character consistency and cause OOC.
 - Long-form writing makes it easy to forget canon details, timeline constraints, and foreshadowing.
 - Generic AI tools do not understand relationship stages, CP tension, or subtle emotional distance.
 - New writers may not fully understand the original worldbuilding or character history.
-- User feedback is usually displayed as analytics only, instead of improving the next generation.
+- User feedback is often displayed as analytics only, instead of improving the next generation.
+
+## Canon RAG Architecture
+
+```text
+Canon Document
+→ Chunking
+→ Gemini Embedding 1536-dim vector
+→ Supabase pgvector
+→ top-k similarity retrieval
+→ Evidence filtering with 0.65 threshold
+→ Prompt injection
+→ Frontend evidence display
+```
+
+FanForge currently implements a portfolio-level RAG prototype. It indexes user-saved Canon documents into `user_canon_chunks`, retrieves relevant chunks through Supabase pgvector, filters weak matches, injects evidence into Writer / Chapter prompts, and displays the matched evidence on the frontend.
+
+This is not an enterprise-grade RAG system. Future improvements include reranking, hybrid search, stronger source attribution, and stricter canon conflict detection.
+
+## RAG Control Layer
+
+Users can choose how Canon is used during generation:
+
+- **none**: disable Canon for this generation.
+- **auto**: retrieve the most relevant Canon evidence automatically.
+- **selected**: use a specific Canon document chosen by the user.
+
+The backend filters out evidence below `0.65` similarity and returns `canonUsage`, including mode, status, evidence count, and highest similarity. This makes each generation more explainable and avoids injecting weak or unrelated evidence.
+
+## Studio Context Engine
+
+Studio is the main FanForge writing workspace. It includes four context controls:
+
+- **Canon Context Agent**
+- **Persona Map**
+- **Relationship Map**
+- **Style Card**
+
+These are real generation controls, not static UI. When a switch is disabled, the corresponding context is not injected into the request. For example, turning off Canon Context Agent forces `canonMode = "none"`, preventing Canon RAG retrieval and evidence injection for that generation.
 
 ## Core Features
 
@@ -39,20 +88,26 @@ Fanfiction creators often face problems that generic AI writing tools do not han
 
 ### Model Settings
 
-- **FanForge Free Model** for new-user onboarding and flow validation.
+- **FanForge Free Model** for new-user onboarding and workflow exploration.
+- Daily free quota tracking, currently **30 free generations per day**.
 - Advanced model configuration through BYOK.
-- Daily free quota tracking for generation usage, currently 30 free generations per day.
-- Model settings stored per user without exposing sensitive keys in the UI.
+- User model settings stored per account without exposing sensitive keys in the UI.
 
 ### Canon Library
 
-- Save original work excerpts, worldbuilding notes, character history, or timeline references.
-- Recent Canon documents are automatically injected into Writer and Chapter generation.
-- Canon context acts as a hidden constraint to reduce setting conflicts.
+- Save original work excerpts, worldbuilding notes, character history, and timeline references.
+- Saved Canon documents can be indexed into chunks and retrieved through Canon RAG.
+- Frontend generation results show matched evidence title, preview, and similarity.
 
 ### Persona Archive
 
-- Character persona timeline tree.
+- Dynamic Persona Timeline based on:
+  - core personality thesis
+  - life stage
+  - key events
+  - behavior boundaries
+  - voice changes
+  - foreshadowing constraints
 - Relationship graph for character dynamics.
 - OOC boundaries and writing taboos.
 - Character voice samples:
@@ -65,7 +120,8 @@ Fanfiction creators often face problems that generic AI writing tools do not han
 
 - Generates high-density relationship / CP emotional moments.
 - Supports relationship type, relationship stage, emotional tension, style card, forbidden items, custom input, and expected length.
-- Supports directional rewrite chips:
+- Supports Canon RAG control: no Canon, automatic retrieval, or selected document.
+- Supports directional rewrite actions:
   - more restrained
   - more dialogue
   - more tension
@@ -76,10 +132,13 @@ Fanfiction creators often face problems that generic AI writing tools do not han
 ### Chapter Writer
 
 - Long-form chapter drafting API.
-- Uses chapter goal, plot input, style requirements, forbidden items, previous chapter summary, Canon context, Persona context, and relationship context.
+- Uses chapter goal, plot input, style requirements, forbidden items, previous chapter summary, Canon context, Persona context, relationship context, and feedback learning context.
+- Supports Canon RAG control and evidence display.
 - Returns:
   - chapter draft
   - used context
+  - Canon evidence
+  - Persona profiles
   - foreshadowing notes
   - next chapter hooks
 
@@ -87,7 +146,15 @@ Fanfiction creators often face problems that generic AI writing tools do not han
 
 - Main writing desk for FanForge.
 - Supports continue writing, expand scene, generate emotional slice, save draft, and load saved drafts.
-- Integrates Canon, Persona, relationship, style, and feedback signals into one writing workspace.
+- Context Engine switches control which context sources are injected into generation.
+- Integrates Canon, Persona, relationship, style, usage quota, and draft management into one workspace.
+
+### Multi-Agent Review
+
+- Writer generates the initial text.
+- Reviewer evaluates role consistency, Canon consistency, emotional tension, style fit, and relationship progression.
+- Criticizer turns review findings into revision direction.
+- The workflow is designed to reduce a single model's tendency to generate and approve its own output without friction.
 
 ### Feedback Loop
 
@@ -99,37 +166,37 @@ Fanfiction creators often face problems that generic AI writing tools do not han
 ### Admin Dashboard
 
 - Admin access through an access-code gate.
-- Displays real feedback, usage, model setting overview, active users, and prompt optimization suggestions.
+- Displays feedback, usage, model setting overview, active users, and prompt optimization suggestions.
 - Helps evaluate where the product should improve: Persona, Canon, style, tension, pacing, or prompt wording.
 
-## Product Differentiation
+## Product Thinking / PM Value
 
-Sudowrite is more focused on general fiction writing flow. Novelcrafter is more focused on long-form structure and story organization.
+FanForge focuses on fanfiction-specific constraints instead of generic writing assistance:
 
-FanForge focuses on the specific needs of fanfiction creators:
+- avoiding OOC
+- reducing canon conflicts
+- controlling relationship progression
+- preserving long-term character development
+- making AI generation explainable through retrieved evidence
 
-- canon consistency
-- character persona boundaries
-- CP / relationship emotional tension
-- feedback-informed generation
-
-**Sudowrite helps writers write; Novelcrafter helps writers organize; FanForge helps fanfiction creators write within canon and character boundaries.**
+The product is structured around a core PM hypothesis: fanfiction creators do not only need "more text"; they need controllable text that respects canon, character boundaries, relationship pacing, and their own revision preferences.
 
 ## AI Workflow Architecture
 
 ```text
 User Input
-→ Canon Context
-→ Persona Context
+→ Canon Mode / Canon RAG Evidence
+→ Persona Timeline / Voice Profile
+→ Relationship and Style Constraints
 → Feedback Learning Context
 → Writer Agent
-→ Reviewer / Constraints
+→ Reviewer / Criticizer
 → Output
 → User Feedback
 → Next-generation Prompt Optimization
 ```
 
-FanForge treats generation as a workflow, not a one-shot text completion. Canon documents, persona profiles, user feedback, and model settings all influence the final writing output.
+FanForge treats generation as a workflow, not a one-shot text completion. Canon evidence, persona profiles, user feedback, context switches, and model settings all influence the final writing output.
 
 ## Data Feedback Loop
 
@@ -146,30 +213,55 @@ FanForge treats generation as a workflow, not a one-shot text completion. Canon 
 
 A recommended path for reviewers:
 
-1. Open the live demo: https://fanforge-three.vercel.app
+1. Open the live site: https://fanforge-three.vercel.app
 2. Register or log in with email.
 3. Go to Settings and select **FanForge Free Model**.
 4. Go to Canon and save a short canon/worldbuilding excerpt.
-5. Go to Persona and create a character profile with voice samples.
-6. Go to Slice and generate an emotional relationship moment.
-7. Use directional rewrite actions such as “more restrained”, “more dialogue”, or “closer to canon”.
-8. Submit feedback with issue tags.
-9. Open Feedback Board to see quality data.
-10. Open Studio to save and load a draft.
+5. Index the Canon document so it can be retrieved as evidence.
+6. Go to Persona and create a character profile with voice samples.
+7. Go to Slice and generate an emotional relationship moment.
+8. Try Canon mode: no Canon, automatic Canon, or selected Canon document.
+9. Use directional rewrite actions such as "more restrained", "more dialogue", or "closer to canon".
+10. Submit feedback with issue tags.
+11. Open Feedback Board to see quality data.
+12. Open Studio to test Context Engine switches and save a draft.
+
+## Tech Stack
+
+- Next.js
+- React
+- Tailwind CSS
+- Supabase Auth
+- Supabase Database
+- Supabase pgvector
+- Gemini Embedding API
+- Vercel
+- Prompt Engineering
+- Multi-Agent Prompt Workflow
+- BYOK model routing
+- Structured JSON generation responses
 
 ## Technical Implementation
 
-- **Next.js App Router**
-- **React**
-- **Tailwind CSS**
-- **Supabase Auth**
-- **Supabase Database**
-- **Vercel Deployment**
-- **React Flow** for persona graph visualization
-- **API Routes** for Writer, Chapter, Usage, Feedback-informed generation, and Admin access
-- **LLM API / BYOK** model selection logic
-- **Structured JSON output** for generation responses
-- **RLS-oriented user data isolation**
+- **Next.js App Router** for page and API route structure.
+- **Supabase Auth / Database** for user accounts, drafts, Canon documents, Persona profiles, feedback, usage quota, and model settings.
+- **Supabase pgvector** for Canon evidence retrieval.
+- **Gemini Embedding API** for 1536-dimensional Canon chunk embeddings.
+- **Vercel Deployment** for the live online MVP.
+- **React Flow** for persona graph visualization.
+- **API Routes** for Writer, Chapter, Canon indexing, Canon retrieval, Usage, and Admin access.
+- **Structured JSON output** for generation responses.
+- **RLS-oriented user data isolation** for user-owned records.
+
+## Current Status
+
+- Live MVP deployed on Vercel.
+- Canon RAG prototype implemented.
+- RAG control layer implemented for Slice and Chapter writing.
+- Studio Context Engine implemented.
+- Feedback loop implemented and injected into future prompts.
+- Supabase Auth / Database, admin dashboard, daily free quota, BYOK model settings, and draft saving are implemented.
+- Next step: real user testing with fanfiction creators and improving Persona Timeline / Canon conflict detection.
 
 ## Current Boundaries
 
@@ -179,15 +271,16 @@ Current limitations:
 
 - API Key encryption and production-grade secret handling still need to be hardened.
 - Payment and subscription systems are not implemented yet.
-- Formal Canon RAG / vector retrieval is still planned.
+- Canon RAG is a working prototype, but reranking, hybrid search, and deeper conflict detection are still planned.
 - Mobile and PWA experience needs more polish.
-- FanForge Free Model is currently designed for onboarding and workflow validation.
+- FanForge Free Model is designed for onboarding and workflow validation.
 - Admin analytics should be upgraded to a server-side service-role API for production use.
 
 ## Roadmap
 
-- Canon RAG / vector retrieval
+- Canon RAG reranking and hybrid retrieval
 - More complete OOC checker
+- Canon conflict detection before generation
 - Version history for drafts
 - Mobile / PWA support
 - Production payment and quota system
@@ -199,8 +292,8 @@ Current limitations:
 
 I owned the product work from 0 to 1: user problem breakdown, competitive analysis, product positioning, MVP scope, information architecture, interaction flows, AI generation workflow design, prompt constraints, feedback-loop design, and implementation collaboration with AI coding tools across frontend and backend.
 
-From a product management perspective, FanForge demonstrates how a writing product can move beyond generic AI text generation and become a context-aware, feedback-informed creation workflow.
+From a product management perspective, FanForge demonstrates how a writing product can move beyond generic AI text generation and become a context-aware, evidence-aware, feedback-informed creation workflow.
 
 ## Resume Keywords
 
-AI Product Management / AIGC / AI Agent / Prompt Engineering / Supabase / Vercel / BYOK / User Feedback Loop / Canon-aware Generation / Persona-aware Writing
+AI Product Management / AIGC / AI Agent / Prompt Engineering / RAG / Supabase / pgvector / Gemini Embedding / Vercel / BYOK / User Feedback Loop / Canon-aware Generation / Persona-aware Writing / Multi-Agent Workflow
