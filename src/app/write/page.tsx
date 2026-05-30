@@ -465,7 +465,7 @@ export default function WritePage() {
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {contextItems.map((item, index) => (
                   <div
-                    key={item.title}
+                    key={`${item.title}-${index}`}
                     className="group rounded-xl border border-[#7b8359]/22 bg-[#fffdf7] px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#f4f7ea]"
                   >
                     <div className="mb-3 flex items-start justify-between gap-2">
