@@ -29,6 +29,13 @@ type CanonUsage = {
   maxSimilarity?: number;
 };
 
+type ContextEngine = {
+  canon: boolean;
+  persona: boolean;
+  relationship: boolean;
+  style: boolean;
+};
+
 type ModelProvider =
   | "fanforge_free"
   | "openai"
@@ -74,6 +81,7 @@ type WriterRequestBody = {
   canonMode?: string;
   selectedCanonDocumentId?: string;
   personaContext?: string;
+  contextEngine?: Partial<ContextEngine>;
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -192,6 +200,15 @@ type FeedbackRow = {
 function stringValue(value: unknown, fallback = "") {
   if (typeof value === "number" && Number.isFinite(value)) return String(value);
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function normalizeContextEngine(value: WriterRequestBody["contextEngine"]): ContextEngine {
+  return {
+    canon: value?.canon ?? true,
+    persona: value?.persona ?? true,
+    relationship: value?.relationship ?? true,
+    style: value?.style ?? true,
+  };
 }
 
 function parseCharacterNames(value: unknown): [string, string] {
@@ -1468,10 +1485,13 @@ export async function POST(request: Request) {
   }
 
   const normalized = normalizeWriterInput(body);
+  const contextEngine = normalizeContextEngine(body.contextEngine);
   const paragraphHint = getParagraphHint(normalized.targetLength);
   const lengthRange = getLengthRange(normalized.targetLength);
   const settings = await getUserModelSettings(request);
-  const canonMode = normalizeCanonMode(body.canonMode);
+  const canonMode = contextEngine.canon
+    ? normalizeCanonMode(body.canonMode)
+    : "none";
   const selectedCanonDocumentId = stringValue(body.selectedCanonDocumentId);
   let canonDocuments: CanonContextResult = { text: "", titles: [] };
   let canonEvidence: CanonEvidenceHit[] = [];
@@ -1482,7 +1502,7 @@ export async function POST(request: Request) {
   if (settings.user_id && settings.access_token) {
     const userSupabase = createSupabaseClientForToken(settings.access_token);
     if (userSupabase) {
-      if (canonMode !== "none") {
+      if (contextEngine.canon && canonMode !== "none") {
         if (canonMode === "selected" && selectedCanonDocumentId) {
           selectedDocumentTitle = await getCanonDocumentTitle(
             userSupabase,
@@ -1495,7 +1515,16 @@ export async function POST(request: Request) {
           const rawCanonEvidence = await retrieveCanonChunks(
             userSupabase,
             settings.user_id,
-            buildWriterCanonRetrievalQuery(body, normalized),
+            buildWriterCanonRetrievalQuery(body, {
+              ...normalized,
+              relationshipDetail: contextEngine.relationship
+                ? normalized.relationshipDetail
+                : "",
+              literaryRelationshipCue: contextEngine.relationship
+                ? normalized.literaryRelationshipCue
+                : "",
+              styleDetail: contextEngine.style ? normalized.styleDetail : "",
+            }),
             canonMode === "selected" ? 30 : 5,
           );
           const scopedEvidence =
@@ -1512,7 +1541,9 @@ export async function POST(request: Request) {
           };
         }
       }
-      personaProfiles = await getUserPersonaContext(userSupabase, settings.user_id);
+      if (contextEngine.persona) {
+        personaProfiles = await getUserPersonaContext(userSupabase, settings.user_id);
+      }
       feedbackLearningContext = buildFeedbackLearningContext(
         await getUserFeedbackRows(userSupabase, settings.user_id),
       );
@@ -1544,9 +1575,20 @@ export async function POST(request: Request) {
     usedCanonDocuments: canonDocuments.titles,
     usedCanonEvidence,
     canonUsage,
-    personaContext: mergePersonaContext(body.personaContext, personaProfiles.text),
-    usedPersonaProfiles: personaProfiles.titles,
+    personaContext: contextEngine.persona
+      ? mergePersonaContext(body.personaContext, personaProfiles.text)
+      : "",
+    usedPersonaProfiles: contextEngine.persona ? personaProfiles.titles : [],
     feedbackLearningContext,
+    relationshipDetail: contextEngine.relationship
+      ? normalized.relationshipDetail
+      : normalized.relationshipType,
+    literaryRelationshipCue: contextEngine.relationship
+      ? normalized.literaryRelationshipCue
+      : normalized.relationshipType,
+    styleDetail: contextEngine.style
+      ? normalized.styleDetail
+      : `基础风格标签：${normalized.styleCard}`,
   };
   const freeModelResponse = createFreeModelResponse(normalizedWithCanon);
 
@@ -1594,7 +1636,7 @@ export async function POST(request: Request) {
         usedCanonDocuments: canonDocuments.titles,
         usedCanonEvidence,
         canonUsage,
-        usedPersonaProfiles: personaProfiles.titles,
+        usedPersonaProfiles: normalizedWithCanon.usedPersonaProfiles,
         usage: {
           limit: FREE_DAILY_LIMIT,
           used: usage.count,
@@ -1608,7 +1650,7 @@ export async function POST(request: Request) {
       usedCanonDocuments: canonDocuments.titles,
       usedCanonEvidence,
       canonUsage,
-      usedPersonaProfiles: personaProfiles.titles,
+      usedPersonaProfiles: normalizedWithCanon.usedPersonaProfiles,
     });
   }
 
@@ -1656,15 +1698,19 @@ export async function POST(request: Request) {
         "如果 Canon 上下文存在，生成时要优先遵守其中的硬设定，不得主动改写其中明确的人物身份、时间线、阵营和世界观规则。",
         "如果用户输入和 Canon 上下文冲突，优先保持 Canon 一致性，但不要在正文里解释冲突。",
         "text 正文里不要出现“根据 Canon 文档”“资料显示”“设定中写道”等说明性语言；Canon 只作为隐性约束进入正文。",
-        normalizedWithCanon.personaContext
-          ? `Persona 上下文：\n${normalizedWithCanon.personaContext}`
-          : "Persona 上下文：",
-        "生成时优先遵守角色核心设定，不得让角色做出明显违反 OOC 边界的行为。",
-        "如果 Persona 中写明角色克制、冷静、不直接表白，正文不要突然直白告白。",
-        "如果 Persona 上下文包含【角色声线】，至少 3 句对话要参考常说的话的句式和语气，避免不会说的话中的表达，称呼遵守称呼习惯，语气关键词影响对白和叙述节奏。",
-        "不要在正文里写“根据角色声线”，不要把 voiceProfile 或声线样本原样堆进正文。",
-        "用动作、语气、停顿体现人格，而不是在正文里解释“他是一个怎样的人”。",
-        "text 正文里不要出现“根据 Persona”“人格图显示”“角色设定中写道”等说明性语言。",
+        ...(contextEngine.persona
+          ? [
+              normalizedWithCanon.personaContext
+                ? `Persona 上下文：\n${normalizedWithCanon.personaContext}`
+                : "Persona 上下文：",
+              "生成时优先遵守角色核心设定，不得让角色做出明显违反 OOC 边界的行为。",
+              "如果 Persona 中写明角色克制、冷静、不直接表白，正文不要突然直白告白。",
+              "如果 Persona 上下文包含【角色声线】，至少 3 句对话要参考常说的话的句式和语气，避免不会说的话中的表达，称呼遵守称呼习惯，语气关键词影响对白和叙述节奏。",
+              "不要在正文里写“根据角色声线”，不要把 voiceProfile 或声线样本原样堆进正文。",
+              "用动作、语气、停顿体现人格，而不是在正文里解释“他是一个怎样的人”。",
+              "text 正文里不要出现“根据 Persona”“人格图显示”“角色设定中写道”等说明性语言。",
+            ]
+          : []),
         normalizedWithCanon.feedbackLearningContext
           ? `历史反馈学习：\n${normalizedWithCanon.feedbackLearningContext}`
           : "历史反馈学习：",
@@ -1677,7 +1723,9 @@ export async function POST(request: Request) {
               "如果指令是“更克制”，减少直白心理描写和情绪宣告，增加停顿、动作、未说出口的话。",
               "如果指令是“更多对话”，增加自然短对话，对话单独成段，不要变成说明式对白。",
               "如果指令是“更有张力”，增加距离变化、回避、试探和误解，不要直接拥抱、告白或和解。",
-              "如果指令是“更贴近角色”，更严格遵守 Persona 上下文、OOC 边界和角色声线。",
+              contextEngine.persona
+                ? "如果指令是“更贴近角色”，更严格遵守 Persona 上下文、OOC 边界和角色声线。"
+                : "如果指令是“更贴近角色”，只根据本次输入调整人物动作和对白，不额外注入 Persona 档案。",
               "如果指令是“更像原作”，更严格遵守 Canon 上下文，不改写原作硬设定。",
               "如果指令是“少一点心理描写”，用动作、物件、环境和对话承载情绪，减少解释句。",
             ].join("\n")
@@ -1713,7 +1761,7 @@ export async function POST(request: Request) {
         usedCanonEvidence,
         canonUsage,
         personaContext: normalizedWithCanon.personaContext,
-        usedPersonaProfiles: personaProfiles.titles,
+        usedPersonaProfiles: normalizedWithCanon.usedPersonaProfiles,
         feedbackLearningContext: normalizedWithCanon.feedbackLearningContext,
         moment: body.moment,
         momentCustom: body.momentCustom,
@@ -1735,7 +1783,9 @@ export async function POST(request: Request) {
         maxLength: lengthRange.max,
         paragraphHint: paragraphHint.label,
         styleCard: normalizedWithCanon.styleCard,
-        styleCustom: body.styleCustom ?? body.styleRequirement,
+        styleCustom: contextEngine.style
+          ? body.styleCustom ?? body.styleRequirement
+          : "",
         effectiveStyleDetail: normalizedWithCanon.styleDetail,
         forbiddenItems: body.forbiddenItems,
         forbiddenCustom: body.forbiddenCustom,
@@ -1776,7 +1826,7 @@ export async function POST(request: Request) {
       usedCanonDocuments: canonDocuments.titles,
       usedCanonEvidence,
       canonUsage,
-      usedPersonaProfiles: personaProfiles.titles,
+      usedPersonaProfiles: normalizedWithCanon.usedPersonaProfiles,
     };
 
     if (containsProhibitedExplanation(sanitizedResponse.text)) {
@@ -1788,7 +1838,7 @@ export async function POST(request: Request) {
       usedCanonDocuments: canonDocuments.titles,
       usedCanonEvidence,
       canonUsage,
-      usedPersonaProfiles: personaProfiles.titles,
+      usedPersonaProfiles: normalizedWithCanon.usedPersonaProfiles,
     });
   } catch (error) {
     console.error("Writer API error", error);

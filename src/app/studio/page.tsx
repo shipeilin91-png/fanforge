@@ -102,6 +102,8 @@ type CanonEvidence = {
   similarity: number;
 };
 
+type ContextToggleKey = "canon" | "persona" | "relationship" | "style";
+
 const assets: Record<AssetTab, Asset[]> = {
   outline: [
     {
@@ -167,7 +169,7 @@ const assets: Record<AssetTab, Asset[]> = {
       title: "Canon 证据",
       description: "来自 /canon：原作硬设定、时间线、身份信息和证据片段。",
       source: "/canon",
-      sourceLabel: "Canon Evidence",
+      sourceLabel: "Canon Context Agent",
       meta: "Evidence",
       status: "已锁定",
     },
@@ -239,15 +241,18 @@ const tabNotes: Record<AssetTab, string> = {
 
 const contextModules = [
   {
-    title: "Canon Evidence",
+    key: "canon",
+    title: "Canon Context Agent",
     source: "/canon",
     icon: SearchCheck,
     cardClass:
       "border-[#53613b]/35 bg-[#eef1df]/80 hover:border-[#53613b]/60",
     dotClass: "bg-[#53613b]",
     iconClass: "text-[#53613b]",
+    offMessage: "本次不会检索 Canon RAG 证据。",
   },
   {
+    key: "persona",
     title: "Persona Map",
     source: "/persona",
     icon: Brain,
@@ -255,8 +260,10 @@ const contextModules = [
       "border-[#9a7f45]/35 bg-[#f1e7cf]/80 hover:border-[#9a7f45]/60",
     dotClass: "bg-[#8a6f38]",
     iconClass: "text-[#8a6f38]",
+    offMessage: "本次不会注入角色档案约束。",
   },
   {
+    key: "relationship",
     title: "Relationship Map",
     source: "/persona",
     icon: GitBranch,
@@ -264,8 +271,10 @@ const contextModules = [
       "border-[#66745b]/35 bg-[#edf0e2]/80 hover:border-[#66745b]/60",
     dotClass: "bg-[#66745b]",
     iconClass: "text-[#66745b]",
+    offMessage: "本次不会注入关系图谱上下文。",
   },
   {
+    key: "style",
     title: "Style Card",
     source: null,
     icon: MessageSquareText,
@@ -273,6 +282,7 @@ const contextModules = [
       "border-[#8d6f58]/35 bg-[#f3e6d5]/80 hover:border-[#8d6f58]/60",
     dotClass: "bg-[#8d6f58]",
     iconClass: "text-[#8d6f58]",
+    offMessage: "本次不会注入风格卡扩展规则。",
   },
 ] as const;
 
@@ -423,6 +433,14 @@ export default function StudioPage() {
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null);
+  const [contextToggles, setContextToggles] = useState<
+    Record<ContextToggleKey, boolean>
+  >({
+    canon: true,
+    persona: true,
+    relationship: true,
+    style: true,
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -634,6 +652,13 @@ export default function StudioPage() {
       : "生成失败，请稍后重试。";
   }
 
+  function toggleContext(key: ContextToggleKey) {
+    setContextToggles((current) => ({
+      ...current,
+      [key]: !current[key],
+    }));
+  }
+
   async function handleChapterGeneration(kind: "continue" | "expand") {
     if (generationStatus) return;
 
@@ -655,9 +680,22 @@ export default function StudioPage() {
           expectedLength: wordCount,
           styleRequirement: styleCard,
           forbiddenItems,
-          canonContext: "Canon Evidence 已启用，约束世界观、身份信息和时间线。",
-          personaContext: "Persona Map 已启用，约束角色人格和 OOC 边界。",
-          relationshipContext: `Relationship Map 已启用，当前关系阶段：${relationshipStage}。`,
+          contextEngine: {
+            canon: contextToggles.canon,
+            persona: contextToggles.persona,
+            relationship: contextToggles.relationship,
+            style: contextToggles.style,
+          },
+          canonMode: contextToggles.canon ? "auto" : "none",
+          canonContext: contextToggles.canon
+            ? "Canon Context Agent 已启用，约束世界观、身份信息和时间线。"
+            : "",
+          personaContext: contextToggles.persona
+            ? "Persona Map 已启用，约束角色人格和 OOC 边界。"
+            : "",
+          relationshipContext: contextToggles.relationship
+            ? `Relationship Map 已启用，当前关系阶段：${relationshipStage}。`
+            : "",
           previousChapterSummary: draft.trim()
             ? draft.trim().slice(0, 600)
             : selectedAsset?.description,
@@ -744,11 +782,18 @@ export default function StudioPage() {
           expectedLength: wordCount,
           customLength: "",
           styleCard,
-          styleCustom: "",
           forbiddenItems: forbiddenItems
             ? forbiddenItems.split(/[；;、\n]/).filter(Boolean)
             : [],
           forbiddenCustom: "",
+          contextEngine: {
+            canon: contextToggles.canon,
+            persona: contextToggles.persona,
+            relationship: contextToggles.relationship,
+            style: contextToggles.style,
+          },
+          canonMode: contextToggles.canon ? "auto" : "none",
+          styleCustom: "",
         }),
       });
 
@@ -817,10 +862,10 @@ export default function StudioPage() {
         forbiddenItems,
         selectedChapter: selectedAsset?.title ?? chapterTitle,
         contextEngine: {
-          canon: true,
-          persona: true,
-          relationship: true,
-          styleCard: true,
+          canon: contextToggles.canon,
+          persona: contextToggles.persona,
+          relationship: contextToggles.relationship,
+          styleCard: contextToggles.style,
         },
       };
       const payload = {
@@ -923,7 +968,7 @@ export default function StudioPage() {
         </header>
 
         <section className="relative grid min-h-[760px] grid-cols-1 gap-4 xl:grid-cols-[294px_minmax(0,1fr)_356px]">
-          <aside className="border border-[#7b8359]/35 bg-[#f7efe0]/86 shadow-[0_18px_50px_rgba(92,69,42,0.08)]">
+          <aside className="rounded-[18px] border border-[#7b8359]/35 bg-[#f7efe0]/86 shadow-[0_18px_50px_rgba(92,69,42,0.08)]">
             <div className="border-b border-[#8a7c62]/25 px-4 py-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -948,7 +993,7 @@ export default function StudioPage() {
 
             <Tabs value={assetTab} onValueChange={handleTabChange}>
               <div className="px-4 pt-4">
-                <TabsList className="grid h-10 w-full grid-cols-3 border border-[#7b8359]/25 bg-[#f8f0df] p-1">
+                <TabsList className="grid h-10 w-full grid-cols-3 rounded-xl border border-[#7b8359]/25 bg-[#f8f0df] p-1">
                   <TabsTrigger value="outline" className="text-xs">
                     大纲
                   </TabsTrigger>
@@ -1084,7 +1129,7 @@ export default function StudioPage() {
           </aside>
 
           <section className="flex min-w-0 flex-col gap-4">
-            <div className="border border-[#9a7f45]/30 bg-[#fffaf0]/86 px-5 py-4 shadow-[0_14px_44px_rgba(92,69,42,0.06)]">
+            <div className="rounded-[18px] border border-[#9a7f45]/30 bg-[#fffaf0]/86 px-5 py-4 shadow-[0_14px_44px_rgba(92,69,42,0.06)]">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -1127,9 +1172,9 @@ export default function StudioPage() {
 
                 return (
                   <div
-                    key={item.title}
+                    key={item.key}
                     className={cn(
-                      "rounded-[24px] border px-3.5 py-3.5 transition-all duration-200 hover:-translate-y-0.5",
+                      "rounded-[18px] border px-3.5 py-3.5 transition-all duration-200 hover:-translate-y-0.5",
                       item.cardClass,
                     )}
                   >
@@ -1149,7 +1194,7 @@ export default function StudioPage() {
               })}
             </div>
 
-            <div className="flex flex-1 flex-col gap-4 border border-[#9a7f45]/35 bg-[#fbf7ed]/78 p-4 shadow-[0_20px_64px_rgba(92,69,42,0.08)]">
+            <div className="flex flex-1 flex-col gap-4 rounded-[18px] border border-[#9a7f45]/35 bg-[#fbf7ed]/78 p-4 shadow-[0_20px_64px_rgba(92,69,42,0.08)]">
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-medium text-[#6f6759]">
                   章节标题
@@ -1162,7 +1207,7 @@ export default function StudioPage() {
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 border border-[#8a7c62]/24 bg-[#fffdf7] px-3 py-2 text-xs text-[#6f6759]">
+              <div className="flex flex-wrap items-center gap-2 rounded-[14px] border border-[#8a7c62]/24 bg-[#fffdf7] px-3 py-2 text-xs text-[#6f6759]">
                 <span>目标字数：{targetLength}</span>
                 <span className="text-[#b9aa83]">/</span>
                 <span>当前字数：{currentLength}</span>
@@ -1182,7 +1227,7 @@ export default function StudioPage() {
                 </Badge>
               </div>
 
-              <div className="relative flex min-h-[470px] flex-1 overflow-hidden border border-[#8a6f38]/35 bg-[#fffaf0] shadow-[0_18px_44px_rgba(92,69,42,0.09)]">
+              <div className="relative flex min-h-[470px] flex-1 overflow-hidden rounded-[18px] border border-[#8a6f38]/35 bg-[#fffaf0] shadow-[0_18px_44px_rgba(92,69,42,0.09)]">
                 <Textarea
                   value={draft}
                   placeholder="从这里开始写。"
@@ -1198,7 +1243,7 @@ export default function StudioPage() {
 
               <div className="flex flex-wrap items-center gap-3 border-t border-[#b9aa83]/55 pt-4">
                 <Button
-                  className="h-10 bg-[#171410] px-4 text-[#f8f0df] hover:-translate-y-0.5 hover:bg-[#28331f]"
+                  className="h-10 rounded-xl bg-[#171410] px-4 text-[#f8f0df] hover:-translate-y-0.5 hover:bg-[#28331f]"
                   onClick={handleContinueWriting}
                   disabled={generationStatus !== null}
                 >
@@ -1207,7 +1252,7 @@ export default function StudioPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-10 border-[#53613b]/35 bg-[#fbf5e8] text-[#28331f] hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#e7ead4]"
+                  className="h-10 rounded-xl border-[#53613b]/35 bg-[#fbf5e8] text-[#28331f] hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#e7ead4]"
                   onClick={handleExpandScene}
                   disabled={generationStatus !== null}
                 >
@@ -1216,7 +1261,7 @@ export default function StudioPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-10 border-[#53613b]/35 bg-[#fbf5e8] text-[#28331f] hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#e7ead4]"
+                  className="h-10 rounded-xl border-[#53613b]/35 bg-[#fbf5e8] text-[#28331f] hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#e7ead4]"
                   onClick={handleGenerateSlice}
                   disabled={generationStatus !== null}
                 >
@@ -1225,7 +1270,7 @@ export default function StudioPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-10 border-[#171410]/18 bg-[#fbf5e8] text-[#171410] hover:-translate-y-0.5 hover:border-[#171410]/35 hover:bg-[#fff8ea]"
+                  className="h-10 rounded-xl border-[#171410]/18 bg-[#fbf5e8] text-[#171410] hover:-translate-y-0.5 hover:border-[#171410]/35 hover:bg-[#fff8ea]"
                   onClick={handleSaveDraft}
                   disabled={isSavingDraft}
                 >
@@ -1252,7 +1297,7 @@ export default function StudioPage() {
             </div>
           </section>
 
-          <aside className="border border-[#8a7c62]/35 bg-[#fffaf0]/84 shadow-[0_18px_50px_rgba(92,69,42,0.06)]">
+          <aside className="rounded-[18px] border border-[#8a7c62]/35 bg-[#fffaf0]/84 shadow-[0_18px_50px_rgba(92,69,42,0.06)]">
             <div className="border-b border-[#8a7c62]/28 px-4 py-4">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal className="size-4 text-[#53613b]" />
@@ -1295,7 +1340,7 @@ export default function StudioPage() {
             </div>
 
             <Tabs defaultValue="params" className="px-4 py-4">
-              <TabsList className="grid h-10 w-full grid-cols-2 border border-[#8a7c62]/30 bg-[#fbf7ed] p-1">
+              <TabsList className="grid h-10 w-full grid-cols-2 rounded-xl border border-[#8a7c62]/30 bg-[#fbf7ed] p-1">
                 <TabsTrigger value="params" className="text-xs">
                   创作参数
                 </TabsTrigger>
@@ -1354,7 +1399,7 @@ export default function StudioPage() {
                   <Textarea
                     value={forbiddenItems}
                     onChange={(event) => setForbiddenItems(event.target.value)}
-                    className="min-h-20 resize-none border-[#8a7c62]/30 bg-[#fffaf0] text-sm leading-relaxed text-[#211d17]"
+                    className="min-h-20 resize-none rounded-xl border-[#8a7c62]/30 bg-[#fffaf0] text-sm leading-relaxed text-[#211d17]"
                   />
                 </div>
 
@@ -1363,33 +1408,66 @@ export default function StudioPage() {
                     Context Engine
                   </h3>
                   <div className="mt-3 grid gap-2">
-                    {contextModules.map((item) => (
-                      <div
-                        key={item.title}
-                        className="flex items-center justify-between gap-3 rounded-2xl border border-[#7b8359]/24 bg-[#fffdf7] px-3 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45"
-                      >
-                        <span className="text-xs font-medium text-[#171410]">
-                          {item.title}
-                        </span>
-                        <span className="flex h-5 w-9 items-center rounded-full border border-[#53613b]/35 bg-[#dfe6c7] p-0.5 shadow-inner">
-                          <span className="ml-auto size-3.5 rounded-full bg-[#53613b] shadow-[0_1px_3px_rgba(23,20,16,0.22)]" />
-                        </span>
-                      </div>
-                    ))}
+                    {contextModules.map((item) => {
+                      const enabled = contextToggles[item.key];
+
+                      return (
+                        <button
+                          key={item.key}
+                          type="button"
+                          aria-pressed={enabled}
+                          onClick={() => toggleContext(item.key)}
+                          className={cn(
+                            "flex items-center justify-between gap-3 rounded-2xl border px-3 py-2.5 text-left transition-all duration-200 hover:-translate-y-0.5",
+                            enabled
+                              ? "border-[#7b8359]/24 bg-[#fffdf7] hover:border-[#53613b]/45"
+                              : "border-[#8a7c62]/20 bg-[#f3ead7]/70 opacity-75 hover:border-[#8a7c62]/35 hover:bg-[#fbf5e8]",
+                          )}
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-xs font-medium text-[#171410]">
+                              {item.title}
+                            </span>
+                            {!enabled ? (
+                              <span className="mt-1 block text-[11px] leading-snug text-[#7a705e]">
+                                {item.offMessage}
+                              </span>
+                            ) : null}
+                          </span>
+                          <span
+                            className={cn(
+                              "flex h-5 w-9 shrink-0 items-center rounded-full border p-0.5 shadow-inner transition-colors",
+                              enabled
+                                ? "border-[#53613b]/35 bg-[#dfe6c7]"
+                                : "border-[#8a7c62]/28 bg-[#e8dfcf]",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "size-3.5 rounded-full shadow-[0_1px_3px_rgba(23,20,16,0.22)] transition-transform",
+                                enabled
+                                  ? "ml-auto bg-[#53613b]"
+                                  : "ml-0 bg-[#9a8f78]",
+                              )}
+                            />
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </TabsContent>
 
               <TabsContent value="review" className="mt-4 flex flex-col gap-4">
                 <Button
-                  className="h-10 w-full bg-[#171410] text-[#f8f0df] hover:-translate-y-0.5 hover:bg-[#28331f]"
+                  className="h-10 w-full rounded-xl bg-[#171410] text-[#f8f0df] hover:-translate-y-0.5 hover:bg-[#28331f]"
                   onClick={handleReview}
                 >
                   <ShieldCheck className="mr-2 size-4" />
                   运行 Reviewer 检查
                 </Button>
                 {reviewError ? (
-                  <div className="border border-[#8a3f30]/25 bg-[#f3d8cc] px-3 py-2 text-sm text-[#7f3326]">
+                  <div className="rounded-xl border border-[#8a3f30]/25 bg-[#f3d8cc] px-3 py-2 text-sm text-[#7f3326]">
                     {reviewError}
                   </div>
                 ) : null}
@@ -1399,7 +1477,7 @@ export default function StudioPage() {
                       {reviewResult.scores.map((score) => (
                         <div
                           key={score.label}
-                          className="border border-[#171410]/12 bg-[#f8f0df] px-3 py-3"
+                          className="rounded-xl border border-[#171410]/12 bg-[#f8f0df] px-3 py-3"
                         >
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-xs font-medium text-[#332d24]">
@@ -1418,7 +1496,7 @@ export default function StudioPage() {
                         </div>
                       ))}
                     </div>
-                    <div className="border border-[#8a7c62]/30 bg-[#efe2c7] px-3 py-3">
+                    <div className="rounded-xl border border-[#8a7c62]/30 bg-[#efe2c7] px-3 py-3">
                       <div className="mb-2 flex items-center gap-2">
                         <FileText className="size-4 text-[#53613b]" />
                         <span className="text-sm font-medium text-[#171410]">
@@ -1433,7 +1511,7 @@ export default function StudioPage() {
                     </div>
                   </>
                 ) : (
-                  <div className="border border-dashed border-[#171410]/20 bg-[#f8f0df]/70 px-3 py-8 text-center text-sm leading-relaxed text-[#7a705e]">
+                  <div className="rounded-xl border border-dashed border-[#171410]/20 bg-[#f8f0df]/70 px-3 py-8 text-center text-sm leading-relaxed text-[#7a705e]">
                     Reviewer 会在有正文后返回 OOC、Canon、情绪张力和风格匹配四项评分。
                   </div>
                 )}
@@ -1511,7 +1589,7 @@ export default function StudioPage() {
 function ContextDeepLink({ asset }: { asset?: Asset }) {
   if (!asset?.source) {
     return (
-      <div className="flex shrink-0 items-center gap-2 border border-[#171410]/12 bg-[#f8f0df] px-3 py-2 text-xs text-[#6f6759]">
+      <div className="flex shrink-0 items-center gap-2 rounded-xl border border-[#171410]/12 bg-[#f8f0df] px-3 py-2 text-xs text-[#6f6759]">
         <PanelLeft className="size-3.5" />
         已同步到编辑器
       </div>
@@ -1528,7 +1606,7 @@ function ContextDeepLink({ asset }: { asset?: Asset }) {
   return (
     <Link
       href={asset.source}
-      className="inline-flex shrink-0 items-center gap-1.5 border border-[#53613b]/35 bg-[#e7ead4] px-3 py-2 text-xs text-[#3f4b2f] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#dfe6c7]"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[#53613b]/35 bg-[#e7ead4] px-3 py-2 text-xs text-[#3f4b2f] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#dfe6c7]"
     >
       {label}
       <ExternalLink className="size-3.5" />
@@ -1551,7 +1629,7 @@ function ParamSelect({
     <div className="flex flex-col gap-2">
       <span className="text-xs font-medium text-[#6f6759]">{label}</span>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-full border-[#171410]/15 bg-[#f8f0df] text-[#211d17]">
+        <SelectTrigger className="w-full rounded-xl border-[#171410]/15 bg-[#f8f0df] text-[#211d17]">
           <SelectValue placeholder={label} />
         </SelectTrigger>
         <SelectContent

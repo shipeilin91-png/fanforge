@@ -30,6 +30,13 @@ type CanonUsage = {
   maxSimilarity?: number;
 };
 
+type ContextEngine = {
+  canon: boolean;
+  persona: boolean;
+  relationship: boolean;
+  style: boolean;
+};
+
 type ModelProvider =
   | "fanforge_free"
   | "openai"
@@ -59,6 +66,7 @@ type ChapterRequestBody = {
   personaContext?: string;
   relationshipContext?: string;
   previousChapterSummary?: string;
+  contextEngine?: Partial<ContextEngine>;
 };
 
 type NormalizedChapterInput = {
@@ -176,6 +184,15 @@ function createSupabaseClientForToken(token: string) {
 function stringValue(value: unknown, fallback = "") {
   if (typeof value === "number" && Number.isFinite(value)) return String(value);
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function normalizeContextEngine(value: ChapterRequestBody["contextEngine"]): ContextEngine {
+  return {
+    canon: value?.canon ?? true,
+    persona: value?.persona ?? true,
+    relationship: value?.relationship ?? true,
+    style: value?.style ?? true,
+  };
 }
 
 function parseTargetLength(value: unknown, fallback = 1000) {
@@ -1064,7 +1081,7 @@ function createFreeChapterResponse(input: NormalizedChapterInput): ChapterRespon
       `写作模式：${input.mode}`,
       `章节目标：${input.chapterGoal}`,
       `剧情输入：${input.plotInput}`,
-      `Canon 约束：${input.canonContext}`,
+      ...(input.canonContext ? [`Canon 约束：${input.canonContext}`] : []),
       ...(input.usedCanonDocuments.length
         ? [
             `使用了最近保存的 Canon 文档：${input.usedCanonDocuments.join("、")}`,
@@ -1078,7 +1095,13 @@ function createFreeChapterResponse(input: NormalizedChapterInput): ChapterRespon
           ]
         : []),
       ...(hasFeedbackLearning ? ["已参考近期用户反馈倾向"] : []),
-      `人格与关系上下文：${input.personaContext}；${input.relationshipContext}`,
+      ...(input.personaContext || input.relationshipContext
+        ? [
+            `人格与关系上下文：${[input.personaContext, input.relationshipContext]
+              .filter(Boolean)
+              .join("；")}`,
+          ]
+        : []),
     ],
     foreshadowingNotes: [
       "旧徽章再次出现，可作为身份、旧案或阵营线索。",
@@ -1123,9 +1146,12 @@ export async function POST(request: Request) {
   }
 
   const normalized = normalizeChapterInput(body);
+  const contextEngine = normalizeContextEngine(body.contextEngine);
   const lengthRange = getLengthRange(normalized.expectedLength);
   const settings = await getUserModelSettings(request);
-  const canonMode = normalizeCanonMode(body.canonMode);
+  const canonMode = contextEngine.canon
+    ? normalizeCanonMode(body.canonMode)
+    : "none";
   const selectedCanonDocumentId = stringValue(body.selectedCanonDocumentId);
   let canonDocuments: CanonContextResult = { text: "", titles: [] };
   let canonEvidence: CanonEvidenceHit[] = [];
@@ -1136,7 +1162,7 @@ export async function POST(request: Request) {
   if (settings.user_id && settings.access_token) {
     const userSupabase = createSupabaseClientForToken(settings.access_token);
     if (userSupabase) {
-      if (canonMode !== "none") {
+      if (contextEngine.canon && canonMode !== "none") {
         if (canonMode === "selected" && selectedCanonDocumentId) {
           selectedDocumentTitle = await getCanonDocumentTitle(
             userSupabase,
@@ -1149,7 +1175,15 @@ export async function POST(request: Request) {
           const rawCanonEvidence = await retrieveCanonChunks(
             userSupabase,
             settings.user_id,
-            buildChapterCanonRetrievalQuery(normalized),
+            buildChapterCanonRetrievalQuery({
+              ...normalized,
+              relationshipContext: contextEngine.relationship
+                ? normalized.relationshipContext
+                : "",
+              styleRequirement: contextEngine.style
+                ? normalized.styleRequirement
+                : "",
+            }),
             canonMode === "selected" ? 30 : 5,
           );
           const scopedEvidence =
@@ -1166,7 +1200,9 @@ export async function POST(request: Request) {
           };
         }
       }
-      personaProfiles = await getUserPersonaContext(userSupabase, settings.user_id);
+      if (contextEngine.persona) {
+        personaProfiles = await getUserPersonaContext(userSupabase, settings.user_id);
+      }
       feedbackLearningContext = buildFeedbackLearningContext(
         await getUserFeedbackRows(userSupabase, settings.user_id),
       );
@@ -1198,8 +1234,16 @@ export async function POST(request: Request) {
     usedCanonDocuments: canonDocuments.titles,
     usedCanonEvidence,
     canonUsage,
-    personaContext: mergePersonaContext(body.personaContext, personaProfiles.text),
-    usedPersonaProfiles: personaProfiles.titles,
+    personaContext: contextEngine.persona
+      ? mergePersonaContext(body.personaContext, personaProfiles.text)
+      : "",
+    relationshipContext: contextEngine.relationship
+      ? normalized.relationshipContext
+      : "",
+    styleRequirement: contextEngine.style
+      ? normalized.styleRequirement
+      : stringValue(body.styleRequirement, "基础文风标签"),
+    usedPersonaProfiles: contextEngine.persona ? personaProfiles.titles : [],
     feedbackLearningContext,
   };
   const freeModelResponse = createFreeChapterResponse(normalizedWithCanon);
@@ -1248,7 +1292,7 @@ export async function POST(request: Request) {
         usedCanonDocuments: canonDocuments.titles,
         usedCanonEvidence,
         canonUsage,
-        usedPersonaProfiles: personaProfiles.titles,
+        usedPersonaProfiles: normalizedWithCanon.usedPersonaProfiles,
         usage: {
           limit: FREE_DAILY_LIMIT,
           used: usage.count,
@@ -1262,7 +1306,7 @@ export async function POST(request: Request) {
       usedCanonDocuments: canonDocuments.titles,
       usedCanonEvidence,
       canonUsage,
-      usedPersonaProfiles: personaProfiles.titles,
+      usedPersonaProfiles: normalizedWithCanon.usedPersonaProfiles,
     });
   }
 
@@ -1308,14 +1352,18 @@ export async function POST(request: Request) {
         "章节正文 draft 应遵守 Canon 硬设定。如果 Canon 文档中有人物经历、身份、世界观规则，章节正文不能随意改掉。",
         "如果用户输入和 Canon 上下文冲突，优先保持 Canon 一致性，但不要在 draft 正文里解释冲突。",
         "draft 正文里不要写“根据设定”“根据 Canon 文档”“资料显示”等解释性语言；Canon 只作为隐性约束。",
-        normalizedWithCanon.personaContext
-          ? `Persona 上下文：\n${normalizedWithCanon.personaContext}`
-          : "Persona 上下文：",
-        "章节正文 draft 应遵守角色人格和 OOC 边界，人物状态变化要有连续性。",
-        "不要为了推进剧情让角色突然崩坏；如果 Persona 中写明角色克制、冷静、不直接表白，就不要突然直白告白。",
-        "如果 Persona 上下文包含【角色声线】，章节正文中的对话要参考常说的话的句式和语气，避免不会说的话中的表达，称呼遵守称呼习惯，语气关键词影响对白和叙述节奏。",
-        "不要让所有角色说话像同一个人；不要在 draft 正文里写“根据角色声线”，不要把 voiceProfile 或声线样本原样堆进正文。",
-        "draft 正文里不要解释“根据人格图”“根据 Persona”“角色设定中写道”。",
+        ...(contextEngine.persona
+          ? [
+              normalizedWithCanon.personaContext
+                ? `Persona 上下文：\n${normalizedWithCanon.personaContext}`
+                : "Persona 上下文：",
+              "章节正文 draft 应遵守角色人格和 OOC 边界，人物状态变化要有连续性。",
+              "不要为了推进剧情让角色突然崩坏；如果 Persona 中写明角色克制、冷静、不直接表白，就不要突然直白告白。",
+              "如果 Persona 上下文包含【角色声线】，章节正文中的对话要参考常说的话的句式和语气，避免不会说的话中的表达，称呼遵守称呼习惯，语气关键词影响对白和叙述节奏。",
+              "不要让所有角色说话像同一个人；不要在 draft 正文里写“根据角色声线”，不要把 voiceProfile 或声线样本原样堆进正文。",
+              "draft 正文里不要解释“根据人格图”“根据 Persona”“角色设定中写道”。",
+            ]
+          : []),
         normalizedWithCanon.feedbackLearningContext
           ? `历史反馈学习：\n${normalizedWithCanon.feedbackLearningContext}`
           : "历史反馈学习：",
@@ -1339,7 +1387,7 @@ export async function POST(request: Request) {
         usedCanonDocuments: canonDocuments.titles,
         usedCanonEvidence,
         canonUsage,
-        usedPersonaProfiles: personaProfiles.titles,
+        usedPersonaProfiles: normalizedWithCanon.usedPersonaProfiles,
         feedbackLearningContext: normalizedWithCanon.feedbackLearningContext,
         task: "生成一个章节草稿片段，并返回上下文、伏笔提示和下一章钩子。",
       }),
@@ -1373,9 +1421,9 @@ export async function POST(request: Request) {
           : []),
         ...(usedCanonEvidence.length ? ["使用了 Canon RAG Evidence"] : []),
         ...(canonUsage.status !== "used" ? [canonUsage.message] : []),
-        ...(personaProfiles.titles.length
+        ...(normalizedWithCanon.usedPersonaProfiles.length
           ? [
-              `使用了最近保存的 Persona 档案：${personaProfiles.titles.join("、")}`,
+              `使用了最近保存的 Persona 档案：${normalizedWithCanon.usedPersonaProfiles.join("、")}`,
             ]
           : []),
         ...(normalizedWithCanon.feedbackLearningContext
@@ -1385,7 +1433,7 @@ export async function POST(request: Request) {
       usedCanonDocuments: canonDocuments.titles,
       usedCanonEvidence,
       canonUsage,
-      usedPersonaProfiles: personaProfiles.titles,
+      usedPersonaProfiles: normalizedWithCanon.usedPersonaProfiles,
     });
   } catch (error) {
     console.error("Chapter API error", error);
