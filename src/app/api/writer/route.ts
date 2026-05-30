@@ -7,6 +7,7 @@ type WriterResponse = {
   characterConstraints: string[];
   usedCanonDocuments?: string[];
   usedCanonEvidence?: UsedCanonEvidence[];
+  canonUsage?: CanonUsage;
   usedPersonaProfiles?: string[];
 };
 
@@ -14,6 +15,18 @@ type UsedCanonEvidence = {
   title: string;
   contentPreview: string;
   similarity: number;
+  documentId?: string;
+};
+
+type CanonMode = "none" | "auto" | "selected";
+
+type CanonUsage = {
+  mode: CanonMode;
+  status: "disabled" | "used" | "no_relevant_evidence" | "missing_selected_document";
+  message: string;
+  selectedDocumentTitle?: string;
+  evidenceCount?: number;
+  maxSimilarity?: number;
 };
 
 type ModelProvider =
@@ -58,6 +71,8 @@ type WriterRequestBody = {
   forbiddenCustom?: string;
   sceneDescription?: string;
   canonContext?: string;
+  canonMode?: string;
+  selectedCanonDocumentId?: string;
   personaContext?: string;
 };
 
@@ -75,6 +90,7 @@ const FREE_DAILY_LIMIT = 30;
 const FREE_PROVIDER = "fanforge_free";
 const WRITER_FEATURE = "slice";
 const EXPECTED_EMBEDDING_DIMENSION = 1536;
+const CANON_SIMILARITY_THRESHOLD = 0.65;
 
 function createSupabaseClientForToken(token: string) {
   if (!supabaseUrl || !supabaseAnonKey) return null;
@@ -130,6 +146,7 @@ type NormalizedWriterInput = {
   canonContext: string;
   usedCanonDocuments: string[];
   usedCanonEvidence: UsedCanonEvidence[];
+  canonUsage: CanonUsage;
   personaContext: string;
   usedPersonaProfiles: string[];
   feedbackLearningContext: string;
@@ -141,6 +158,7 @@ type CanonContextResult = {
 };
 
 type CanonEvidenceHit = {
+  documentId?: string;
   title: string;
   content: string;
   similarity: number | null;
@@ -313,6 +331,7 @@ function normalizeWriterInput(body: WriterRequestBody): NormalizedWriterInput {
     canonContext: stringValue(body.canonContext),
     usedCanonDocuments: [],
     usedCanonEvidence: [],
+    canonUsage: createCanonUsage("auto", []),
     personaContext: stringValue(body.personaContext),
     usedPersonaProfiles: [],
     feedbackLearningContext: "",
@@ -532,6 +551,7 @@ function createFreeModelResponse(input: NormalizedWriterInput): WriterResponse {
       ],
       usedCanonDocuments,
       usedCanonEvidence: input.usedCanonEvidence,
+      canonUsage: input.canonUsage,
       usedPersonaProfiles,
     };
   }
@@ -619,6 +639,7 @@ function createFreeModelResponse(input: NormalizedWriterInput): WriterResponse {
     characterConstraints,
     usedCanonDocuments,
     usedCanonEvidence: input.usedCanonEvidence,
+    canonUsage: input.canonUsage,
     usedPersonaProfiles,
   };
 }
@@ -780,6 +801,7 @@ function normalizeCanonEvidenceRow(row: unknown): CanonEvidenceHit | null {
   if (!content) return null;
 
   return {
+    documentId: stringValue(record.document_id, stringValue(record.documentId)),
     title: stringValue(record.title, "未命名 Canon 文档"),
     content,
     similarity:
@@ -793,6 +815,7 @@ async function retrieveCanonChunks(
   client: NonNullable<typeof supabase>,
   userId: string,
   query: string,
+  matchCount = 5,
 ): Promise<CanonEvidenceHit[]> {
   const trimmedQuery = query.trim();
   if (!trimmedQuery) return [];
@@ -802,7 +825,7 @@ async function retrieveCanonChunks(
     const { data, error } = await client.rpc("match_canon_chunks", {
       query_embedding: embedding,
       match_user_id: userId,
-      match_count: 5,
+      match_count: matchCount,
     });
 
     if (error) {
@@ -813,7 +836,7 @@ async function retrieveCanonChunks(
     return (Array.isArray(data) ? data : [])
       .map(normalizeCanonEvidenceRow)
       .filter((item): item is CanonEvidenceHit => item !== null)
-      .slice(0, 5);
+      .slice(0, matchCount);
   } catch (error) {
     console.error(
       "Writer Canon RAG retrieval failed",
@@ -821,6 +844,88 @@ async function retrieveCanonChunks(
     );
     return [];
   }
+}
+
+function normalizeCanonMode(value: unknown): CanonMode {
+  if (value === "none" || value === "selected") return value;
+  return "auto";
+}
+
+function filterRelevantCanonEvidence(evidence: CanonEvidenceHit[]) {
+  return evidence
+    .filter(
+      (item) =>
+        typeof item.similarity === "number" &&
+        item.similarity >= CANON_SIMILARITY_THRESHOLD,
+    )
+    .slice(0, 5);
+}
+
+function uniqueEvidenceTitles(evidence: CanonEvidenceHit[]) {
+  return Array.from(new Set(evidence.map((item) => item.title).filter(Boolean)));
+}
+
+function createCanonUsage(
+  mode: CanonMode,
+  evidence: CanonEvidenceHit[],
+  extra?: {
+    status?: CanonUsage["status"];
+    message?: string;
+    selectedDocumentTitle?: string;
+  },
+): CanonUsage {
+  if (extra?.status) {
+    return {
+      mode,
+      status: extra.status,
+      message: extra.message || "",
+      selectedDocumentTitle: extra.selectedDocumentTitle,
+    };
+  }
+
+  if (mode === "none") {
+    return {
+      mode,
+      status: "disabled",
+      message: "本次生成未使用 Canon。",
+    };
+  }
+
+  if (evidence.length === 0) {
+    return {
+      mode,
+      status: "no_relevant_evidence",
+      message: "未找到足够相关的 Canon 证据，本次生成未注入 Canon。",
+      selectedDocumentTitle: extra?.selectedDocumentTitle,
+    };
+  }
+
+  return {
+    mode,
+    status: "used",
+    message: "本次已使用 Canon RAG 证据。",
+    selectedDocumentTitle: extra?.selectedDocumentTitle,
+    evidenceCount: evidence.length,
+    maxSimilarity: Math.max(
+      ...evidence.map((item) => (typeof item.similarity === "number" ? item.similarity : 0)),
+    ),
+  };
+}
+
+async function getCanonDocumentTitle(
+  client: NonNullable<typeof supabase>,
+  userId: string,
+  documentId: string,
+) {
+  const { data, error } = await client
+    .from("user_canon_documents")
+    .select("title")
+    .eq("user_id", userId)
+    .eq("id", documentId)
+    .maybeSingle();
+
+  if (error) return "";
+  return stringValue(data?.title);
 }
 
 function formatCanonRagEvidence(evidence: CanonEvidenceHit[]) {
@@ -843,6 +948,7 @@ function toUsedCanonEvidence(evidence: CanonEvidenceHit[]): UsedCanonEvidence[] 
     title: item.title,
     contentPreview: item.content.replace(/\s+/g, " ").slice(0, 120),
     similarity: item.similarity ?? 0,
+    documentId: item.documentId,
   }));
 }
 
@@ -1294,6 +1400,9 @@ const PRODUCT_TERMS_IN_TEXT = [
   "根据Canon文档",
   "根据证据",
   "RAG 检索显示",
+  "根据 Canon 证据",
+  "RAG 显示",
+  "Canon RAG Evidence",
   "资料显示",
   "设定中写道",
   "根据 Persona",
@@ -1362,20 +1471,47 @@ export async function POST(request: Request) {
   const paragraphHint = getParagraphHint(normalized.targetLength);
   const lengthRange = getLengthRange(normalized.targetLength);
   const settings = await getUserModelSettings(request);
+  const canonMode = normalizeCanonMode(body.canonMode);
+  const selectedCanonDocumentId = stringValue(body.selectedCanonDocumentId);
   let canonDocuments: CanonContextResult = { text: "", titles: [] };
   let canonEvidence: CanonEvidenceHit[] = [];
+  let selectedDocumentTitle = "";
   let personaProfiles: PersonaContextResult = { text: "", titles: [] };
   let feedbackLearningContext = "";
 
   if (settings.user_id && settings.access_token) {
     const userSupabase = createSupabaseClientForToken(settings.access_token);
     if (userSupabase) {
-      canonDocuments = await getUserCanonContext(userSupabase, settings.user_id);
-      canonEvidence = await retrieveCanonChunks(
-        userSupabase,
-        settings.user_id,
-        buildWriterCanonRetrievalQuery(body, normalized),
-      );
+      if (canonMode !== "none") {
+        if (canonMode === "selected" && selectedCanonDocumentId) {
+          selectedDocumentTitle = await getCanonDocumentTitle(
+            userSupabase,
+            settings.user_id,
+            selectedCanonDocumentId,
+          );
+        }
+
+        if (canonMode !== "selected" || selectedCanonDocumentId) {
+          const rawCanonEvidence = await retrieveCanonChunks(
+            userSupabase,
+            settings.user_id,
+            buildWriterCanonRetrievalQuery(body, normalized),
+            canonMode === "selected" ? 30 : 5,
+          );
+          const scopedEvidence =
+            canonMode === "selected"
+              ? rawCanonEvidence.filter(
+                  (item) => item.documentId === selectedCanonDocumentId,
+                )
+              : rawCanonEvidence;
+
+          canonEvidence = filterRelevantCanonEvidence(scopedEvidence);
+          canonDocuments = {
+            text: "",
+            titles: uniqueEvidenceTitles(canonEvidence),
+          };
+        }
+      }
       personaProfiles = await getUserPersonaContext(userSupabase, settings.user_id);
       feedbackLearningContext = buildFeedbackLearningContext(
         await getUserFeedbackRows(userSupabase, settings.user_id),
@@ -1383,16 +1519,31 @@ export async function POST(request: Request) {
     }
   }
 
+  const canonUsage =
+    canonMode === "none"
+      ? createCanonUsage("none", [])
+      : canonMode === "selected" && !selectedCanonDocumentId
+        ? createCanonUsage("selected", [], {
+            status: "missing_selected_document",
+            message: "请选择要使用的 Canon 文档。",
+          })
+        : createCanonUsage(canonMode, canonEvidence, {
+            selectedDocumentTitle,
+          });
   const canonRagContext = formatCanonRagEvidence(canonEvidence);
   const usedCanonEvidence = toUsedCanonEvidence(canonEvidence);
   const normalizedWithCanon: NormalizedWriterInput = {
     ...normalized,
-    canonContext: mergeCanonContext(
-      body.canonContext,
-      [canonRagContext, canonDocuments.text].filter(Boolean).join("\n\n"),
-    ),
+    canonContext:
+      canonUsage.status === "used"
+        ? mergeCanonContext(
+            body.canonContext,
+            [canonRagContext, canonDocuments.text].filter(Boolean).join("\n\n"),
+          )
+        : "",
     usedCanonDocuments: canonDocuments.titles,
     usedCanonEvidence,
+    canonUsage,
     personaContext: mergePersonaContext(body.personaContext, personaProfiles.text),
     usedPersonaProfiles: personaProfiles.titles,
     feedbackLearningContext,
@@ -1442,6 +1593,7 @@ export async function POST(request: Request) {
         ...freeModelResponse,
         usedCanonDocuments: canonDocuments.titles,
         usedCanonEvidence,
+        canonUsage,
         usedPersonaProfiles: personaProfiles.titles,
         usage: {
           limit: FREE_DAILY_LIMIT,
@@ -1455,6 +1607,7 @@ export async function POST(request: Request) {
       ...freeModelResponse,
       usedCanonDocuments: canonDocuments.titles,
       usedCanonEvidence,
+      canonUsage,
       usedPersonaProfiles: personaProfiles.titles,
     });
   }
@@ -1494,10 +1647,12 @@ export async function POST(request: Request) {
           ? `Canon 上下文：\n${normalizedWithCanon.canonContext}`
           : "Canon 上下文：",
         "如果 Canon 上下文包含【Canon RAG Evidence】，必须优先遵守其中命中的硬设定。",
+        "只有当 Canon RAG Evidence 存在时才优先遵守 Canon；如果本次没有 Canon RAG Evidence，不要假装使用了 Canon。",
         "不得编造与 Canon RAG Evidence 冲突的身份、时间线、阵营或世界观规则。",
         "如果证据不足，不要强行创造硬设定；保持模糊比主动编造更重要。",
         "如果 Canon RAG Evidence 与用户自由输入冲突，优先遵守 Canon RAG Evidence。",
         "text 正文中不要写“根据证据”“RAG 检索显示”等说明性语言。",
+        "text 正文中不要写“根据 Canon 证据”“RAG 显示”“Canon RAG Evidence”等说明性语言；Canon Evidence 只作为生成约束，不要直接复述成说明文。",
         "如果 Canon 上下文存在，生成时要优先遵守其中的硬设定，不得主动改写其中明确的人物身份、时间线、阵营和世界观规则。",
         "如果用户输入和 Canon 上下文冲突，优先保持 Canon 一致性，但不要在正文里解释冲突。",
         "text 正文里不要出现“根据 Canon 文档”“资料显示”“设定中写道”等说明性语言；Canon 只作为隐性约束进入正文。",
@@ -1556,6 +1711,7 @@ export async function POST(request: Request) {
         canonContext: normalizedWithCanon.canonContext,
         usedCanonDocuments: canonDocuments.titles,
         usedCanonEvidence,
+        canonUsage,
         personaContext: normalizedWithCanon.personaContext,
         usedPersonaProfiles: personaProfiles.titles,
         feedbackLearningContext: normalizedWithCanon.feedbackLearningContext,
@@ -1619,6 +1775,7 @@ export async function POST(request: Request) {
       ),
       usedCanonDocuments: canonDocuments.titles,
       usedCanonEvidence,
+      canonUsage,
       usedPersonaProfiles: personaProfiles.titles,
     };
 
@@ -1630,6 +1787,7 @@ export async function POST(request: Request) {
       ...sanitizedResponse,
       usedCanonDocuments: canonDocuments.titles,
       usedCanonEvidence,
+      canonUsage,
       usedPersonaProfiles: personaProfiles.titles,
     });
   } catch (error) {

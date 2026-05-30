@@ -20,6 +20,11 @@ import { cn } from "@/lib/utils";
 
 const writingModes = ["单章续写", "长篇大纲", "场景扩写", "结局改写"] as const;
 const wordCounts = ["1000 字", "2000 字", "3000 字", "自定义"] as const;
+const canonModeOptions = [
+  { label: "不使用 Canon", value: "none" },
+  { label: "自动匹配最相关 Canon", value: "auto" },
+  { label: "指定 Canon 文档", value: "selected" },
+] as const;
 
 const contextItems = [
   {
@@ -62,6 +67,7 @@ type ChapterResult = {
   usage?: UsageInfo;
   usedCanonDocuments?: string[];
   usedCanonEvidence?: CanonEvidence[];
+  canonUsage?: CanonUsage;
   usedPersonaProfiles?: string[];
 };
 
@@ -69,6 +75,23 @@ type CanonEvidence = {
   title: string;
   contentPreview: string;
   similarity: number;
+  documentId?: string;
+};
+
+type CanonMode = (typeof canonModeOptions)[number]["value"];
+
+type CanonDocument = {
+  id: string;
+  title: string;
+};
+
+type CanonUsage = {
+  mode: CanonMode;
+  status: "disabled" | "used" | "no_relevant_evidence" | "missing_selected_document";
+  message: string;
+  selectedDocumentTitle?: string;
+  evidenceCount?: number;
+  maxSimilarity?: number;
 };
 
 type UsageInfo = {
@@ -101,12 +124,44 @@ export default function WritePage() {
   const [customWordCount, setCustomWordCount] = useState("");
   const [styleRequest, setStyleRequest] = useState("");
   const [forbiddenItems, setForbiddenItems] = useState("");
+  const [canonMode, setCanonMode] = useState<CanonMode>("auto");
+  const [selectedCanonDocumentId, setSelectedCanonDocumentId] = useState("");
+  const [canonDocuments, setCanonDocuments] = useState<CanonDocument[]>([]);
   const [result, setResult] = useState<ChapterResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
 
   useEffect(() => {
+    async function loadCanonDocuments() {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user.id;
+      if (!userId) return;
+
+      const { data, error } = await supabase
+        .from("user_canon_documents")
+        .select("id, title")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .limit(20);
+
+      if (error) return;
+
+      const documents = (data ?? [])
+        .map((item) => ({
+          id: typeof item.id === "string" ? item.id : "",
+          title:
+            typeof item.title === "string" && item.title.trim()
+              ? item.title.trim()
+              : "未命名原作文档",
+        }))
+        .filter((item) => item.id);
+
+      setCanonDocuments(documents);
+      setSelectedCanonDocumentId((current) => current || documents[0]?.id || "");
+    }
+
+    void loadCanonDocuments();
     setIsCheckingAuth(false);
   }, []);
 
@@ -145,6 +200,9 @@ export default function WritePage() {
           styleRequirement: styleRequest,
           forbiddenItems,
           canonContext: contextItems[0].writerImpact,
+          canonMode,
+          selectedCanonDocumentId:
+            canonMode === "selected" ? selectedCanonDocumentId : undefined,
           personaContext: contextItems[1].writerImpact,
           relationshipContext: contextItems[2].writerImpact,
           previousChapterSummary: plotInput.trim()
@@ -266,6 +324,56 @@ export default function WritePage() {
                   placeholder="例如：主角在流亡三年后回到帝都，但必须隐藏身份参加旧友的婚礼……"
                   minHeight="min-h-36"
                 />
+
+                <div className="flex flex-col gap-3 rounded-xl border border-[#53613b]/24 bg-[#f7f8ef] px-3 py-3">
+                  <FieldLabel>Canon 使用方式</FieldLabel>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {canonModeOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setCanonMode(option.value)}
+                        className={cn(
+                          "rounded-xl border px-3 py-2 text-xs leading-relaxed transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#fffdf7]",
+                          canonMode === option.value
+                            ? "border-[#53613b]/50 bg-[#fffdf7] text-[#28331f] shadow-[0_8px_20px_rgba(83,97,59,0.1)]"
+                            : "border-[#8a7c62]/22 bg-[#fbf7ed] text-[#6f6759]",
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  {canonMode === "selected" ? (
+                    canonDocuments.length ? (
+                      <Select
+                        value={selectedCanonDocumentId}
+                        onValueChange={setSelectedCanonDocumentId}
+                      >
+                        <SelectTrigger className="w-full rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-[#211d17]">
+                          <SelectValue placeholder="选择 Canon 文档" />
+                        </SelectTrigger>
+                        <SelectContent
+                          position="popper"
+                          className="w-[var(--radix-select-trigger-width)]"
+                        >
+                          {canonDocuments.map((document, index) => (
+                            <SelectItem
+                              key={`${document.id}-${index}`}
+                              value={document.id}
+                            >
+                              {document.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="rounded-xl border border-dashed border-[#8a7c62]/28 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#7a705e]">
+                        暂无 Canon 文档，请先到 Canon 页面保存。
+                      </p>
+                    )
+                  ) : null}
+                </div>
 
                 <div className="flex flex-col gap-2">
                   <FieldLabel>期望字数</FieldLabel>
@@ -421,6 +529,9 @@ export default function WritePage() {
                         items={result.usedCanonDocuments}
                       />
                     ) : null}
+                    {result.canonUsage ? (
+                      <CanonUsageList usage={result.canonUsage} />
+                    ) : null}
                     {result.usedCanonEvidence?.length ? (
                       <CanonEvidenceList evidence={result.usedCanonEvidence} />
                     ) : null}
@@ -523,7 +634,7 @@ function ResultList({ title, items }: { title: string; items: string[] }) {
       <div className="flex flex-col gap-2">
         {items.map((item, index) => (
           <div
-            key={item}
+            key={`${title}-${item}-${index}`}
             className="grid grid-cols-[42px_minmax(0,1fr)] gap-3 rounded-xl border border-dashed border-[#53613b]/30 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#5f5849]"
           >
             <span className="font-serif text-2xl leading-none text-[#53613b]">
@@ -532,6 +643,46 @@ function ResultList({ title, items }: { title: string; items: string[] }) {
             <span>{item}</span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function canonModeLabel(mode: CanonMode) {
+  if (mode === "none") return "不使用 Canon";
+  if (mode === "selected") return "指定文档";
+  return "自动匹配";
+}
+
+function CanonUsageList({ usage }: { usage: CanonUsage }) {
+  return (
+    <div className="rounded-xl border border-[#53613b]/24 bg-[#f7f8ef] px-4 py-4">
+      <div className="mb-3 flex items-center gap-2">
+        <Sparkles className="size-3.5 text-[#53613b]" />
+        <h3 className="font-serif text-3xl leading-none tracking-[-0.02em] text-[#171410]">
+          本次 Canon 使用情况
+        </h3>
+      </div>
+      <div className="rounded-xl border border-[#53613b]/24 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#5f5849]">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-[#53613b]/24 bg-[#e7ead4] px-2 py-0.5 text-[11px] text-[#3f4b2f]">
+            使用方式：{canonModeLabel(usage.mode)}
+          </span>
+          {usage.evidenceCount ? (
+            <span className="rounded-full border border-[#8a7c62]/24 bg-[#fffaf0] px-2 py-0.5 text-[11px] text-[#6f6759]">
+              证据数量：{usage.evidenceCount}
+            </span>
+          ) : null}
+          {typeof usage.maxSimilarity === "number" ? (
+            <span className="rounded-full border border-[#8a7c62]/24 bg-[#fffaf0] px-2 py-0.5 text-[11px] text-[#6f6759]">
+              最高相似度：{Math.round(usage.maxSimilarity * 100)}%
+            </span>
+          ) : null}
+        </div>
+        <p>{usage.message}</p>
+        {usage.selectedDocumentTitle ? (
+          <p className="mt-2 text-[#6f6759]">指定文档：{usage.selectedDocumentTitle}</p>
+        ) : null}
       </div>
     </div>
   );
@@ -549,7 +700,7 @@ function CanonEvidenceList({ evidence }: { evidence: CanonEvidence[] }) {
       <div className="flex flex-col gap-2">
         {evidence.map((item, index) => (
           <article
-            key={`${item.title}-${index}`}
+            key={`${item.title}-${item.similarity}-${index}`}
             className="rounded-xl border border-dashed border-[#53613b]/30 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#5f5849]"
           >
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">

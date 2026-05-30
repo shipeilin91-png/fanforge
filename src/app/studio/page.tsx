@@ -1426,8 +1426,8 @@ export default function StudioPage() {
                         </span>
                       </div>
                       <ul className="space-y-2 text-xs leading-relaxed text-[#5f5849]">
-                        {reviewResult.suggestions.map((item) => (
-                          <li key={item}>· {item}</li>
+                        {reviewResult.suggestions.map((item, index) => (
+                          <li key={`${item}-${index}`}>· {item}</li>
                         ))}
                       </ul>
                     </div>
@@ -1577,8 +1577,8 @@ function GenerationList({ title, items }: { title: string; items: string[] }) {
         <span className="text-sm font-medium text-[#171410]">{title}</span>
       </div>
       <ul className="space-y-2 text-xs leading-relaxed text-[#5f5849]">
-        {items.map((item) => (
-          <li key={item}>· {item}</li>
+        {items.map((item, index) => (
+          <li key={`${title}-${item}-${index}`}>· {item}</li>
         ))}
       </ul>
     </div>
@@ -1597,7 +1597,7 @@ function GenerationEvidenceList({ evidence }: { evidence: CanonEvidence[] }) {
       <div className="grid gap-2">
         {evidence.map((item, index) => (
           <article
-            key={`${item.title}-${index}`}
+            key={`${item.title}-${item.similarity}-${index}`}
             className="rounded-xl border border-[#53613b]/24 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#5f5849]"
           >
             <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">

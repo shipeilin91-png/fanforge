@@ -25,6 +25,11 @@ const TENSIONS = ["克制", "酸涩", "旧情未了", "保护欲", "共犯感", 
 const VIBES = ["冷艳华美", "温润烟火", "疏离克制", "浪漫诗性"] as const;
 const FORBIDDEN = ["禁止告白", "禁止拥抱", "禁止亲吻", "禁止心理解释", "禁止过度甜腻"] as const;
 const WORD_COUNTS = ["300 字", "500 字", "800 字", "自定义"] as const;
+const CANON_MODE_OPTIONS = [
+  { label: "不使用 Canon", value: "none" },
+  { label: "自动匹配最相关 Canon", value: "auto" },
+  { label: "指定 Canon 文档", value: "selected" },
+] as const;
 const RATING_OPTIONS = [
   { label: "满意", value: "satisfied" },
   { label: "一般", value: "neutral" },
@@ -86,6 +91,7 @@ type SlicePreview = {
   constraints: string[];
   usedCanonDocuments: string[];
   usedCanonEvidence: CanonEvidence[];
+  canonUsage: CanonUsage | null;
   usedPersonaProfiles: string[];
 };
 
@@ -93,6 +99,23 @@ type CanonEvidence = {
   title: string;
   contentPreview: string;
   similarity: number;
+  documentId?: string;
+};
+
+type CanonMode = (typeof CANON_MODE_OPTIONS)[number]["value"];
+
+type CanonDocument = {
+  id: string;
+  title: string;
+};
+
+type CanonUsage = {
+  mode: CanonMode;
+  status: "disabled" | "used" | "no_relevant_evidence" | "missing_selected_document";
+  message: string;
+  selectedDocumentTitle?: string;
+  evidenceCount?: number;
+  maxSimilarity?: number;
 };
 
 type UsageInfo = {
@@ -200,6 +223,7 @@ function buildPreviewFallback(p: SliceParams, runIndex: number): SlicePreview {
     constraints: constraintSets[variant]!,
     usedCanonDocuments: [],
     usedCanonEvidence: [],
+    canonUsage: null,
     usedPersonaProfiles: [],
   };
 }
@@ -246,6 +270,9 @@ export default function SlicePage() {
   const [customLength, setCustomLength] = useState("500");
   const [styleCustom, setStyleCustom] = useState("");
   const [forbiddenCustom, setForbiddenCustom] = useState("");
+  const [canonMode, setCanonMode] = useState<CanonMode>("auto");
+  const [selectedCanonDocumentId, setSelectedCanonDocumentId] = useState("");
+  const [canonDocuments, setCanonDocuments] = useState<CanonDocument[]>([]);
   const [feedbackRating, setFeedbackRating] = useState<FeedbackRating>("neutral");
   const [feedbackTags, setFeedbackTags] = useState<(typeof FEEDBACK_TAGS)[number][]>([]);
   const [feedbackText, setFeedbackText] = useState("");
@@ -270,6 +297,35 @@ export default function SlicePage() {
       return;
     }
 
+    async function loadCanonDocuments() {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user.id;
+      if (!userId) return;
+
+      const { data, error } = await supabase
+        .from("user_canon_documents")
+        .select("id, title")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .limit(20);
+
+      if (error) return;
+
+      const documents = (data ?? [])
+        .map((item) => ({
+          id: typeof item.id === "string" ? item.id : "",
+          title:
+            typeof item.title === "string" && item.title.trim()
+              ? item.title.trim()
+              : "未命名原作文档",
+        }))
+        .filter((item) => item.id);
+
+      setCanonDocuments(documents);
+      setSelectedCanonDocumentId((current) => current || documents[0]?.id || "");
+    }
+
+    void loadCanonDocuments();
     setIsCheckingAuth(false);
   }, [router]);
 
@@ -408,6 +464,7 @@ export default function SlicePage() {
       usage?: UsageInfo;
       usedCanonDocuments?: string[];
       usedCanonEvidence?: CanonEvidence[];
+      canonUsage?: CanonUsage;
       usedPersonaProfiles?: string[];
     };
   }
@@ -424,6 +481,7 @@ export default function SlicePage() {
       constraints: toLines(data.characterConstraints),
       usedCanonDocuments: data.usedCanonDocuments ?? [],
       usedCanonEvidence: data.usedCanonEvidence ?? [],
+      canonUsage: data.canonUsage ?? null,
       usedPersonaProfiles: data.usedPersonaProfiles ?? [],
     });
     if (data.usage) setUsageInfo(data.usage);
@@ -453,6 +511,9 @@ export default function SlicePage() {
       forbiddenItems: [...forbiddens],
       forbiddenCustom,
       sceneDescription,
+      canonMode,
+      selectedCanonDocumentId:
+        canonMode === "selected" ? selectedCanonDocumentId : undefined,
       ...extra,
     };
   }
@@ -658,6 +719,56 @@ export default function SlicePage() {
                     placeholder="例如：我想写他们在大雪夜重逢，但两个人都假装不认识对方；其中一人明明担心对方，却只用刻薄的话掩饰。"
                     className="min-h-32 resize-none rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] px-4 py-4 text-sm leading-relaxed text-[#211d17] placeholder:text-[#9a8f78]"
                   />
+                </div>
+
+                <div className="flex flex-col gap-3 rounded-xl border border-[#53613b]/24 bg-[#f7f8ef] px-3 py-3">
+                  <FieldLabel>Canon 使用方式</FieldLabel>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {CANON_MODE_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setCanonMode(option.value)}
+                        className={cn(
+                          "rounded-xl border px-3 py-2 text-xs leading-relaxed transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/45 hover:bg-[#fffdf7]",
+                          canonMode === option.value
+                            ? "border-[#53613b]/50 bg-[#fffdf7] text-[#28331f] shadow-[0_8px_20px_rgba(83,97,59,0.1)]"
+                            : "border-[#8a7c62]/22 bg-[#fbf7ed] text-[#6f6759]",
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  {canonMode === "selected" ? (
+                    canonDocuments.length ? (
+                      <Select
+                        value={selectedCanonDocumentId}
+                        onValueChange={setSelectedCanonDocumentId}
+                      >
+                        <SelectTrigger className="w-full rounded-xl border-[#8a7c62]/28 bg-[#fffdf7] text-[#211d17]">
+                          <SelectValue placeholder="选择 Canon 文档" />
+                        </SelectTrigger>
+                        <SelectContent
+                          position="popper"
+                          className="w-[var(--radix-select-trigger-width)]"
+                        >
+                          {canonDocuments.map((document, index) => (
+                            <SelectItem
+                              key={`${document.id}-${index}`}
+                              value={document.id}
+                            >
+                              {document.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="rounded-xl border border-dashed border-[#8a7c62]/28 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#7a705e]">
+                        暂无 Canon 文档，请先到 Canon 页面保存。
+                      </p>
+                    )
+                  ) : null}
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -920,9 +1031,9 @@ export default function SlicePage() {
               {preview.usedCanonDocuments.length ? (
                 <InfoSection title="使用到的 Canon 文档">
                   <div className="grid gap-2">
-                    {preview.usedCanonDocuments.map((title) => (
+                    {preview.usedCanonDocuments.map((title, index) => (
                       <div
-                        key={title}
+                        key={`${title}-${index}`}
                         className="rounded-xl border border-[#53613b]/24 bg-[#f4f7ea] px-3 py-3 text-xs leading-relaxed text-[#3f4b2f]"
                       >
                         {title}
@@ -932,6 +1043,10 @@ export default function SlicePage() {
                 </InfoSection>
               ) : null}
 
+              {preview.canonUsage ? (
+                <CanonUsageSection usage={preview.canonUsage} />
+              ) : null}
+
               {preview.usedCanonEvidence.length ? (
                 <CanonEvidenceSection evidence={preview.usedCanonEvidence} />
               ) : null}
@@ -939,9 +1054,9 @@ export default function SlicePage() {
               {preview.usedPersonaProfiles.length ? (
                 <InfoSection title="使用到的角色档案">
                   <div className="grid gap-2">
-                    {preview.usedPersonaProfiles.map((title) => (
+                    {preview.usedPersonaProfiles.map((title, index) => (
                       <div
-                        key={title}
+                        key={`${title}-${index}`}
                         className="rounded-xl border border-[#8a7c62]/24 bg-[#fffaf0] px-3 py-3 text-xs leading-relaxed text-[#5f5849]"
                       >
                         {title}
@@ -1088,13 +1203,47 @@ function InfoSection({
   );
 }
 
+function canonModeLabel(mode: CanonMode) {
+  if (mode === "none") return "不使用";
+  if (mode === "selected") return "指定文档";
+  return "自动匹配";
+}
+
+function CanonUsageSection({ usage }: { usage: CanonUsage }) {
+  return (
+    <InfoSection title="本次 Canon 使用情况">
+      <div className="rounded-xl border border-[#53613b]/24 bg-[#f7f8ef] px-3 py-3 text-xs leading-relaxed text-[#5f5849]">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-[#53613b]/24 bg-[#e7ead4] px-2 py-0.5 text-[11px] text-[#3f4b2f]">
+            使用方式：{canonModeLabel(usage.mode)}
+          </span>
+          {usage.evidenceCount ? (
+            <span className="rounded-full border border-[#8a7c62]/24 bg-[#fffdf7] px-2 py-0.5 text-[11px] text-[#6f6759]">
+              证据数量：{usage.evidenceCount}
+            </span>
+          ) : null}
+          {typeof usage.maxSimilarity === "number" ? (
+            <span className="rounded-full border border-[#8a7c62]/24 bg-[#fffdf7] px-2 py-0.5 text-[11px] text-[#6f6759]">
+              最高相似度：{Math.round(usage.maxSimilarity * 100)}%
+            </span>
+          ) : null}
+        </div>
+        <p>{usage.message}</p>
+        {usage.selectedDocumentTitle ? (
+          <p className="mt-2 text-[#6f6759]">指定文档：{usage.selectedDocumentTitle}</p>
+        ) : null}
+      </div>
+    </InfoSection>
+  );
+}
+
 function CanonEvidenceSection({ evidence }: { evidence: CanonEvidence[] }) {
   return (
     <InfoSection title="本次命中的 Canon 证据">
       <div className="grid gap-2">
         {evidence.map((item, index) => (
           <article
-            key={`${item.title}-${index}`}
+            key={`${item.title}-${item.similarity}-${index}`}
             className="rounded-xl border border-[#53613b]/28 bg-[#f7f8ef] px-3 py-3 text-xs leading-relaxed text-[#5f5849]"
           >
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
