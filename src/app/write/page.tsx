@@ -61,7 +61,14 @@ type ChapterResult = {
   nextChapterHooks: string[];
   usage?: UsageInfo;
   usedCanonDocuments?: string[];
+  usedCanonEvidence?: CanonEvidence[];
   usedPersonaProfiles?: string[];
+};
+
+type CanonEvidence = {
+  title: string;
+  contentPreview: string;
+  similarity: number;
 };
 
 type UsageInfo = {
@@ -414,6 +421,9 @@ export default function WritePage() {
                         items={result.usedCanonDocuments}
                       />
                     ) : null}
+                    {result.usedCanonEvidence?.length ? (
+                      <CanonEvidenceList evidence={result.usedCanonEvidence} />
+                    ) : null}
                     {result.usedPersonaProfiles?.length ? (
                       <ResultList
                         title="使用到的角色档案"
@@ -521,6 +531,35 @@ function ResultList({ title, items }: { title: string; items: string[] }) {
             </span>
             <span>{item}</span>
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CanonEvidenceList({ evidence }: { evidence: CanonEvidence[] }) {
+  return (
+    <div className="rounded-xl border border-[#53613b]/24 bg-[#f7f8ef] px-4 py-4">
+      <div className="mb-3 flex items-center gap-2">
+        <Sparkles className="size-3.5 text-[#53613b]" />
+        <h3 className="font-serif text-3xl leading-none tracking-[-0.02em] text-[#171410]">
+          本次命中的 Canon 证据
+        </h3>
+      </div>
+      <div className="flex flex-col gap-2">
+        {evidence.map((item, index) => (
+          <article
+            key={`${item.title}-${index}`}
+            className="rounded-xl border border-dashed border-[#53613b]/30 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#5f5849]"
+          >
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <span className="font-medium text-[#171410]">{item.title}</span>
+              <span className="rounded-full border border-[#53613b]/24 bg-[#e7ead4] px-2 py-0.5 text-[11px] text-[#3f4b2f]">
+                相似度：{Math.round(item.similarity * 100)}%
+              </span>
+            </div>
+            <p>{item.contentPreview}</p>
+          </article>
         ))}
       </div>
     </div>

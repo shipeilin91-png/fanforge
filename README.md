@@ -41,7 +41,7 @@ Fanfiction creators often face problems that generic AI writing tools do not han
 
 - **FanForge Free Model** for new-user onboarding and flow validation.
 - Advanced model configuration through BYOK.
-- Daily free quota tracking for generation usage.
+- Daily free quota tracking for generation usage, currently 30 free generations per day.
 - Model settings stored per user without exposing sensitive keys in the UI.
 
 ### Canon Library

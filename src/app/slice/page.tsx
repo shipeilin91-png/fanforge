@@ -85,7 +85,14 @@ type SlicePreview = {
   structure: string[];
   constraints: string[];
   usedCanonDocuments: string[];
+  usedCanonEvidence: CanonEvidence[];
   usedPersonaProfiles: string[];
+};
+
+type CanonEvidence = {
+  title: string;
+  contentPreview: string;
+  similarity: number;
 };
 
 type UsageInfo = {
@@ -192,6 +199,7 @@ function buildPreviewFallback(p: SliceParams, runIndex: number): SlicePreview {
     structure: structureSets[variant]!,
     constraints: constraintSets[variant]!,
     usedCanonDocuments: [],
+    usedCanonEvidence: [],
     usedPersonaProfiles: [],
   };
 }
@@ -399,6 +407,7 @@ export default function SlicePage() {
       characterConstraints: string | string[];
       usage?: UsageInfo;
       usedCanonDocuments?: string[];
+      usedCanonEvidence?: CanonEvidence[];
       usedPersonaProfiles?: string[];
     };
   }
@@ -414,6 +423,7 @@ export default function SlicePage() {
       structure: toLines(data.emotionStructure),
       constraints: toLines(data.characterConstraints),
       usedCanonDocuments: data.usedCanonDocuments ?? [],
+      usedCanonEvidence: data.usedCanonEvidence ?? [],
       usedPersonaProfiles: data.usedPersonaProfiles ?? [],
     });
     if (data.usage) setUsageInfo(data.usage);
@@ -922,6 +932,10 @@ export default function SlicePage() {
                 </InfoSection>
               ) : null}
 
+              {preview.usedCanonEvidence.length ? (
+                <CanonEvidenceSection evidence={preview.usedCanonEvidence} />
+              ) : null}
+
               {preview.usedPersonaProfiles.length ? (
                 <InfoSection title="使用到的角色档案">
                   <div className="grid gap-2">
@@ -1071,5 +1085,28 @@ function InfoSection({
       </h3>
       {children}
     </section>
+  );
+}
+
+function CanonEvidenceSection({ evidence }: { evidence: CanonEvidence[] }) {
+  return (
+    <InfoSection title="本次命中的 Canon 证据">
+      <div className="grid gap-2">
+        {evidence.map((item, index) => (
+          <article
+            key={`${item.title}-${index}`}
+            className="rounded-xl border border-[#53613b]/28 bg-[#f7f8ef] px-3 py-3 text-xs leading-relaxed text-[#5f5849]"
+          >
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <span className="font-medium text-[#171410]">{item.title}</span>
+              <span className="rounded-full border border-[#53613b]/24 bg-[#e7ead4] px-2 py-0.5 text-[11px] text-[#3f4b2f]">
+                相似度：{Math.round(item.similarity * 100)}%
+              </span>
+            </div>
+            <p className="text-[#6f6759]">{item.contentPreview}</p>
+          </article>
+        ))}
+      </div>
+    </InfoSection>
   );
 }

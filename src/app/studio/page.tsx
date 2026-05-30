@@ -84,6 +84,7 @@ type ChapterGenerationResult = {
   foreshadowingNotes: string[];
   nextChapterHooks: string[];
   usedCanonDocuments: string[];
+  usedCanonEvidence: CanonEvidence[];
   usedPersonaProfiles: string[];
 };
 
@@ -91,7 +92,14 @@ type SliceGenerationResult = {
   emotionStructure: string[];
   characterConstraints: string[];
   usedCanonDocuments: string[];
+  usedCanonEvidence: CanonEvidence[];
   usedPersonaProfiles: string[];
+};
+
+type CanonEvidence = {
+  title: string;
+  contentPreview: string;
+  similarity: number;
 };
 
 const assets: Record<AssetTab, Asset[]> = {
@@ -674,6 +682,7 @@ export default function StudioPage() {
         nextChapterHooks: string[];
         usage?: UsageInfo;
         usedCanonDocuments?: string[];
+        usedCanonEvidence?: CanonEvidence[];
         usedPersonaProfiles?: string[];
       };
 
@@ -684,6 +693,7 @@ export default function StudioPage() {
         foreshadowingNotes: data.foreshadowingNotes,
         nextChapterHooks: data.nextChapterHooks,
         usedCanonDocuments: data.usedCanonDocuments ?? [],
+        usedCanonEvidence: data.usedCanonEvidence ?? [],
         usedPersonaProfiles: data.usedPersonaProfiles ?? [],
       });
       setSliceGenerationResult(null);
@@ -759,6 +769,7 @@ export default function StudioPage() {
         characterConstraints: string[];
         usage?: UsageInfo;
         usedCanonDocuments?: string[];
+        usedCanonEvidence?: CanonEvidence[];
         usedPersonaProfiles?: string[];
       };
 
@@ -768,6 +779,7 @@ export default function StudioPage() {
         emotionStructure: data.emotionStructure,
         characterConstraints: data.characterConstraints,
         usedCanonDocuments: data.usedCanonDocuments ?? [],
+        usedCanonEvidence: data.usedCanonEvidence ?? [],
         usedPersonaProfiles: data.usedPersonaProfiles ?? [],
       });
       setChapterGenerationResult(null);
@@ -1437,6 +1449,11 @@ export default function StudioPage() {
                         items={chapterGenerationResult.usedCanonDocuments}
                       />
                     ) : null}
+                    {chapterGenerationResult.usedCanonEvidence.length ? (
+                      <GenerationEvidenceList
+                        evidence={chapterGenerationResult.usedCanonEvidence}
+                      />
+                    ) : null}
                     {chapterGenerationResult.usedPersonaProfiles.length ? (
                       <GenerationList
                         title="使用到的角色档案"
@@ -1467,6 +1484,11 @@ export default function StudioPage() {
                       <GenerationList
                         title="Canon 文档已注入"
                         items={sliceGenerationResult.usedCanonDocuments}
+                      />
+                    ) : null}
+                    {sliceGenerationResult.usedCanonEvidence.length ? (
+                      <GenerationEvidenceList
+                        evidence={sliceGenerationResult.usedCanonEvidence}
                       />
                     ) : null}
                     {sliceGenerationResult.usedPersonaProfiles.length ? (
@@ -1559,6 +1581,35 @@ function GenerationList({ title, items }: { title: string; items: string[] }) {
           <li key={item}>· {item}</li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function GenerationEvidenceList({ evidence }: { evidence: CanonEvidence[] }) {
+  return (
+    <div className="rounded-2xl border border-[#53613b]/28 bg-[#f7f8ef] px-3 py-3">
+      <div className="mb-2 flex items-center gap-2">
+        <Sparkles className="size-3.5 text-[#53613b]" />
+        <span className="text-sm font-medium text-[#171410]">
+          本次命中的 Canon 证据
+        </span>
+      </div>
+      <div className="grid gap-2">
+        {evidence.map((item, index) => (
+          <article
+            key={`${item.title}-${index}`}
+            className="rounded-xl border border-[#53613b]/24 bg-[#fffdf7] px-3 py-3 text-xs leading-relaxed text-[#5f5849]"
+          >
+            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+              <span className="font-medium text-[#171410]">{item.title}</span>
+              <span className="rounded-full border border-[#53613b]/24 bg-[#e7ead4] px-2 py-0.5 text-[11px] text-[#3f4b2f]">
+                相似度：{Math.round(item.similarity * 100)}%
+              </span>
+            </div>
+            <p>{item.contentPreview}</p>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-const FREE_DAILY_LIMIT = 10;
+const FREE_DAILY_LIMIT = 30;
 const FREE_PROVIDER = "fanforge_free";
 
 const supabase =

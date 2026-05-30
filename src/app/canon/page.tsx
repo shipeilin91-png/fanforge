@@ -34,6 +34,12 @@ type CanonDocument = {
   updated_at: string | null;
 };
 
+type RagIndexStatus =
+  | { status: "idle"; message: "未索引" }
+  | { status: "indexing"; message: "Canon RAG 索引中..." }
+  | { status: "success"; message: string; chunkCount: number }
+  | { status: "error"; message: string };
+
 const sampleEvidence: CanonEvidence[] = [
   {
     type: "Hard Canon",
@@ -148,6 +154,10 @@ export default function CanonPage() {
   const [savingDocument, setSavingDocument] = useState(false);
   const [documentMessage, setDocumentMessage] = useState("登录后可保存和管理原作文档");
   const [documentError, setDocumentError] = useState<string | null>(null);
+  const [ragIndexStatus, setRagIndexStatus] = useState<RagIndexStatus>({
+    status: "idle",
+    message: "未索引",
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -222,6 +232,7 @@ export default function CanonPage() {
     setSourceText(document.content);
     setDocumentMessage("文档已加载。");
     setDocumentError(null);
+    setRagIndexStatus({ status: "idle", message: "未索引" });
   }
 
   function handleNewDocument() {
@@ -230,6 +241,71 @@ export default function CanonPage() {
     setSourceText("");
     setDocumentMessage("");
     setDocumentError(null);
+    setRagIndexStatus({ status: "idle", message: "未索引" });
+  }
+
+  async function indexCanonDocument({
+    documentId,
+    title,
+    content,
+  }: {
+    documentId: string;
+    title: string;
+    content: string;
+  }) {
+    setRagIndexStatus({
+      status: "indexing",
+      message: "Canon RAG 索引中...",
+    });
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setRagIndexStatus({
+        status: "error",
+        message: "文档已保存，但 Canon RAG 索引失败：请先登录。",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/canon/index", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          documentId,
+          title,
+          content,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        chunkCount?: number;
+        error?: string;
+      } | null;
+
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error || "索引失败：请稍后重试");
+      }
+
+      setRagIndexStatus({
+        status: "success",
+        message: `Canon RAG 索引完成：已生成 ${payload.chunkCount ?? 0} 个证据片段`,
+        chunkCount: payload.chunkCount ?? 0,
+      });
+    } catch (error) {
+      setRagIndexStatus({
+        status: "error",
+        message: `文档已保存，但 RAG 索引失败：${
+          error instanceof Error ? error.message : "请稍后重试"
+        }`,
+      });
+    }
   }
 
   async function handleSaveDocument() {
@@ -265,6 +341,7 @@ export default function CanonPage() {
         updated_at: new Date().toISOString(),
       };
       let successMessage = "原作文档已保存。";
+      let savedDocumentId = currentDocumentId;
 
       if (currentDocumentId) {
         const { error } = await supabase
@@ -291,12 +368,21 @@ export default function CanonPage() {
         }
 
         if (insertedDocument?.id) {
-          setCurrentDocumentId(String(insertedDocument.id));
+          savedDocumentId = String(insertedDocument.id);
+          setCurrentDocumentId(savedDocumentId);
         }
       }
 
       await refreshCanonDocuments();
       setDocumentMessage(successMessage);
+
+      if (savedDocumentId) {
+        void indexCanonDocument({
+          documentId: savedDocumentId,
+          title: payload.title,
+          content: payload.content,
+        });
+      }
     } catch (error) {
       setDocumentError(
         error instanceof Error ? error.message : "保存失败，请稍后重试。",
@@ -421,6 +507,21 @@ export default function CanonPage() {
                   {documentError ? (
                     <span className="text-xs text-[#7f3326]">
                       {documentError}
+                    </span>
+                  ) : null}
+                  {ragIndexStatus.status !== "idle" ? (
+                    <span
+                      className={cn(
+                        "rounded-xl border px-3 py-2 text-xs leading-relaxed",
+                        ragIndexStatus.status === "indexing" &&
+                          "border-[#9a7f45]/30 bg-[#efe2c7] text-[#6f5f3f]",
+                        ragIndexStatus.status === "success" &&
+                          "border-[#53613b]/30 bg-[#e7ead4] text-[#3f4b2f]",
+                        ragIndexStatus.status === "error" &&
+                          "border-[#8a3f30]/25 bg-[#f3d8cc] text-[#7f3326]",
+                      )}
+                    >
+                      {ragIndexStatus.message}
                     </span>
                   ) : null}
                 </div>

@@ -16,7 +16,7 @@ const usageModes = [
     provider: "fanforge_free",
     model: "fanforge-free",
     description: "免费体验模型，无需 API Key。",
-    detail: "适合新用户试用情绪切片、章节草稿和多 Agent 审稿，实时额度见免费模型卡片。",
+    detail: "每日 30 次生成，适合新用户试用情绪切片、章节草稿和多 Agent 审稿。",
     icon: Server,
   },
   {
@@ -392,7 +392,7 @@ export default function SettingsPage() {
                 meta="实时额度"
               />
               <p className="rounded-xl border border-[#53613b]/30 bg-[#e7ead4] px-3 py-3 text-xs leading-relaxed text-[#3f4b2f]">
-                免费体验模型，适合新用户试用情绪切片、章节草稿和多 Agent 审稿。
+                免费体验模型，适合新用户试用情绪切片、章节草稿和多 Agent 审稿。每日 30 次生成。
               </p>
               <UsageQuotaCard
                 usage={usageSummary}
@@ -450,7 +450,7 @@ export default function SettingsPage() {
             description={
               requiresProviderKey
                 ? "高级模型需要填写对应供应商的 API Key。"
-                : "当前使用免费模型，无需配置 API Key。"
+                : "当前使用免费模型，无需配置 API Key。每日免费额度：30 次生成。"
             }
           >
             {requiresProviderKey ? (

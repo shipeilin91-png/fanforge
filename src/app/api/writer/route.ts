@@ -6,7 +6,14 @@ type WriterResponse = {
   emotionStructure: string[];
   characterConstraints: string[];
   usedCanonDocuments?: string[];
+  usedCanonEvidence?: UsedCanonEvidence[];
   usedPersonaProfiles?: string[];
+};
+
+type UsedCanonEvidence = {
+  title: string;
+  contentPreview: string;
+  similarity: number;
 };
 
 type ModelProvider =
@@ -64,9 +71,10 @@ const supabase =
       })
     : null;
 
-const FREE_DAILY_LIMIT = 10;
+const FREE_DAILY_LIMIT = 30;
 const FREE_PROVIDER = "fanforge_free";
 const WRITER_FEATURE = "slice";
+const EXPECTED_EMBEDDING_DIMENSION = 1536;
 
 function createSupabaseClientForToken(token: string) {
   if (!supabaseUrl || !supabaseAnonKey) return null;
@@ -121,6 +129,7 @@ type NormalizedWriterInput = {
   targetLength: number;
   canonContext: string;
   usedCanonDocuments: string[];
+  usedCanonEvidence: UsedCanonEvidence[];
   personaContext: string;
   usedPersonaProfiles: string[];
   feedbackLearningContext: string;
@@ -129,6 +138,24 @@ type NormalizedWriterInput = {
 type CanonContextResult = {
   text: string;
   titles: string[];
+};
+
+type CanonEvidenceHit = {
+  title: string;
+  content: string;
+  similarity: number | null;
+};
+
+type GeminiEmbeddingResponse = {
+  embeddings?: Array<{
+    values?: number[];
+  }>;
+  embedding?: {
+    values?: number[];
+  };
+  error?: {
+    message?: string;
+  };
 };
 
 type PersonaContextResult = {
@@ -285,6 +312,7 @@ function normalizeWriterInput(body: WriterRequestBody): NormalizedWriterInput {
     ),
     canonContext: stringValue(body.canonContext),
     usedCanonDocuments: [],
+    usedCanonEvidence: [],
     personaContext: stringValue(body.personaContext),
     usedPersonaProfiles: [],
     feedbackLearningContext: "",
@@ -503,6 +531,7 @@ function createFreeModelResponse(input: NormalizedWriterInput): WriterResponse {
           : "历史偏好：暂无反馈约束。",
       ],
       usedCanonDocuments,
+      usedCanonEvidence: input.usedCanonEvidence,
       usedPersonaProfiles,
     };
   }
@@ -589,6 +618,7 @@ function createFreeModelResponse(input: NormalizedWriterInput): WriterResponse {
     emotionStructure,
     characterConstraints,
     usedCanonDocuments,
+    usedCanonEvidence: input.usedCanonEvidence,
     usedPersonaProfiles,
   };
 }
@@ -699,6 +729,147 @@ function mergeCanonContext(frontendCanonContext: unknown, documentCanonContext: 
   return [stringValue(frontendCanonContext), documentCanonContext]
     .filter(Boolean)
     .join("\n\n");
+}
+
+async function createGeminiEmbedding(text: string) {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    throw new Error("GEMINI_API_KEY is not configured");
+  }
+
+  const model = "models/gemini-embedding-001";
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/${model}:batchEmbedContents?key=${geminiApiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requests: [
+          {
+            model,
+            outputDimensionality: EXPECTED_EMBEDDING_DIMENSION,
+            content: {
+              parts: [{ text }],
+            },
+          },
+        ],
+      }),
+    },
+  );
+
+  const payload = (await response.json()) as GeminiEmbeddingResponse;
+  if (!response.ok) {
+    throw new Error(payload.error?.message || "Gemini embedding request failed");
+  }
+
+  const embedding = payload.embeddings?.[0]?.values ?? payload.embedding?.values ?? [];
+  if (embedding.length !== EXPECTED_EMBEDDING_DIMENSION) {
+    throw new Error(
+      `Gemini embedding dimension mismatch. Expected ${EXPECTED_EMBEDDING_DIMENSION}, got ${embedding.length}.`,
+    );
+  }
+
+  return embedding;
+}
+
+function normalizeCanonEvidenceRow(row: unknown): CanonEvidenceHit | null {
+  if (!row || typeof row !== "object") return null;
+
+  const record = row as Record<string, unknown>;
+  const content = stringValue(record.content);
+  if (!content) return null;
+
+  return {
+    title: stringValue(record.title, "未命名 Canon 文档"),
+    content,
+    similarity:
+      typeof record.similarity === "number" && Number.isFinite(record.similarity)
+        ? record.similarity
+        : null,
+  };
+}
+
+async function retrieveCanonChunks(
+  client: NonNullable<typeof supabase>,
+  userId: string,
+  query: string,
+): Promise<CanonEvidenceHit[]> {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) return [];
+
+  try {
+    const embedding = await createGeminiEmbedding(trimmedQuery);
+    const { data, error } = await client.rpc("match_canon_chunks", {
+      query_embedding: embedding,
+      match_user_id: userId,
+      match_count: 5,
+    });
+
+    if (error) {
+      console.error("Writer Canon RAG retrieval failed", error.message);
+      return [];
+    }
+
+    return (Array.isArray(data) ? data : [])
+      .map(normalizeCanonEvidenceRow)
+      .filter((item): item is CanonEvidenceHit => item !== null)
+      .slice(0, 5);
+  } catch (error) {
+    console.error(
+      "Writer Canon RAG retrieval failed",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+    return [];
+  }
+}
+
+function formatCanonRagEvidence(evidence: CanonEvidenceHit[]) {
+  if (evidence.length === 0) return "";
+
+  return [
+    "【Canon RAG Evidence】",
+    ...evidence.map((item, index) =>
+      [
+        `${index + 1}. 来源：${item.title}`,
+        `   相似度：${item.similarity === null ? "未知" : item.similarity.toFixed(2)}`,
+        `   证据：${item.content.slice(0, 900)}`,
+      ].join("\n"),
+    ),
+  ].join("\n\n");
+}
+
+function toUsedCanonEvidence(evidence: CanonEvidenceHit[]): UsedCanonEvidence[] {
+  return evidence.map((item) => ({
+    title: item.title,
+    contentPreview: item.content.replace(/\s+/g, " ").slice(0, 120),
+    similarity: item.similarity ?? 0,
+  }));
+}
+
+function buildWriterCanonRetrievalQuery(
+  body: WriterRequestBody,
+  input: NormalizedWriterInput,
+) {
+  const selectedForbiddenItems = Array.isArray(body.forbiddenItems)
+    ? body.forbiddenItems.join("、")
+    : "";
+
+  return [
+    `角色/CP 名称：${input.nameA} × ${input.nameB}`,
+    `关系类型：${input.relationshipType}`,
+    `关系设定：${input.relationshipDetail}`,
+    `关系瞬间：${input.moment}`,
+    `关系阶段：${input.stage}`,
+    `情绪张力：${input.tension}`,
+    `自由场景描述：${stringValue(body.sceneDescription)}`,
+    `禁止项：${[selectedForbiddenItems, stringValue(body.forbiddenCustom)]
+      .filter(Boolean)
+      .join("、")}`,
+    `文学气质：${input.styleCard}`,
+    `风格补充：${input.styleDetail}`,
+  ]
+    .filter((line) => !line.endsWith("："))
+    .join("\n");
 }
 
 function mergePersonaContext(frontendPersonaContext: unknown, profilePersonaContext: string) {
@@ -1121,6 +1292,8 @@ const PRODUCT_TERMS_IN_TEXT = [
   "自定义张力",
   "根据 Canon 文档",
   "根据Canon文档",
+  "根据证据",
+  "RAG 检索显示",
   "资料显示",
   "设定中写道",
   "根据 Persona",
@@ -1190,6 +1363,7 @@ export async function POST(request: Request) {
   const lengthRange = getLengthRange(normalized.targetLength);
   const settings = await getUserModelSettings(request);
   let canonDocuments: CanonContextResult = { text: "", titles: [] };
+  let canonEvidence: CanonEvidenceHit[] = [];
   let personaProfiles: PersonaContextResult = { text: "", titles: [] };
   let feedbackLearningContext = "";
 
@@ -1197,6 +1371,11 @@ export async function POST(request: Request) {
     const userSupabase = createSupabaseClientForToken(settings.access_token);
     if (userSupabase) {
       canonDocuments = await getUserCanonContext(userSupabase, settings.user_id);
+      canonEvidence = await retrieveCanonChunks(
+        userSupabase,
+        settings.user_id,
+        buildWriterCanonRetrievalQuery(body, normalized),
+      );
       personaProfiles = await getUserPersonaContext(userSupabase, settings.user_id);
       feedbackLearningContext = buildFeedbackLearningContext(
         await getUserFeedbackRows(userSupabase, settings.user_id),
@@ -1204,10 +1383,16 @@ export async function POST(request: Request) {
     }
   }
 
+  const canonRagContext = formatCanonRagEvidence(canonEvidence);
+  const usedCanonEvidence = toUsedCanonEvidence(canonEvidence);
   const normalizedWithCanon: NormalizedWriterInput = {
     ...normalized,
-    canonContext: mergeCanonContext(body.canonContext, canonDocuments.text),
+    canonContext: mergeCanonContext(
+      body.canonContext,
+      [canonRagContext, canonDocuments.text].filter(Boolean).join("\n\n"),
+    ),
     usedCanonDocuments: canonDocuments.titles,
+    usedCanonEvidence,
     personaContext: mergePersonaContext(body.personaContext, personaProfiles.text),
     usedPersonaProfiles: personaProfiles.titles,
     feedbackLearningContext,
@@ -1256,6 +1441,7 @@ export async function POST(request: Request) {
       return Response.json({
         ...freeModelResponse,
         usedCanonDocuments: canonDocuments.titles,
+        usedCanonEvidence,
         usedPersonaProfiles: personaProfiles.titles,
         usage: {
           limit: FREE_DAILY_LIMIT,
@@ -1268,6 +1454,7 @@ export async function POST(request: Request) {
     return Response.json({
       ...freeModelResponse,
       usedCanonDocuments: canonDocuments.titles,
+      usedCanonEvidence,
       usedPersonaProfiles: personaProfiles.titles,
     });
   }
@@ -1306,6 +1493,11 @@ export async function POST(request: Request) {
         normalizedWithCanon.canonContext
           ? `Canon 上下文：\n${normalizedWithCanon.canonContext}`
           : "Canon 上下文：",
+        "如果 Canon 上下文包含【Canon RAG Evidence】，必须优先遵守其中命中的硬设定。",
+        "不得编造与 Canon RAG Evidence 冲突的身份、时间线、阵营或世界观规则。",
+        "如果证据不足，不要强行创造硬设定；保持模糊比主动编造更重要。",
+        "如果 Canon RAG Evidence 与用户自由输入冲突，优先遵守 Canon RAG Evidence。",
+        "text 正文中不要写“根据证据”“RAG 检索显示”等说明性语言。",
         "如果 Canon 上下文存在，生成时要优先遵守其中的硬设定，不得主动改写其中明确的人物身份、时间线、阵营和世界观规则。",
         "如果用户输入和 Canon 上下文冲突，优先保持 Canon 一致性，但不要在正文里解释冲突。",
         "text 正文里不要出现“根据 Canon 文档”“资料显示”“设定中写道”等说明性语言；Canon 只作为隐性约束进入正文。",
@@ -1363,6 +1555,7 @@ export async function POST(request: Request) {
         relationshipDetail: normalizedWithCanon.relationshipDetail,
         canonContext: normalizedWithCanon.canonContext,
         usedCanonDocuments: canonDocuments.titles,
+        usedCanonEvidence,
         personaContext: normalizedWithCanon.personaContext,
         usedPersonaProfiles: personaProfiles.titles,
         feedbackLearningContext: normalizedWithCanon.feedbackLearningContext,
@@ -1425,6 +1618,7 @@ export async function POST(request: Request) {
         normalizedWithCanon.nameB,
       ),
       usedCanonDocuments: canonDocuments.titles,
+      usedCanonEvidence,
       usedPersonaProfiles: personaProfiles.titles,
     };
 
@@ -1435,6 +1629,7 @@ export async function POST(request: Request) {
     return Response.json({
       ...sanitizedResponse,
       usedCanonDocuments: canonDocuments.titles,
+      usedCanonEvidence,
       usedPersonaProfiles: personaProfiles.titles,
     });
   } catch (error) {
