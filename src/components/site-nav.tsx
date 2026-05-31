@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { supabase } from "@/lib/supabase";
-
 const navLinks = [
   { label: "首页", href: "/" },
   { label: "创作室", href: "/studio" },
@@ -26,8 +24,24 @@ type AuthUser = {
   email?: string | null;
 };
 
+async function getSupabaseClient() {
+  try {
+    const { supabase } = await import("@/lib/supabase");
+    return supabase;
+  } catch (error) {
+    console.error(
+      "Supabase client unavailable in navigation",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+    return null;
+  }
+}
+
 async function upsertUserProfile(user: AuthUser) {
-  const { error } = await supabase.from("user_profiles").upsert(
+  const client = await getSupabaseClient();
+  if (!client) return;
+
+  const { error } = await client.from("user_profiles").upsert(
     {
       id: user.id,
       email: user.email ?? null,
@@ -50,39 +64,58 @@ export function SiteNav() {
     let isMounted = true;
 
     async function loadSession() {
-      const { data } = await supabase.auth.getSession();
+      try {
+        const client = await getSupabaseClient();
+        if (!client) return;
 
-      if (!isMounted) return;
+        const { data } = await client.auth.getSession();
 
-      const user = data.session?.user;
-      setUserEmail(user?.email ?? null);
+        if (!isMounted) return;
 
-      if (user) {
-        await upsertUserProfile(user);
+        const user = data.session?.user;
+        setUserEmail(user?.email ?? null);
+
+        if (user) {
+          await upsertUserProfile(user);
+        }
+      } catch (error) {
+        console.error(
+          "Navigation session read failed",
+          error instanceof Error ? error.message : "Unknown error",
+        );
       }
     }
 
     void loadSession();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      const user = session?.user;
-      setUserEmail(user?.email ?? null);
+    let unsubscribe: (() => void) | undefined;
 
-      if (user) {
-        void upsertUserProfile(user);
-      }
+    void getSupabaseClient().then((client) => {
+      if (!client || !isMounted) return;
+
+      const {
+        data: { subscription },
+      } = client.auth.onAuthStateChange((_event, session) => {
+        const user = session?.user;
+        setUserEmail(user?.email ?? null);
+
+        if (user) {
+          void upsertUserProfile(user);
+        }
+      });
+
+      unsubscribe = () => subscription.unsubscribe();
     });
 
     return () => {
       isMounted = false;
-      subscription.unsubscribe();
+      unsubscribe?.();
     };
   }, []);
 
   async function handleLogout() {
-    await supabase.auth.signOut();
+    const client = await getSupabaseClient();
+    await client?.auth.signOut();
     setUserEmail(null);
     setIsMenuOpen(false);
     router.push("/");

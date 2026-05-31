@@ -121,8 +121,14 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html,
+  body {
+    min-height: 100%;
+    overflow-x: hidden;
+  }
   body {
     @apply bg-background text-foreground;
+    overflow-y: auto;
   }
   html {
     @apply font-sans;

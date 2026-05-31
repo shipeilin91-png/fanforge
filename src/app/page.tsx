@@ -2,13 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import {
+  Component,
+  useEffect,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/lib/supabase";
 
 type AuthMode = "login" | "signup";
 
@@ -17,8 +22,24 @@ type AuthUser = {
   email?: string | null;
 };
 
+async function getSupabaseClient() {
+  try {
+    const { supabase } = await import("@/lib/supabase");
+    return supabase;
+  } catch (error) {
+    console.error(
+      "Supabase client unavailable on home page",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+    return null;
+  }
+}
+
 async function upsertUserProfile(user: AuthUser) {
-  const { error } = await supabase.from("user_profiles").upsert(
+  const client = await getSupabaseClient();
+  if (!client) return;
+
+  const { error } = await client.from("user_profiles").upsert(
     {
       id: user.id,
       email: user.email ?? null,
@@ -29,6 +50,76 @@ async function upsertUserProfile(user: AuthUser) {
 
   if (error) {
     console.error("User profile sync failed", error.message);
+  }
+}
+
+function SafeHomeFallback() {
+  return (
+    <div className="min-h-dvh bg-[#f4ecd9] px-4 py-6 text-[#191611]">
+      <main className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-3xl flex-col justify-center">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#6a654f]">
+          Canon-aware AI Writing
+        </p>
+        <h1 className="mt-4 font-serif text-5xl leading-none text-[#171410] sm:text-7xl">
+          FanForge
+        </h1>
+        <p className="mt-5 max-w-xl text-base leading-7 text-[#5f5849] sm:text-lg">
+          Canon-aware AI co-writing platform for fanfiction creators.
+        </p>
+        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/studio"
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-[#171410] px-5 text-sm font-medium text-[#f8f0df]"
+          >
+            进入创作室
+          </Link>
+          <Link
+            href="/slice"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-[#53613b]/35 bg-[#e7ead4] px-5 text-sm font-medium text-[#28331f]"
+          >
+            情绪切片
+          </Link>
+          <Link
+            href="/canon"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-[#8a7c62]/30 bg-[#fffaf0] px-5 text-sm font-medium text-[#171410]"
+          >
+            Canon 证据
+          </Link>
+          <Link
+            href="/write"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-[#8a7c62]/30 bg-[#fffaf0] px-5 text-sm font-medium text-[#171410]"
+          >
+            章节写作
+          </Link>
+        </div>
+        <p className="mt-10 text-[11px] text-[#8a7c62]">
+          FanForge mobile-safe build
+        </p>
+      </main>
+    </div>
+  );
+}
+
+class HomeErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("Home page render failed", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <SafeHomeFallback />;
+    }
+
+    return this.props.children;
   }
 }
 
@@ -47,20 +138,37 @@ export default function HomePage() {
     let isMounted = true;
 
     async function loadSession() {
-      const { data, error } = await supabase.auth.getSession();
+      try {
+        const client = await getSupabaseClient();
+        if (!client) {
+          if (isMounted) setIsCheckingSession(false);
+          return;
+        }
 
-      if (!isMounted) return;
+        const { data, error } = await client.auth.getSession();
 
-      if (error) {
-        setAuthError(error.message);
+        if (!isMounted) return;
+
+        if (error) {
+          setAuthError(error.message);
+        }
+
+        if (data.session?.user) {
+          await upsertUserProfile(data.session.user);
+        }
+
+        setHasSession(Boolean(data.session));
+      } catch (error) {
+        if (isMounted) {
+          setAuthError(
+            error instanceof Error ? error.message : "登录状态读取失败",
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
       }
-
-      if (data.session?.user) {
-        await upsertUserProfile(data.session.user);
-      }
-
-      setHasSession(Boolean(data.session));
-      setIsCheckingSession(false);
     }
 
     void loadSession();
@@ -97,10 +205,18 @@ export default function HomePage() {
       password,
     };
 
+    const client = await getSupabaseClient();
+
+    if (!client) {
+      setIsSubmitting(false);
+      setAuthError("登录服务暂时不可用，请稍后再试");
+      return;
+    }
+
     const { data, error } =
       authMode === "login"
-        ? await supabase.auth.signInWithPassword(credentials)
-        : await supabase.auth.signUp(credentials);
+        ? await client.auth.signInWithPassword(credentials)
+        : await client.auth.signUp(credentials);
 
     setIsSubmitting(false);
 
@@ -134,6 +250,7 @@ export default function HomePage() {
   }
 
   return (
+    <HomeErrorBoundary>
     <div className="min-h-full overflow-x-hidden bg-[#f4ecd9] text-[#191611]">
       <SiteNav />
       <main className="relative min-h-[calc(100vh-3.5rem)] px-4 py-7 sm:px-6 sm:py-9 lg:px-12 lg:py-10">
@@ -315,7 +432,11 @@ export default function HomePage() {
             </div>
           </aside>
         </div>
+        <p className="mx-auto mt-8 w-full max-w-[1440px] text-[11px] text-[#8a7c62]">
+          FanForge mobile-safe build
+        </p>
       </main>
     </div>
+    </HomeErrorBoundary>
   );
 }
