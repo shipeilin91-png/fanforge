@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
@@ -133,9 +134,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-full overflow-hidden bg-[#f4ecd9] text-[#191611]">
+    <div className="min-h-full overflow-x-hidden bg-[#f4ecd9] text-[#191611]">
       <SiteNav />
-      <main className="relative flex min-h-[calc(100vh-3.5rem)] px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+      <main className="relative min-h-[calc(100vh-3.5rem)] px-4 py-7 sm:px-6 sm:py-9 lg:px-12 lg:py-10">
         <div className="pointer-events-none absolute left-[-7vw] top-16 hidden text-[16vw] font-serif font-semibold leading-none text-[#1b1711]/[0.035] lg:block">
           CANON
         </div>
@@ -143,39 +144,57 @@ export default function HomePage() {
           PERSONA
         </div>
 
-        <div className="relative mx-auto grid w-full max-w-[1440px] items-center gap-12 lg:grid-cols-[minmax(0,0.58fr)_minmax(340px,0.42fr)] xl:gap-16">
+        <div className="relative mx-auto grid w-full max-w-[1440px] items-center gap-8 sm:gap-10 lg:grid-cols-[minmax(0,0.58fr)_minmax(340px,0.42fr)] xl:gap-16">
           <section className="max-w-[880px]">
-            <div className="mb-7 inline-flex border border-[#2d281f]/20 bg-[#fffaf0]/45 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-[#6a654f]">
+            <div className="mb-5 inline-flex max-w-full border border-[#2d281f]/20 bg-[#fffaf0]/45 px-3 py-2 text-[10px] font-medium uppercase tracking-[0.16em] text-[#6a654f] sm:mb-7 sm:px-4 sm:text-xs sm:tracking-[0.22em]">
               FAN FICTION · CANON-AWARE AI WRITING
             </div>
-            <h1 className="font-serif text-[clamp(4.75rem,13vw,12.5rem)] font-semibold leading-[0.78] tracking-[-0.035em] text-[#171410]">
+            <h1 className="max-w-full break-words font-serif text-[clamp(3.75rem,18vw,12.5rem)] font-semibold leading-[0.84] tracking-[-0.035em] text-[#171410] sm:leading-[0.78]">
               FanForge
             </h1>
-            <div className="mt-8 grid gap-6 lg:grid-cols-[0.85fr_1fr]">
-              <p className="max-w-xl font-serif text-[clamp(2rem,4vw,4.5rem)] leading-[0.95] tracking-[-0.025em] text-[#1e1a14]">
+            <div className="mt-6 grid gap-5 sm:mt-8 lg:grid-cols-[0.85fr_1fr]">
+              <p className="max-w-xl font-serif text-[clamp(2rem,10vw,4.5rem)] leading-[1] tracking-[-0.025em] text-[#1e1a14]">
                 面向同人创作者的原著一致性 AI 共写平台
               </p>
-              <div className="flex max-w-xl flex-col justify-end gap-6">
-                <p className="text-base leading-8 text-[#5f5849] sm:text-lg">
+              <div className="flex max-w-xl flex-col justify-end gap-5 sm:gap-6">
+                <p className="text-base leading-7 text-[#5f5849] sm:text-lg sm:leading-8">
                   从 Canon 证据、角色人格到多 Agent
                   审稿，把长文本创作中的一致性问题产品化。
                 </p>
-                <div className="flex flex-wrap gap-3">
+                <div className="grid gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap">
                   <Button
                     type="button"
-                    className="h-11 bg-[#171410] px-5 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
+                    className="h-11 w-full rounded-xl bg-[#171410] px-5 text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f] sm:w-auto"
                     onClick={handleEnterStudio}
                   >
                     进入创作室
                   </Button>
+                  <Link
+                    href="/slice"
+                    className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-[#53613b]/35 bg-[#e7ead4] px-5 text-sm font-medium text-[#28331f] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#53613b]/70 hover:bg-[#dfe6c7] sm:w-auto"
+                  >
+                    情绪切片
+                  </Link>
+                  <Link
+                    href="/canon"
+                    className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-[#8a7c62]/30 bg-[#fffaf0] px-5 text-sm font-medium text-[#171410] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#8a7c62]/55 hover:bg-[#fbf5e8] sm:w-auto"
+                  >
+                    Canon 证据
+                  </Link>
+                  <Link
+                    href="/write"
+                    className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-[#8a7c62]/30 bg-[#fffaf0] px-5 text-sm font-medium text-[#171410] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#8a7c62]/55 hover:bg-[#fbf5e8] sm:w-auto"
+                  >
+                    章节写作
+                  </Link>
                 </div>
               </div>
             </div>
           </section>
 
-          <aside className="relative w-full max-w-[430px] justify-self-end border border-[#171410]/20 bg-[#efe2c7]/70 p-6 shadow-[0_20px_60px_rgba(49,39,24,0.08)] lg:translate-y-4">
-            <div className="absolute -right-4 -top-4 size-24 bg-[#53613b] opacity-90" />
-            <div className="relative flex min-h-[520px] flex-col justify-between border border-[#171410]/15 bg-[#f8f0df] p-6">
+          <aside className="relative w-full max-w-[430px] justify-self-center rounded-[18px] border border-[#171410]/20 bg-[#efe2c7]/70 p-4 shadow-[0_20px_60px_rgba(49,39,24,0.08)] sm:p-6 lg:translate-y-4 lg:justify-self-end">
+            <div className="absolute right-3 top-3 size-16 bg-[#53613b] opacity-90 sm:-right-4 sm:-top-4 sm:size-24" />
+            <div className="relative flex min-h-[430px] flex-col justify-between rounded-[18px] border border-[#171410]/15 bg-[#f8f0df] p-5 sm:min-h-[520px] sm:p-6">
               <div>
                 <Badge
                   variant="outline"
@@ -183,7 +202,7 @@ export default function HomePage() {
                 >
                   Canon-aware Studio
                 </Badge>
-                <p className="mt-8 font-serif text-4xl leading-none text-[#171410]">
+                <p className="mt-7 font-serif text-3xl leading-none text-[#171410] sm:mt-8 sm:text-4xl">
                   Canon stays.
                   <br />
                   Characters stay.
@@ -192,7 +211,7 @@ export default function HomePage() {
                 </p>
               </div>
 
-              <div className="mt-8 border border-[#8a7c62]/30 bg-[#fffaf0] px-4 py-4 shadow-[0_12px_30px_rgba(49,39,24,0.05)]">
+              <div className="mt-8 rounded-xl border border-[#8a7c62]/30 bg-[#fffaf0] px-4 py-4 shadow-[0_12px_30px_rgba(49,39,24,0.05)]">
                 {hasSession ? (
                   <div className="flex flex-col gap-4">
                     <div>
@@ -205,7 +224,7 @@ export default function HomePage() {
                     </div>
                     <Button
                       type="button"
-                      className="h-10 bg-[#171410] text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
+                      className="h-10 w-full rounded-xl bg-[#171410] text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
                       onClick={handleEnterStudio}
                       disabled={isCheckingSession}
                     >
@@ -240,7 +259,7 @@ export default function HomePage() {
                         onChange={(event) => setEmail(event.target.value)}
                         placeholder="name@example.com"
                         autoComplete="email"
-                        className="h-10 border-[#8a7c62]/30 bg-[#fffdf7] text-sm text-[#211d17] placeholder:text-[#9a8f78]"
+                        className="h-10 rounded-xl border-[#8a7c62]/30 bg-[#fffdf7] text-sm text-[#211d17] placeholder:text-[#9a8f78]"
                       />
                     </label>
                     <label className="flex flex-col gap-2 text-xs font-medium text-[#6f6759]">
@@ -253,24 +272,24 @@ export default function HomePage() {
                         autoComplete={
                           authMode === "login" ? "current-password" : "new-password"
                         }
-                        className="h-10 border-[#8a7c62]/30 bg-[#fffdf7] text-sm text-[#211d17] placeholder:text-[#9a8f78]"
+                        className="h-10 rounded-xl border-[#8a7c62]/30 bg-[#fffdf7] text-sm text-[#211d17] placeholder:text-[#9a8f78]"
                       />
                     </label>
 
                     {authError ? (
-                      <p className="border border-[#8a3f30]/25 bg-[#f3d8cc] px-3 py-2 text-xs leading-relaxed text-[#7f3326]">
+                      <p className="rounded-xl border border-[#8a3f30]/25 bg-[#f3d8cc] px-3 py-2 text-xs leading-relaxed text-[#7f3326]">
                         {authError}
                       </p>
                     ) : null}
                     {authMessage ? (
-                      <p className="border border-[#53613b]/30 bg-[#e7ead4] px-3 py-2 text-xs leading-relaxed text-[#3f4b2f]">
+                      <p className="rounded-xl border border-[#53613b]/30 bg-[#e7ead4] px-3 py-2 text-xs leading-relaxed text-[#3f4b2f]">
                         {authMessage}
                       </p>
                     ) : null}
 
                     <Button
                       type="submit"
-                      className="mt-1 h-10 bg-[#171410] text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
+                      className="mt-1 h-10 w-full rounded-xl bg-[#171410] text-[#f8f0df] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#28331f]"
                       disabled={isSubmitting || isCheckingSession}
                     >
                       {isSubmitting
@@ -283,11 +302,11 @@ export default function HomePage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-3 gap-3 pt-10">
+              <div className="grid grid-cols-3 gap-3 pt-8 sm:pt-10">
                 {["Canon", "Persona", "Agent"].map((item) => (
                   <div
                     key={item}
-                    className="border border-[#171410]/15 bg-[#f4ecd9] px-3 py-3 text-center text-xs font-medium text-[#5f5849]"
+                    className="rounded-xl border border-[#171410]/15 bg-[#f4ecd9] px-3 py-3 text-center text-xs font-medium text-[#5f5849]"
                   >
                     {item}
                   </div>
