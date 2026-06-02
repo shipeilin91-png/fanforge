@@ -244,7 +244,18 @@ Phase 1 should not add a large benchmark set. Recommended next step:
 
 Total initial cases: 7.
 
-Phase 2 can expand toward 20-40 cases after the runner format is stable.
+Phase 2 stays intentionally small: 7 MVP cases to validate the case schema, runner behavior, skipped-case handling, rule-based evaluators, and report structure.
+
+The final benchmark target is **30 high-quality synthetic cases**, not a 40/60-case volume benchmark. FanForge's dimensions are more complex than a generic content benchmark because each case needs interpretable Canon, Persona, relationship, and revision constraints.
+
+Final case distribution:
+
+- Canon Consistency: 8 cases.
+- Persona Timeline: 8 cases.
+- Emotion Slice: 8 cases.
+- Multi-Agent Revision: 6 cases.
+
+Total final cases: 30.
 
 ## Runner MVP Draft
 
@@ -291,7 +302,27 @@ Runner behavior:
 ## Phase 2 Next Steps
 
 1. Add a small `docs/benchmark/fanforge-cases.json` with 7 initial cases.
-2. Add authenticated seed-data instructions for Canon and Persona benchmark runs.
-3. Implement rule-based evaluators for direct confession, over-explanation, forbidden lines, and Canon fact conflicts.
-4. Add optional Reviewer-assisted evaluation for OOC and relationship-stage risks.
-5. Add a short benchmark report format for portfolio screenshots and PM analysis.
+2. Keep the Phase 2 MVP case split at 2 Canon, 2 Persona, 2 Emotion Slice, and 1 Multi-Agent case.
+3. Validate that `fanforge-cases.json` can be read by the runner.
+4. Validate that APIs can be called or reasonably marked `skipped`.
+5. Implement rule-based evaluators for Canon conflict, OOC, direct confession, over-explanation, relationship progression too fast, and forbidden-line violations.
+6. Generate `fanforge-cases.md` and `fanforge-analysis.md` in a report structure suitable for portfolio review.
+7. Do not treat Phase 2 output as final resume metrics.
+
+## Phase 3 Target
+
+Phase 3 expands the benchmark to the final 30 high-quality synthetic cases:
+
+- Canon Consistency: 8 cases.
+- Persona Timeline: 8 cases.
+- Emotion Slice: 8 cases.
+- Multi-Agent Revision: 6 cases.
+
+Phase 3 metrics should be suitable for resume/portfolio presentation:
+
+- Canon evidence hit rate and low-similarity filtering behavior.
+- OOC risk reduction.
+- Persona stage constraint hit rate.
+- Direct confession, over-explanation, and relationship-progression violation reduction.
+- Multi-Agent post-review issue reduction rate.
+- Emotion Slice relationship-stage match and subtext signal performance.
