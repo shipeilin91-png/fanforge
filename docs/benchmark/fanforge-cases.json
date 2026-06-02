@@ -1,253 +1,328 @@
 {
-  "version": "phase-2-mvp",
-  "description": "Seven synthetic FanForge benchmark cases using an original lightweight test universe. These cases are designed to validate the runner, API call handling, rule-based evaluators, and report shape rather than produce final resume metrics.",
+  "version": "phase-3-30-case",
+  "description": "Thirty high-quality synthetic FanForge benchmark cases using an original lightweight test universe. These cases are designed for portfolio-facing benchmark analysis while clearly remaining synthetic and not real user data.",
   "universe": {
-    "world": ["银枝帝国", "雾港", "星轨学院", "机械城邦"],
+    "world": ["银枝帝国", "雾港", "星轨学院", "机械城邦", "黑潮边境", "王都旧档案馆", "失效星轨", "北境停战线"],
     "characters": {
       "莱因": "前银枝帝国王子，三年前王都政变后流亡雾港；防御型人格，克制、回避直接示弱；不能触碰银质纹章，否则触发旧伤。",
-      "阿洛": "莱因旧友/盟友，外热内冷，常用玩笑掩饰关心。"
+      "阿洛": "莱因旧友/盟友，外热内冷，常用玩笑掩饰关心；在关键时刻会用轻佻语气打断沉重情绪。",
+      "伊塔": "机械城邦调查员，理性、边界感强，不轻信贵族叙事。",
+      "弥雅": "星轨学院旧识，温和但立场摇摆，知道部分王都政变真相。"
     }
   },
   "cases": [
     {
       "id": "canon-001",
       "type": "canon",
-      "title": "High relevance Canon evidence should be retrieved",
+      "title": "High relevance evidence should hit Silverbranch exile facts",
       "input": {
         "query": "银枝帝国 王都政变 雾港 莱因 银质纹章 旧伤 雨夜争执",
-        "generationPrompt": "莱因与阿洛在雾港雨夜争执，银质纹章被雨水冲出旧痕。",
         "textToEvaluate": "莱因没有说自己疼，只在银质纹章擦过掌心时停顿了一下。他把视线移开，把伞推过去，没有回答阿洛的玩笑。"
       },
       "expected": {
-        "shouldHitEvidenceAbout": ["银枝帝国", "王都政变", "雾港", "银质纹章", "旧伤"],
-        "shouldAvoid": ["从未离开王都", "轻松佩戴银质纹章"],
-        "notes": "高相关 query 应优先命中莱因流亡、银质纹章与旧伤相关 evidence。"
+        "canonMode": "auto",
+        "expectedEvidenceKeywords": ["银枝帝国", "王都政变", "雾港", "银质纹章", "旧伤"],
+        "expectedRelevantFacts": ["莱因三年前政变后流亡雾港", "银质纹章会触发旧伤"],
+        "shouldAvoidCanonConflicts": true,
+        "forbiddenFacts": ["从未离开王都", "轻松佩戴银质纹章"]
       },
-      "apiPlan": [
-        {
-          "name": "canonRetrieve",
-          "endpoint": "/api/canon/retrieve",
-          "method": "POST",
-          "requiresAuth": true,
-          "body": {
-            "query": "银枝帝国 王都政变 雾港 莱因 银质纹章 旧伤 雨夜争执",
-            "matchCount": 5
-          }
-        }
-      ]
+      "apiPlan": [{ "name": "canonRetrieve", "endpoint": "/api/canon/retrieve", "method": "POST", "requiresAuth": true, "body": { "query": "银枝帝国 王都政变 雾港 莱因 银质纹章 旧伤 雨夜争执", "matchCount": 5 } }]
     },
     {
       "id": "canon-002",
       "type": "canon",
-      "title": "Low relevance Canon evidence should be filtered",
+      "title": "Low relevance city-tax evidence should not leak into rain conflict",
       "input": {
         "query": "雨夜争执 莱因 阿洛 雾港 旧伤",
-        "irrelevantEvidence": ["机械城邦贸易税", "星轨学院课程表"],
         "textToEvaluate": "机械城邦贸易税忽然决定了他们的命运，星轨学院课程表也被阿洛翻出来解释这场雨夜争执。莱因从未离开王都，还轻松佩戴银质纹章。"
       },
       "expected": {
-        "shouldFilterBelowSimilarity": 0.65,
-        "shouldAvoid": ["机械城邦贸易税", "星轨学院课程表", "从未离开王都", "轻松佩戴银质纹章"],
-        "notes": "无关 evidence 不应被强行注入雨夜争执场景。"
+        "canonMode": "auto",
+        "expectedEvidenceKeywords": ["雾港", "旧伤"],
+        "expectedRelevantFacts": ["雨夜争执应围绕莱因、阿洛、旧伤和雾港"],
+        "shouldAvoidCanonConflicts": true,
+        "forbiddenFacts": ["机械城邦贸易税", "星轨学院课程表", "从未离开王都", "轻松佩戴银质纹章"]
       },
-      "apiPlan": [
-        {
-          "name": "canonRetrieve",
-          "endpoint": "/api/canon/retrieve",
-          "method": "POST",
-          "requiresAuth": true,
-          "body": {
-            "query": "雨夜争执 莱因 阿洛 雾港 旧伤",
-            "matchCount": 5
-          }
-        }
-      ]
+      "apiPlan": [{ "name": "canonRetrieve", "endpoint": "/api/canon/retrieve", "method": "POST", "requiresAuth": true, "body": { "query": "雨夜争执 莱因 阿洛 雾港 旧伤", "matchCount": 5 } }]
+    },
+    {
+      "id": "canon-003",
+      "type": "canon",
+      "title": "Selected document should focus on coup archive only",
+      "input": {
+        "query": "王都旧档案馆 王都政变 莱因 流亡 雾港",
+        "selectedCanonDocumentId": "synthetic-coup-archive",
+        "textToEvaluate": "王都旧档案馆的封条还在，弥雅没有提课程表，只把三年前政变后的流亡名单推到莱因面前。"
+      },
+      "expected": {
+        "canonMode": "selected",
+        "expectedEvidenceKeywords": ["王都旧档案馆", "王都政变", "流亡名单"],
+        "expectedRelevantFacts": ["只使用王都政变档案"],
+        "shouldAvoidCanonConflicts": true,
+        "forbiddenFacts": ["星轨学院课程表", "机械城邦贸易税"]
+      },
+      "apiPlan": [{ "name": "canonRetrieve", "endpoint": "/api/canon/retrieve", "method": "POST", "requiresAuth": true, "body": { "query": "王都旧档案馆 王都政变 莱因 流亡 雾港", "matchCount": 5 } }]
+    },
+    {
+      "id": "canon-004",
+      "type": "canon",
+      "title": "None mode should record zero evidence injection",
+      "input": {
+        "query": "不使用 Canon 的雨夜争执",
+        "textToEvaluate": "阿洛靠在旧码头的栏杆边，玩笑说到一半停住。莱因没有回答，只把伞推过去。"
+      },
+      "expected": {
+        "canonMode": "none",
+        "expectedEvidenceKeywords": [],
+        "expectedRelevantFacts": ["本次不应注入 Canon evidence"],
+        "shouldAvoidCanonConflicts": true,
+        "forbiddenFacts": ["Canon RAG Evidence", "根据证据"]
+      },
+      "apiPlan": []
+    },
+    {
+      "id": "canon-005",
+      "type": "canon",
+      "title": "Conflict detector should catch never-left-capital error",
+      "input": {
+        "query": "莱因 流亡 雾港 王都",
+        "textToEvaluate": "莱因从未离开王都，所以他对雾港的潮气毫无记忆。阿洛没有回答。"
+      },
+      "expected": {
+        "canonMode": "auto",
+        "expectedEvidenceKeywords": ["流亡", "雾港"],
+        "expectedRelevantFacts": ["莱因三年前已流亡雾港"],
+        "shouldAvoidCanonConflicts": true,
+        "forbiddenFacts": ["从未离开王都"]
+      },
+      "apiPlan": [{ "name": "canonRetrieve", "endpoint": "/api/canon/retrieve", "method": "POST", "requiresAuth": true, "body": { "query": "莱因 流亡 雾港 王都", "matchCount": 5 } }]
+    },
+    {
+      "id": "canon-006",
+      "type": "canon",
+      "title": "Conflict detector should catch silver emblem comfort error",
+      "input": {
+        "query": "莱因 银质纹章 旧伤 禁忌物",
+        "textToEvaluate": "莱因轻松佩戴银质纹章，甚至把它按在掌心欣赏了一会儿，没有任何反应。"
+      },
+      "expected": {
+        "canonMode": "auto",
+        "expectedEvidenceKeywords": ["银质纹章", "旧伤"],
+        "expectedRelevantFacts": ["银质纹章会触发莱因旧伤"],
+        "shouldAvoidCanonConflicts": true,
+        "forbiddenFacts": ["轻松佩戴银质纹章"]
+      },
+      "apiPlan": [{ "name": "canonRetrieve", "endpoint": "/api/canon/retrieve", "method": "POST", "requiresAuth": true, "body": { "query": "莱因 银质纹章 旧伤 禁忌物", "matchCount": 5 } }]
+    },
+    {
+      "id": "canon-007",
+      "type": "canon",
+      "title": "Timeline should stay three years after coup",
+      "input": {
+        "query": "三年前 王都政变 流亡 雾港 时间线",
+        "textToEvaluate": "弥雅低声说三年前的封档还没解开。莱因停顿了一下，没有把昨晚刚离开王都这种错误说法接下去。"
+      },
+      "expected": {
+        "canonMode": "auto",
+        "expectedEvidenceKeywords": ["三年前", "王都政变", "流亡"],
+        "expectedRelevantFacts": ["政变发生在三年前"],
+        "shouldAvoidCanonConflicts": true,
+        "forbiddenFacts": ["昨晚刚离开王都"]
+      },
+      "apiPlan": [{ "name": "canonRetrieve", "endpoint": "/api/canon/retrieve", "method": "POST", "requiresAuth": true, "body": { "query": "三年前 王都政变 莱因 流亡 雾港 时间线", "matchCount": 5 } }]
+    },
+    {
+      "id": "canon-008",
+      "type": "canon",
+      "title": "Multiple facts should combine identity location and taboo object",
+      "input": {
+        "query": "莱因 前王子 雾港 银质纹章 旧伤 阿洛",
+        "textToEvaluate": "阿洛把银质纹章从桌边拨开。莱因站在雾港潮湿的灯影里，停顿了一下，没有回答关于前王子的玩笑。"
+      },
+      "expected": {
+        "canonMode": "auto",
+        "expectedEvidenceKeywords": ["前王子", "雾港", "银质纹章", "旧伤"],
+        "expectedRelevantFacts": ["莱因身份", "雾港地点", "银质纹章禁忌"],
+        "shouldAvoidCanonConflicts": true,
+        "forbiddenFacts": ["从未离开王都", "轻松佩戴银质纹章"]
+      },
+      "apiPlan": [{ "name": "canonRetrieve", "endpoint": "/api/canon/retrieve", "method": "POST", "requiresAuth": true, "body": { "query": "莱因 前王子 雾港 银质纹章 旧伤 阿洛", "matchCount": 5 } }]
     },
     {
       "id": "persona-001",
       "type": "persona",
       "title": "Defensive stage should avoid direct vulnerability",
-      "input": {
-        "characterNames": "莱因 × 阿洛",
-        "stage": "防御期",
-        "moment": "阿洛在雾港码头替莱因包扎被银质纹章擦出的旧伤。",
-        "tension": "表面玩笑，底下是旧友之间不肯说破的关心。",
-        "textToEvaluate": "莱因想说谢谢，最后只是移开视线，把伞推过去。阿洛替他包扎时，他停顿了很久，没有说完那句解释。"
-      },
-      "expected": {
-        "shouldAvoid": ["我爱你", "我喜欢你", "我不能没有你", "我害怕失去你"],
-        "shouldIncludeSignals": ["移开视线", "替他包扎", "把伞推过去", "停顿"],
-        "notes": "防御期莱因可以关心阿洛，但不能直接示弱或告白。"
-      },
-      "apiPlan": [
-        {
-          "name": "writer",
-          "endpoint": "/api/writer",
-          "method": "POST",
-          "body": {
-            "characterNames": "莱因 × 阿洛",
-            "relationshipTypeFinal": "旧友/盟友",
-            "momentFinal": "阿洛在雾港码头替莱因包扎被银质纹章擦出的旧伤。",
-            "stageFinal": "防御期",
-            "tensionFinal": "表面玩笑，底下是旧友之间不肯说破的关心。",
-            "expectedLength": "300",
-            "styleCard": "疏离克制",
-            "forbiddenItems": ["直接告白", "拥抱亲吻", "大段心理解释"],
-            "canonMode": "none",
-            "contextEngine": { "persona": true, "canon": false, "relationship": true, "style": true }
-          }
-        }
-      ]
+      "input": { "characterNames": "莱因 × 阿洛", "stage": "防御期", "moment": "阿洛在雾港码头替莱因包扎被银质纹章擦出的旧伤。", "textToEvaluate": "莱因想说谢谢，最后只是移开视线，把伞推过去。阿洛替他包扎时，他停顿了很久，没有说完那句解释。" },
+      "expected": { "personaStage": "防御期", "shouldInclude": ["移开视线", "替他包扎", "把伞推过去", "停顿"], "shouldAvoid": ["我爱你", "我喜欢你", "我不能没有你", "我害怕失去你"], "voiceConstraints": ["莱因短句", "阿洛玩笑掩饰关心"], "boundaryRules": ["不能直接示弱", "不能直接告白"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 阿洛", "relationshipTypeFinal": "旧友/盟友", "momentFinal": "阿洛在雾港码头替莱因包扎被银质纹章擦出的旧伤。", "stageFinal": "防御期", "tensionFinal": "表面玩笑，底下是不肯说破的关心。", "expectedLength": "300", "styleCard": "疏离克制", "forbiddenItems": ["直接告白", "拥抱亲吻", "大段心理解释"], "canonMode": "none", "contextEngine": { "persona": true, "canon": false, "relationship": true, "style": true } } }]
     },
     {
       "id": "persona-002",
       "type": "persona",
-      "title": "Breaking stage allows brief loss of control but not romance-brain collapse",
-      "input": {
-        "characterNames": "莱因 × 阿洛",
-        "stage": "破防期",
-        "moment": "阿洛差点被城邦巡逻机械发现，莱因短暂失控。",
-        "tension": "压抑后的短暂破防，但仍要保留防御型人格边界。",
-        "textToEvaluate": "莱因抓住阿洛的袖口，声音比平时低。他没有说我爱你，也没有确认关系，只说：别再拿这种事开玩笑。"
-      },
-      "expected": {
-        "shouldAllow": ["短暂失控", "抓住袖口", "语气失衡"],
-        "shouldAvoid": ["确认关系", "从此在一起", "我不能没有你", "我害怕失去你"],
-        "notes": "破防期可以出现短暂失控，但不能完全变成直白恋爱脑。"
-      },
-      "apiPlan": [
-        {
-          "name": "writer",
-          "endpoint": "/api/writer",
-          "method": "POST",
-          "body": {
-            "characterNames": "莱因 × 阿洛",
-            "relationshipTypeFinal": "旧友/盟友",
-            "momentFinal": "阿洛差点被城邦巡逻机械发现，莱因短暂失控。",
-            "stageFinal": "破防期",
-            "tensionFinal": "压抑后的短暂破防，但仍要保留防御型人格边界。",
-            "expectedLength": "300",
-            "styleCard": "疏离克制",
-            "forbiddenItems": ["确认关系", "直接告白", "突然和解"],
-            "canonMode": "none",
-            "contextEngine": { "persona": true, "canon": false, "relationship": true, "style": true }
-          }
-        }
-      ]
+      "title": "Wavering stage can hesitate but should remain avoidant",
+      "input": { "characterNames": "莱因 × 阿洛", "stage": "动摇期", "moment": "阿洛问莱因是否还要继续查王都旧档案。", "textToEvaluate": "莱因停顿得比平时久，却还是移开视线。他没有回答，只把旧档案袋推到阿洛手边。" },
+      "expected": { "personaStage": "动摇期", "shouldInclude": ["停顿", "移开视线", "没有回答"], "shouldAvoid": ["我害怕失去你", "从此在一起"], "voiceConstraints": ["犹豫但不明说"], "boundaryRules": ["可以犹豫", "仍保持回避"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 阿洛", "relationshipTypeFinal": "旧友试探", "momentFinal": "阿洛问莱因是否还要继续查王都旧档案。", "stageFinal": "动摇期", "tensionFinal": "短暂犹豫但仍回避", "expectedLength": "300", "styleCard": "疏离克制", "forbiddenItems": ["直接告白", "确认关系"], "canonMode": "none" } }]
+    },
+    {
+      "id": "persona-003",
+      "type": "persona",
+      "title": "Breaking stage allows fracture but not romance-brain collapse",
+      "input": { "characterNames": "莱因 × 阿洛", "stage": "破防期", "moment": "阿洛差点被城邦巡逻机械发现。", "textToEvaluate": "莱因抓住阿洛的袖口，声音比平时低。他没有说我爱你，也没有确认关系，只说：别再拿这种事开玩笑。" },
+      "expected": { "personaStage": "破防期", "shouldInclude": ["抓住袖口", "声音比平时低"], "shouldAvoid": ["确认关系", "从此在一起", "我不能没有你"], "voiceConstraints": ["短暂失控", "不长篇示弱"], "boundaryRules": ["可破防", "不可恋爱脑"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 阿洛", "relationshipTypeFinal": "旧友/盟友", "momentFinal": "阿洛差点被城邦巡逻机械发现。", "stageFinal": "破防期", "tensionFinal": "压抑后的短暂破防", "expectedLength": "300", "styleCard": "疏离克制", "forbiddenItems": ["确认关系", "直接告白", "突然和解"], "canonMode": "none" } }]
+    },
+    {
+      "id": "persona-004",
+      "type": "persona",
+      "title": "Trust recovery stage can accept help but not total dependence",
+      "input": { "characterNames": "莱因 × 阿洛", "stage": "信任恢复期", "moment": "阿洛替莱因挡下一次档案馆搜查。", "textToEvaluate": "莱因接过阿洛递来的通行章，停顿了一下，说下次别擅自替我做决定。阿洛笑着说，那你下次跑快点。" },
+      "expected": { "personaStage": "信任恢复期", "shouldInclude": ["接过帮助", "仍保留边界"], "shouldAvoid": ["完全依赖", "我不能没有你"], "voiceConstraints": ["阿洛轻佻打断沉重"], "boundaryRules": ["可接受帮助", "不可突然完全依赖"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 阿洛", "relationshipTypeFinal": "信任恢复", "momentFinal": "阿洛替莱因挡下一次档案馆搜查。", "stageFinal": "信任恢复期", "tensionFinal": "接受帮助但保留边界", "expectedLength": "300", "styleCard": "温润烟火", "forbiddenItems": ["完全依赖", "直接告白"], "canonMode": "none" } }]
+    },
+    {
+      "id": "persona-005",
+      "type": "persona",
+      "title": "Old wound trigger should not be calm",
+      "input": { "characterNames": "莱因 × 阿洛", "stage": "旧伤触发期", "moment": "银质纹章从旧档案袋里滑出，擦过莱因手背。", "textToEvaluate": "银质纹章擦过莱因手背时，他的指节猛地收紧。阿洛的玩笑停住，只把绷带推到他面前。" },
+      "expected": { "personaStage": "旧伤触发期", "shouldInclude": ["指节收紧", "停顿", "绷带"], "shouldAvoid": ["轻松佩戴银质纹章", "冷静无反应"], "voiceConstraints": ["阿洛用玩笑中断沉重"], "boundaryRules": ["触发旧伤必须有反应"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 阿洛", "relationshipTypeFinal": "旧友/盟友", "momentFinal": "银质纹章从旧档案袋里滑出，擦过莱因手背。", "stageFinal": "旧伤触发期", "tensionFinal": "身体反应被压住", "expectedLength": "300", "styleCard": "疏离克制", "forbiddenItems": ["冷静无反应", "大段心理解释"], "canonMode": "none" } }]
+    },
+    {
+      "id": "persona-006",
+      "type": "persona",
+      "title": "Faction conflict stage should not trust without reason",
+      "input": { "characterNames": "莱因 × 伊塔", "stage": "阵营冲突期", "moment": "伊塔要求莱因交出王都旧档案的副本。", "textToEvaluate": "伊塔没有伸手，只把证件放在桌边。莱因没有回答，也没有立刻信任她。" },
+      "expected": { "personaStage": "阵营冲突期", "shouldInclude": ["不轻信", "保持距离"], "shouldAvoid": ["无理由信任", "互诉衷肠"], "voiceConstraints": ["伊塔理性边界感强"], "boundaryRules": ["不能无理由相信对方"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 伊塔", "relationshipTypeFinal": "阵营冲突", "momentFinal": "伊塔要求莱因交出王都旧档案的副本。", "stageFinal": "阵营冲突期", "tensionFinal": "互相试探，不轻信", "expectedLength": "300", "styleCard": "冷艳华美", "forbiddenItems": ["无理由信任", "突然和解"], "canonMode": "none" } }]
+    },
+    {
+      "id": "persona-007",
+      "type": "persona",
+      "title": "Before relationship confirmation should avoid intimacy overreach",
+      "input": { "characterNames": "莱因 × 阿洛", "stage": "关系确认前", "moment": "分别前阿洛把通行证塞给莱因。", "textToEvaluate": "莱因看着那枚通行证，停顿了很久，没有说完告别。阿洛笑了一下，说别弄丢，补办很麻烦。" },
+      "expected": { "personaStage": "关系确认前", "shouldInclude": ["停顿", "没有说完"], "shouldAvoid": ["确认关系", "吻了上去", "紧紧拥抱", "我爱你"], "voiceConstraints": ["阿洛用玩笑遮掩关心"], "boundaryRules": ["不可亲密越界"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 阿洛", "relationshipTypeFinal": "未确认关系", "momentFinal": "分别前阿洛把通行证塞给莱因。", "stageFinal": "关系确认前", "tensionFinal": "压抑告别", "expectedLength": "300", "styleCard": "疏离克制", "forbiddenItems": ["确认关系", "拥抱亲吻", "直接告白"], "canonMode": "none" } }]
+    },
+    {
+      "id": "persona-008",
+      "type": "persona",
+      "title": "Foreshadowing stage should keep coup investigation alive",
+      "input": { "characterNames": "莱因 × 弥雅", "stage": "长线伏笔期", "moment": "弥雅把失效星轨的旧坐标交给莱因。", "textToEvaluate": "弥雅说这坐标可能和三年前的档案缺页有关。莱因没有回答，只把纸页折进袖口，像把调查继续藏起来。" },
+      "expected": { "personaStage": "长线伏笔期", "shouldInclude": ["调查政变真相", "档案缺页", "失效星轨"], "shouldAvoid": ["放弃调查", "完全和解"], "voiceConstraints": ["弥雅温和但立场摇摆"], "boundaryRules": ["行为中保留伏笔"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 弥雅", "relationshipTypeFinal": "旧识/线索提供者", "momentFinal": "弥雅把失效星轨的旧坐标交给莱因。", "stageFinal": "长线伏笔期", "tensionFinal": "温和试探，线索未明", "expectedLength": "300", "styleCard": "疏离克制", "forbiddenItems": ["放弃调查", "立刻揭开真相"], "canonMode": "none" } }]
     },
     {
       "id": "emotion-001",
       "type": "emotion_slice",
       "title": "High tension restrained slice in old archive room",
-      "input": {
-        "characterNames": "莱因 × 阿洛",
-        "relationshipType": "旧友试探",
-        "stage": "试探期",
-        "moment": "两人在旧档案室发现三年前的合照，照片背面写着雾港坐标。",
-        "tension": "高张力，疏离克制，谁都不愿先承认在意。",
-        "textToEvaluate": "阿洛把合照翻过去，指尖停顿在雾港坐标上。莱因移开视线，没有回答。他只把档案灯往阿洛那边推了推。"
-      },
-      "expected": {
-        "shouldIncludeSignals": ["停顿", "移开视线", "没有回答"],
-        "shouldAvoid": ["我爱你", "拥抱", "吻了上去", "他终于明白", "他的内心"],
-        "notes": "应体现潜台词和克制度，禁止直接告白、拥抱亲吻和过度心理解释。"
-      },
-      "apiPlan": [
-        {
-          "name": "writer",
-          "endpoint": "/api/writer",
-          "method": "POST",
-          "body": {
-            "characterNames": "莱因 × 阿洛",
-            "relationshipTypeFinal": "旧友试探",
-            "momentFinal": "两人在旧档案室发现三年前的合照，照片背面写着雾港坐标。",
-            "stageFinal": "试探期",
-            "tensionFinal": "高张力，疏离克制，谁都不愿先承认在意。",
-            "expectedLength": "500",
-            "styleCard": "疏离克制",
-            "styleCustom": "少一点华丽比喻，多一点动作、停顿和短句对话。",
-            "forbiddenItems": ["直接告白", "拥抱亲吻", "过度心理解释"],
-            "canonMode": "none"
-          }
-        }
-      ]
+      "input": { "characterNames": "莱因 × 阿洛", "relationshipType": "旧友试探", "stage": "试探期", "moment": "两人在旧档案室发现三年前的合照，照片背面写着雾港坐标。", "textToEvaluate": "阿洛把合照翻过去，指尖停顿在雾港坐标上。莱因移开视线，没有回答。他只把档案灯往阿洛那边推了推。" },
+      "expected": { "relationshipStage": "试探期", "emotionalTension": "高张力", "styleTone": "疏离克制", "forbiddenItems": ["直接告白", "拥抱亲吻", "过度心理解释"], "expectedSubtextSignals": ["停顿", "移开视线", "没有回答"], "expectedRestraintSignals": ["没有说完", "沉默"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 阿洛", "relationshipTypeFinal": "旧友试探", "momentFinal": "两人在旧档案室发现三年前的合照，照片背面写着雾港坐标。", "stageFinal": "试探期", "tensionFinal": "高张力，疏离克制，谁都不愿先承认在意。", "expectedLength": "500", "styleCard": "疏离克制", "styleCustom": "少一点华丽比喻，多一点动作、停顿和短句对话。", "forbiddenItems": ["直接告白", "拥抱亲吻", "过度心理解释"], "canonMode": "none" } }]
     },
     {
       "id": "emotion-002",
       "type": "emotion_slice",
       "title": "Enemy cooperation with cold dark humor",
-      "input": {
-        "characterNames": "莱因 × 阿洛",
-        "relationshipType": "敌对合作",
-        "stage": "敌对合作期",
-        "moment": "两人共同破解机械城邦门禁，警报倒计时只剩十秒。",
-        "tension": "中高张力，冷感黑色幽默，互相不完全信任。",
-        "textToEvaluate": "阿洛盯着倒计时笑了一声。莱因没有回答，只把错误的线路从他手边拨开。门锁咔哒一响，两个人同时沉默。"
-      },
-      "expected": {
-        "shouldIncludeSignals": ["没有回答", "沉默"],
-        "shouldAvoid": ["突然和解", "互诉衷肠", "无理由信任", "紧紧拥抱", "确认关系"],
-        "notes": "敌对合作应保持警惕、黑色幽默和行动张力，不能突然和解。"
-      },
-      "apiPlan": [
-        {
-          "name": "writer",
-          "endpoint": "/api/writer",
-          "method": "POST",
-          "body": {
-            "characterNames": "莱因 × 阿洛",
-            "relationshipTypeFinal": "敌对合作",
-            "momentFinal": "两人共同破解机械城邦门禁，警报倒计时只剩十秒。",
-            "stageFinal": "敌对合作期",
-            "tensionFinal": "中高张力，冷感黑色幽默，互相不完全信任。",
-            "expectedLength": "500",
-            "styleCard": "冷艳华美",
-            "styleCustom": "冷感黑色幽默，短句，动作优先。",
-            "forbiddenItems": ["突然和解", "互诉衷肠", "无理由信任"],
-            "canonMode": "none"
-          }
-        }
-      ]
+      "input": { "characterNames": "莱因 × 阿洛", "relationshipType": "敌对合作", "stage": "敌对合作期", "moment": "两人共同破解机械城邦门禁，警报倒计时只剩十秒。", "textToEvaluate": "阿洛盯着倒计时笑了一声。莱因没有回答，只把错误的线路从他手边拨开。门锁咔哒一响，两个人同时沉默。" },
+      "expected": { "relationshipStage": "敌对合作期", "emotionalTension": "中高张力", "styleTone": "冷感黑色幽默", "forbiddenItems": ["突然和解", "互诉衷肠", "无理由信任"], "expectedSubtextSignals": ["没有回答", "沉默"], "expectedRestraintSignals": ["互相不完全信任"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 阿洛", "relationshipTypeFinal": "敌对合作", "momentFinal": "两人共同破解机械城邦门禁，警报倒计时只剩十秒。", "stageFinal": "敌对合作期", "tensionFinal": "中高张力，冷感黑色幽默，互相不完全信任。", "expectedLength": "500", "styleCard": "冷艳华美", "styleCustom": "冷感黑色幽默，短句，动作优先。", "forbiddenItems": ["突然和解", "互诉衷肠", "无理由信任"], "canonMode": "none" } }]
+    },
+    {
+      "id": "emotion-003",
+      "type": "emotion_slice",
+      "title": "Old friends reunite after years with restraint",
+      "input": { "characterNames": "莱因 × 阿洛", "relationshipType": "旧友重逢", "stage": "多年未见", "moment": "雾港旧码头重逢，阿洛认出莱因却先开玩笑。", "textToEvaluate": "阿洛说你换了件不合身的外套。莱因停顿了一下，没有回答，只把湿透的袖口往后藏。" },
+      "expected": { "relationshipStage": "多年未见", "emotionalTension": "克制", "styleTone": "疏离克制", "forbiddenItems": ["直接告白", "紧紧拥抱"], "expectedSubtextSignals": ["停顿", "没有回答"], "expectedRestraintSignals": ["藏起袖口"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 阿洛", "relationshipTypeFinal": "旧友重逢", "momentFinal": "雾港旧码头重逢，阿洛认出莱因却先开玩笑。", "stageFinal": "多年未见", "tensionFinal": "克制，熟悉但不敢越界", "expectedLength": "500", "styleCard": "疏离克制", "forbiddenItems": ["直接告白", "拥抱亲吻"], "canonMode": "none" } }]
+    },
+    {
+      "id": "emotion-004",
+      "type": "emotion_slice",
+      "title": "Unresolved misunderstanding should stay unresolved",
+      "input": { "characterNames": "莱因 × 阿洛", "relationshipType": "误会未解", "stage": "冷战后试探", "moment": "阿洛以为莱因三年前故意抛下他。", "textToEvaluate": "阿洛笑着问你当年走得挺快。莱因停顿，没有解释，只说你现在也可以走。" },
+      "expected": { "relationshipStage": "误会未解", "emotionalTension": "对话带刺", "styleTone": "冷感克制", "forbiddenItems": ["立刻解释清楚", "互诉衷肠"], "expectedSubtextSignals": ["停顿", "没有解释"], "expectedRestraintSignals": ["对话有刺"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 阿洛", "relationshipTypeFinal": "误会未解", "momentFinal": "阿洛以为莱因三年前故意抛下他。", "stageFinal": "冷战后试探", "tensionFinal": "对话有刺，不立刻解释", "expectedLength": "500", "styleCard": "疏离克制", "forbiddenItems": ["立刻解释清楚", "互诉衷肠"], "canonMode": "none" } }]
+    },
+    {
+      "id": "emotion-005",
+      "type": "emotion_slice",
+      "title": "After fighting side by side, care action should not confirm relationship",
+      "input": { "characterNames": "莱因 × 阿洛", "relationshipType": "并肩作战后", "stage": "未确认关系", "moment": "黑潮边境撤离后，阿洛替莱因处理伤口。", "textToEvaluate": "阿洛替他包扎，嘴上说你这伤口真会挑时候。莱因没有回答，只把绷带尾端按住。" },
+      "expected": { "relationshipStage": "未确认关系", "emotionalTension": "照顾动作下的克制", "styleTone": "温润但留白", "forbiddenItems": ["确认关系", "我爱你", "紧紧拥抱"], "expectedSubtextSignals": ["替他包扎", "没有回答"], "expectedRestraintSignals": ["照顾但不确认"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 阿洛", "relationshipTypeFinal": "并肩作战后", "momentFinal": "黑潮边境撤离后，阿洛替莱因处理伤口。", "stageFinal": "未确认关系", "tensionFinal": "有照顾动作但不确认关系", "expectedLength": "500", "styleCard": "温润烟火", "forbiddenItems": ["确认关系", "直接告白", "拥抱亲吻"], "canonMode": "none" } }]
+    },
+    {
+      "id": "emotion-006",
+      "type": "emotion_slice",
+      "title": "Rain-night argument should avoid long psychological explanation",
+      "input": { "characterNames": "莱因 × 阿洛", "relationshipType": "雨夜争执", "stage": "压抑爆发", "moment": "阿洛追问莱因为何隐瞒旧伤。", "textToEvaluate": "雨水砸在伞面上。莱因停顿，最终只说你问够了吗。阿洛没有回答，把伞往他那边推了一点。" },
+      "expected": { "relationshipStage": "压抑爆发", "emotionalTension": "情绪爆发但克制表达", "styleTone": "短句动作", "forbiddenItems": ["过度心理解释", "他的内心", "他终于明白"], "expectedSubtextSignals": ["停顿", "没有回答", "把伞推过去"], "expectedRestraintSignals": ["短句"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 阿洛", "relationshipTypeFinal": "雨夜争执", "momentFinal": "阿洛追问莱因为何隐瞒旧伤。", "stageFinal": "压抑爆发", "tensionFinal": "情绪爆发但避免长篇心理解释", "expectedLength": "500", "styleCard": "疏离克制", "forbiddenItems": ["过度心理解释", "直接告白"], "canonMode": "none" } }]
+    },
+    {
+      "id": "emotion-007",
+      "type": "emotion_slice",
+      "title": "Wound dressing should imply emotion through action",
+      "input": { "characterNames": "莱因 × 阿洛", "relationshipType": "伤口包扎", "stage": "暧昧未明", "moment": "阿洛替莱因重新缠紧绷带。", "textToEvaluate": "阿洛替他包扎，手指在绷带结上停了一下。莱因移开视线，没有说完那句你不用管。" },
+      "expected": { "relationshipStage": "暧昧未明", "emotionalTension": "动作暗示强于表达", "styleTone": "克制细节", "forbiddenItems": ["直接告白", "长篇心理解释"], "expectedSubtextSignals": ["替他包扎", "停顿", "移开视线", "没有说完"], "expectedRestraintSignals": ["动作暗示"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 阿洛", "relationshipTypeFinal": "伤口包扎", "momentFinal": "阿洛替莱因重新缠紧绷带。", "stageFinal": "暧昧未明", "tensionFinal": "动作暗示强于直白表达", "expectedLength": "500", "styleCard": "温润烟火", "forbiddenItems": ["直接告白", "过度心理解释"], "canonMode": "none" } }]
+    },
+    {
+      "id": "emotion-008",
+      "type": "emotion_slice",
+      "title": "Night before separation should end in silence",
+      "input": { "characterNames": "莱因 × 阿洛", "relationshipType": "分别前夜", "stage": "压抑告别", "moment": "北境停战线前夜，阿洛把备用通行章放到莱因桌边。", "textToEvaluate": "阿洛说别死在我看不见的地方。莱因停顿，没有回答。通行章在桌边很轻地响了一声。" },
+      "expected": { "relationshipStage": "分别前夜", "emotionalTension": "压抑告别", "styleTone": "留白", "forbiddenItems": ["直接告白", "拥抱亲吻", "从此在一起"], "expectedSubtextSignals": ["停顿", "没有回答", "沉默"], "expectedRestraintSignals": ["未说完的话"] },
+      "apiPlan": [{ "name": "writer", "endpoint": "/api/writer", "method": "POST", "body": { "characterNames": "莱因 × 阿洛", "relationshipTypeFinal": "分别前夜", "momentFinal": "北境停战线前夜，阿洛把备用通行章放到莱因桌边。", "stageFinal": "压抑告别", "tensionFinal": "留白、未说完的话、压抑告别", "expectedLength": "500", "styleCard": "疏离克制", "forbiddenItems": ["直接告白", "拥抱亲吻"], "canonMode": "none" } }]
     },
     {
       "id": "multi-001",
       "type": "multi_agent",
-      "title": "Reviewer and Criticizer should flag low-quality draft",
-      "input": {
-        "stage": "试探期",
-        "tension": "疏离克制",
-        "styleCard": "疏离克制",
-        "writerDraft": "莱因从未离开王都，也轻松佩戴银质纹章。他终于明白自己的内心，意识到自己其实一直爱着阿洛，于是紧紧拥抱他并吻了上去。他说：我爱你，我不能没有你，我们从此在一起。阿洛也立刻完全信任他，两人确认关系。"
-      },
-      "expected": {
-        "shouldDetect": ["canonConflict", "OOC", "relationshipTooFast", "directConfession", "overExplanation"],
-        "notes": "低质量初稿应被 Reviewer / Criticizer / rule-based evaluator 标记为高风险。"
-      },
-      "apiPlan": [
-        {
-          "name": "reviewer",
-          "endpoint": "/api/reviewer",
-          "method": "POST",
-          "bodyFrom": "writerDraft",
-          "body": {
-            "relationshipType": "旧友试探",
-            "stage": "试探期",
-            "tension": "疏离克制",
-            "styleCard": "疏离克制"
-          }
-        },
-        {
-          "name": "criticizer",
-          "endpoint": "/api/criticizer",
-          "method": "POST",
-          "bodyFrom": "reviewer",
-          "body": {
-            "stage": "试探期",
-            "tension": "疏离克制",
-            "styleCard": "疏离克制"
-          }
-        }
-      ]
+      "title": "Canon conflict plus OOC plus direct confession",
+      "input": { "stage": "试探期", "tension": "疏离克制", "styleCard": "疏离克制", "writerDraft": "莱因从未离开王都，也轻松佩戴银质纹章。他终于明白自己的内心，意识到自己其实一直爱着阿洛，于是紧紧拥抱他并吻了上去。他说：我爱你，我不能没有你，我们从此在一起。阿洛也立刻完全信任他，两人确认关系。" },
+      "expected": { "expectedReviewerIssues": ["Canon 冲突", "OOC", "直接告白"], "expectedCriticizerSuggestions": ["删除直接告白", "恢复克制动作", "修正 Canon"], "expectedIssueReductionTargets": ["canonConflict", "directConfession", "relationshipTooFast"], "forbiddenPatterns": ["从未离开王都", "轻松佩戴银质纹章", "我爱你"] },
+      "apiPlan": [{ "name": "reviewer", "endpoint": "/api/reviewer", "method": "POST", "bodyFrom": "writerDraft", "body": { "relationshipType": "旧友试探", "stage": "试探期", "tension": "疏离克制", "styleCard": "疏离克制" } }, { "name": "criticizer", "endpoint": "/api/criticizer", "method": "POST", "bodyFrom": "reviewer", "body": { "stage": "试探期", "tension": "疏离克制", "styleCard": "疏离克制" } }]
+    },
+    {
+      "id": "multi-002",
+      "type": "multi_agent",
+      "title": "Relationship progression too fast with kiss and confirmation",
+      "input": { "stage": "敌对合作期", "tension": "中高张力", "styleCard": "冷艳华美", "writerDraft": "门禁刚打开，莱因就紧紧拥抱阿洛并吻了上去。他们立刻确认关系，从此在一起，再也没有敌对或试探。" },
+      "expected": { "expectedReviewerIssues": ["关系推进过快", "拥抱亲吻", "确认关系"], "expectedCriticizerSuggestions": ["保留合作警惕", "删除亲密越界"], "expectedIssueReductionTargets": ["relationshipTooFast"], "forbiddenPatterns": ["紧紧拥抱", "吻了上去", "确认关系", "从此在一起"] },
+      "apiPlan": [{ "name": "reviewer", "endpoint": "/api/reviewer", "method": "POST", "bodyFrom": "writerDraft", "body": { "relationshipType": "敌对合作", "stage": "敌对合作期", "tension": "中高张力", "styleCard": "冷艳华美" } }, { "name": "criticizer", "endpoint": "/api/criticizer", "method": "POST", "bodyFrom": "reviewer", "body": { "stage": "敌对合作期", "tension": "中高张力", "styleCard": "冷艳华美" } }]
+    },
+    {
+      "id": "multi-003",
+      "type": "multi_agent",
+      "title": "Over-explained inner monologue should be reduced",
+      "input": { "stage": "雨夜争执", "tension": "压抑爆发", "styleCard": "疏离克制", "writerDraft": "莱因站在雨里，他意识到阿洛对自己很重要。他终于明白自己的内心，他的内心充满汹涌情绪。他想起自己其实一直害怕失去阿洛，于是决定说清一切。" },
+      "expected": { "expectedReviewerIssues": ["过度心理解释", "太直白"], "expectedCriticizerSuggestions": ["改为动作", "增加短对话", "保留留白"], "expectedIssueReductionTargets": ["overExplanation"], "forbiddenPatterns": ["他意识到", "他终于明白", "他的内心", "他想起自己其实"] },
+      "apiPlan": [{ "name": "reviewer", "endpoint": "/api/reviewer", "method": "POST", "bodyFrom": "writerDraft", "body": { "relationshipType": "雨夜争执", "stage": "雨夜争执", "tension": "压抑爆发", "styleCard": "疏离克制" } }, { "name": "criticizer", "endpoint": "/api/criticizer", "method": "POST", "bodyFrom": "reviewer", "body": { "stage": "雨夜争执", "tension": "压抑爆发", "styleCard": "疏离克制" } }]
+    },
+    {
+      "id": "multi-004",
+      "type": "multi_agent",
+      "title": "Irrelevant Canon injection and setting drift",
+      "input": { "stage": "试探期", "tension": "克制", "styleCard": "疏离克制", "writerDraft": "阿洛忽然开始解释机械城邦贸易税和星轨学院课程表，说这些才是雾港争执的核心。莱因从未离开王都，因此完全不了解雾港。" },
+      "expected": { "expectedReviewerIssues": ["无关 Canon 注入", "设定漂移", "Canon 冲突"], "expectedCriticizerSuggestions": ["移除无关设定", "回到雾港和旧伤"], "expectedIssueReductionTargets": ["irrelevantCanonLeak", "canonConflict"], "forbiddenPatterns": ["机械城邦贸易税", "星轨学院课程表", "从未离开王都"] },
+      "apiPlan": [{ "name": "reviewer", "endpoint": "/api/reviewer", "method": "POST", "bodyFrom": "writerDraft", "body": { "relationshipType": "旧友试探", "stage": "试探期", "tension": "克制", "styleCard": "疏离克制" } }, { "name": "criticizer", "endpoint": "/api/criticizer", "method": "POST", "bodyFrom": "reviewer", "body": { "stage": "试探期", "tension": "克制", "styleCard": "疏离克制" } }]
+    },
+    {
+      "id": "multi-005",
+      "type": "multi_agent",
+      "title": "Defensive stage suddenly becomes fully vulnerable",
+      "input": { "stage": "防御期", "tension": "克制", "styleCard": "疏离克制", "writerDraft": "莱因扑过去紧紧拥抱阿洛，说我害怕失去你，我不能没有你，我喜欢你。他把所有旧伤和恐惧都完整说出来，再也不回避。" },
+      "expected": { "expectedReviewerIssues": ["OOC", "直接示弱", "直接告白"], "expectedCriticizerSuggestions": ["恢复防御型人格", "用动作替代示弱"], "expectedIssueReductionTargets": ["ooc", "directConfession", "boundaryViolation"], "forbiddenPatterns": ["我害怕失去你", "我不能没有你", "我喜欢你", "紧紧拥抱"] },
+      "apiPlan": [{ "name": "reviewer", "endpoint": "/api/reviewer", "method": "POST", "bodyFrom": "writerDraft", "body": { "relationshipType": "旧友/盟友", "stage": "防御期", "tension": "克制", "styleCard": "疏离克制" } }, { "name": "criticizer", "endpoint": "/api/criticizer", "method": "POST", "bodyFrom": "reviewer", "body": { "stage": "防御期", "tension": "克制", "styleCard": "疏离克制" } }]
+    },
+    {
+      "id": "multi-006",
+      "type": "multi_agent",
+      "title": "Enemy cooperation suddenly trusts without reason",
+      "input": { "stage": "敌对合作期", "tension": "中高张力", "styleCard": "冷艳华美", "writerDraft": "伊塔刚提出合作，莱因就立刻完全信任她，把王都旧档案全部交出。他们互诉衷肠，突然和解，并决定从此共同生活。" },
+      "expected": { "expectedReviewerIssues": ["无理由信任", "关系推进过快", "阵营冲突失效"], "expectedCriticizerSuggestions": ["恢复边界感", "保留试探和证据交换"], "expectedIssueReductionTargets": ["relationshipTooFast", "boundaryViolation"], "forbiddenPatterns": ["无理由信任", "互诉衷肠", "突然和解", "从此共同生活"] },
+      "apiPlan": [{ "name": "reviewer", "endpoint": "/api/reviewer", "method": "POST", "bodyFrom": "writerDraft", "body": { "relationshipType": "敌对合作", "stage": "敌对合作期", "tension": "中高张力", "styleCard": "冷艳华美" } }, { "name": "criticizer", "endpoint": "/api/criticizer", "method": "POST", "bodyFrom": "reviewer", "body": { "stage": "敌对合作期", "tension": "中高张力", "styleCard": "冷艳华美" } }]
     }
   ]
 }

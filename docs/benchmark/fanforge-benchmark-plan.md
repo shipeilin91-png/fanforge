@@ -262,7 +262,7 @@ Total final cases: 30.
 Proposed command:
 
 ```bash
-BENCHMARK_BASE_URL=http://localhost:3000 node scripts/run-fanforge-benchmark.ts
+BENCHMARK_BASE_URL=http://localhost:3000 npm run benchmark:fanforge
 ```
 
 Future improvements may add a package script after the runner stabilizes.
@@ -280,6 +280,7 @@ Environment and options:
 Outputs:
 
 - `benchmark-results/fanforge-latest.json`
+- `benchmark-results/fanforge-cases.md`
 - `benchmark-results/fanforge-analysis.md`
 
 Runner behavior:
@@ -311,7 +312,7 @@ Runner behavior:
 
 ## Phase 3 Target
 
-Phase 3 expands the benchmark to the final 30 high-quality synthetic cases:
+Phase 3 has expanded the benchmark to the final 30 high-quality synthetic cases:
 
 - Canon Consistency: 8 cases.
 - Persona Timeline: 8 cases.
@@ -326,3 +327,12 @@ Phase 3 metrics should be suitable for resume/portfolio presentation:
 - Direct confession, over-explanation, and relationship-progression violation reduction.
 - Multi-Agent post-review issue reduction rate.
 - Emotion Slice relationship-stage match and subtext signal performance.
+
+The Phase 3 runner now reports:
+
+- Canon keyword hit / conflict detection.
+- Persona boundary / stage signal detection.
+- Emotion subtext / restraint / violation detection.
+- Multi-Agent estimated issue reduction.
+
+Because the Multi-Agent chain does not yet include a final rewrite API plus second-pass reviewer, issue reduction is explicitly labeled `estimated` rather than presented as real before/after improvement.

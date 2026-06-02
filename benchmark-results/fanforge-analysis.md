@@ -2,95 +2,93 @@
 
 ## 1. 测试目标
 
-验证 FanForge 在 Canon-aware、Persona-aware、Emotion Slice、Multi-Agent 审稿链路中的可控生成能力。本轮是 Phase 2 MVP，小样本 synthetic benchmark，用于验证 runner、case schema、API 调用和 rule-based evaluator，不代表最终产品指标。
+验证 FanForge 在 Canon-aware、Persona-aware、Emotion Slice、Multi-Agent 审稿链路中的可控生成能力。本轮是 30 条高质量 synthetic benchmark，用于生成作品集/简历可解释的候选指标；数据来自合成测试集，不代表真实用户数据。
 
 ## 2. 测试集构成
 
-7 条 synthetic benchmark case：
+30 条 synthetic benchmark case：
 
-- Canon 2
-- Persona 2
-- Emotion Slice 2
-- Multi-Agent 1
+- Canon 8
+- Persona 8
+- Emotion Slice 8
+- Multi-Agent 6
 
 Base URL: http://localhost:3000
 Case source: docs/benchmark/fanforge-cases.json
-Generated at: 2026-06-02T10:35:41.000Z
+Generated at: 2026-06-02T11:07:21.670Z
 
-## 3. 当前可自动化程度
+## 3. 自动化运行情况
 
-- Total cases: 7
-- Cases with successful API calls: 5
-- Cases fully skipped at API layer: 2
-- API calls succeeded: 6
-- API calls skipped: 2
+- Total cases: 30
+- Success: 0
+- Partial: 22
+- Skipped: 8
+- Failed: 0
+- API calls succeeded: 28
+- API calls skipped: 7
+- Successful API endpoints: /api/writer, /api/reviewer, /api/criticizer
 
 Skipped / unavailable API notes:
 
 - canon-001 / canonRetrieve: Auth token not provided. Set FANFORGE_BENCHMARK_TOKEN for authenticated tests.
 - canon-002 / canonRetrieve: Auth token not provided. Set FANFORGE_BENCHMARK_TOKEN for authenticated tests.
+- canon-003 / canonRetrieve: Auth token not provided. Set FANFORGE_BENCHMARK_TOKEN for authenticated tests.
+- canon-005 / canonRetrieve: Auth token not provided. Set FANFORGE_BENCHMARK_TOKEN for authenticated tests.
+- canon-006 / canonRetrieve: Auth token not provided. Set FANFORGE_BENCHMARK_TOKEN for authenticated tests.
+- canon-007 / canonRetrieve: Auth token not provided. Set FANFORGE_BENCHMARK_TOKEN for authenticated tests.
+- canon-008 / canonRetrieve: Auth token not provided. Set FANFORGE_BENCHMARK_TOKEN for authenticated tests.
 
-## 4. 指标结果
+## 4. Canon Consistency 指标
 
-### Canon
+- canonCaseCount: 8
+- canonKeywordHitRate: 43%
+- canonKeywordHitCount: 9
+- expectedCanonKeywordCount: 21
+- canonConflictDetectedCount: 4
+- irrelevantCanonLeakCount: 2
+- evidenceApiSuccessCount: 0
+- canonApiSkippedCount: 7
 
-- Cases: 2
-- Canon conflict count: 2
-- Direct confession violations: 0
-- Over-explanation violations: 0
-- Relationship too fast count: 0
-- Boundary violation count: 0
-- Subtext signal count: 3
+## 5. Persona Timeline 指标
 
-### Persona
+- personaCaseCount: 8
+- boundaryViolationCount: 0
+- directConfessionViolationCount: 1
+- personaStageSignalCount: 20
+- voiceConstraintObservation: voice/subtext signals observed in static or generated text
 
-- Cases: 2
-- Canon conflict count: 0
-- Direct confession violations: 1
-- Over-explanation violations: 0
-- Relationship too fast count: 0
-- Boundary violation count: 0
-- Subtext signal count: 5
+## 6. Emotion Slice 指标
 
-### Emotion Slice
+- emotionCaseCount: 8
+- relationshipTooFastCount: 0
+- directConfessionViolationCount: 0
+- overExplanationViolationCount: 0
+- subtextSignalCount: 17
+- restraintSignalCount: 15
 
-- Cases: 2
-- Canon conflict count: 0
-- Direct confession violations: 0
-- Over-explanation violations: 0
-- Relationship too fast count: 0
-- Boundary violation count: 0
-- Subtext signal count: 5
+## 7. Multi-Agent Revision 指标
 
-### Multi-Agent
+- multiAgentCaseCount: 6
+- initialDraftIssueCount: 52
+- reviewerDetectedIssueCount: 18
+- criticizerSuggestionCount: 18
+- estimatedIssueReductionRate: 63%
+- canonConflictCoverage: observed
+- oocCoverage: observed
+- relationshipTooFastCoverage: observed
 
-- Cases: 1
-- Canon conflict count: 2
-- Direct confession violations: 2
-- Over-explanation violations: 1
-- Relationship too fast count: 4
-- Boundary violation count: 0
-- Subtext signal count: 0
+## 8. 可用于简历/作品集的数据表达
 
-## 5. 初步产品结论
+- Built a 30-case synthetic benchmark covering Canon consistency, Persona Timeline, Emotion Slice control, and Multi-Agent revision; results are synthetic and not real user data.
+- Rule-based evaluator detected 52 initial issues across 6 intentionally flawed Multi-Agent drafts and estimated 63% issue coverage through Reviewer/Criticizer signals.
+- Emotion Slice cases showed 17 subtext signals and 15 restraint signals while tracking direct confession, over-explanation, and relationship-overreach violations.
+- Canon benchmark tracked 9 Canon keyword hits, 4 conflict detections, and 7 retrieval skips caused by missing benchmark auth/seed data.
+- Metrics are candidates for portfolio discussion; estimated values are labeled estimated and should not be presented as real production impact.
+
+## 9. 产品迭代建议
 
 - Canon retrieve / writer / chapter / reviewer / criticizer 都可以被 runner 建模为可调用 API，但 Canon RAG 和 Persona 相关 case 在真实评估时需要登录 token、已保存文档和已索引 chunks。
-- Rule-based evaluator 已能识别 Canon 冲突、直接告白、过度心理解释、关系推进过快、防御期边界违反和潜台词信号。
-- Persona Timeline 目前仍主要通过 writer/chapter 的上下文注入间接测试；后续如果要更稳，需要独立 Persona evaluator API。
-- Multi-Agent 本轮可检查低质量 draft 是否被 Reviewer / Criticizer 接住，但最终 issue reduction 仍需要二次 reviewer 或更完整对照链路。
-
-## 6. 可用于简历/作品集的指标候选
-
-以下只适合作为小样本 synthetic benchmark 的候选指标，不应直接夸大为真实用户效果：
-
-- Canon evidence hit rate / low-similarity filtering behavior
-- Canon conflict count
-- OOC / boundary violation count
-- Direct confession and relationship-too-fast violation count
-- Over-explanation violation count
-- Subtext signal count
-- Reviewer issue count and Criticizer suggestion count
-
-## 7. 下一步
-
-Phase 3 扩展到最终 30 条高质量 case：Canon 8、Persona 8、Emotion Slice 8、Multi-Agent 6。Phase 3 才用于生成更适合简历展示的稳定指标。
+- Canon retrieve 需要 benchmark token 或 seed canon chunks，才能从 skipped 进入真实 evidence hit rate 评估。
+- Persona 需要独立 evaluator API，以便更稳定地评分 Persona Timeline、角色声线和 OOC 边界。
+- Multi-Agent 最好补 final rewrite API 或二次 reviewer 链路，用于从 estimated issue reduction 升级为真实 before/after reduction。
+- Emotion Slice 可补 subtext/relationship evaluator，减少纯关键词规则的局限。
