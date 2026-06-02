@@ -1,0 +1,253 @@
+{
+  "version": "phase-2-mvp",
+  "description": "Seven synthetic FanForge benchmark cases using an original lightweight test universe. These cases are designed to validate the runner, API call handling, rule-based evaluators, and report shape rather than produce final resume metrics.",
+  "universe": {
+    "world": ["银枝帝国", "雾港", "星轨学院", "机械城邦"],
+    "characters": {
+      "莱因": "前银枝帝国王子，三年前王都政变后流亡雾港；防御型人格，克制、回避直接示弱；不能触碰银质纹章，否则触发旧伤。",
+      "阿洛": "莱因旧友/盟友，外热内冷，常用玩笑掩饰关心。"
+    }
+  },
+  "cases": [
+    {
+      "id": "canon-001",
+      "type": "canon",
+      "title": "High relevance Canon evidence should be retrieved",
+      "input": {
+        "query": "银枝帝国 王都政变 雾港 莱因 银质纹章 旧伤 雨夜争执",
+        "generationPrompt": "莱因与阿洛在雾港雨夜争执，银质纹章被雨水冲出旧痕。",
+        "textToEvaluate": "莱因没有说自己疼，只在银质纹章擦过掌心时停顿了一下。他把视线移开，把伞推过去，没有回答阿洛的玩笑。"
+      },
+      "expected": {
+        "shouldHitEvidenceAbout": ["银枝帝国", "王都政变", "雾港", "银质纹章", "旧伤"],
+        "shouldAvoid": ["从未离开王都", "轻松佩戴银质纹章"],
+        "notes": "高相关 query 应优先命中莱因流亡、银质纹章与旧伤相关 evidence。"
+      },
+      "apiPlan": [
+        {
+          "name": "canonRetrieve",
+          "endpoint": "/api/canon/retrieve",
+          "method": "POST",
+          "requiresAuth": true,
+          "body": {
+            "query": "银枝帝国 王都政变 雾港 莱因 银质纹章 旧伤 雨夜争执",
+            "matchCount": 5
+          }
+        }
+      ]
+    },
+    {
+      "id": "canon-002",
+      "type": "canon",
+      "title": "Low relevance Canon evidence should be filtered",
+      "input": {
+        "query": "雨夜争执 莱因 阿洛 雾港 旧伤",
+        "irrelevantEvidence": ["机械城邦贸易税", "星轨学院课程表"],
+        "textToEvaluate": "机械城邦贸易税忽然决定了他们的命运，星轨学院课程表也被阿洛翻出来解释这场雨夜争执。莱因从未离开王都，还轻松佩戴银质纹章。"
+      },
+      "expected": {
+        "shouldFilterBelowSimilarity": 0.65,
+        "shouldAvoid": ["机械城邦贸易税", "星轨学院课程表", "从未离开王都", "轻松佩戴银质纹章"],
+        "notes": "无关 evidence 不应被强行注入雨夜争执场景。"
+      },
+      "apiPlan": [
+        {
+          "name": "canonRetrieve",
+          "endpoint": "/api/canon/retrieve",
+          "method": "POST",
+          "requiresAuth": true,
+          "body": {
+            "query": "雨夜争执 莱因 阿洛 雾港 旧伤",
+            "matchCount": 5
+          }
+        }
+      ]
+    },
+    {
+      "id": "persona-001",
+      "type": "persona",
+      "title": "Defensive stage should avoid direct vulnerability",
+      "input": {
+        "characterNames": "莱因 × 阿洛",
+        "stage": "防御期",
+        "moment": "阿洛在雾港码头替莱因包扎被银质纹章擦出的旧伤。",
+        "tension": "表面玩笑，底下是旧友之间不肯说破的关心。",
+        "textToEvaluate": "莱因想说谢谢，最后只是移开视线，把伞推过去。阿洛替他包扎时，他停顿了很久，没有说完那句解释。"
+      },
+      "expected": {
+        "shouldAvoid": ["我爱你", "我喜欢你", "我不能没有你", "我害怕失去你"],
+        "shouldIncludeSignals": ["移开视线", "替他包扎", "把伞推过去", "停顿"],
+        "notes": "防御期莱因可以关心阿洛，但不能直接示弱或告白。"
+      },
+      "apiPlan": [
+        {
+          "name": "writer",
+          "endpoint": "/api/writer",
+          "method": "POST",
+          "body": {
+            "characterNames": "莱因 × 阿洛",
+            "relationshipTypeFinal": "旧友/盟友",
+            "momentFinal": "阿洛在雾港码头替莱因包扎被银质纹章擦出的旧伤。",
+            "stageFinal": "防御期",
+            "tensionFinal": "表面玩笑，底下是旧友之间不肯说破的关心。",
+            "expectedLength": "300",
+            "styleCard": "疏离克制",
+            "forbiddenItems": ["直接告白", "拥抱亲吻", "大段心理解释"],
+            "canonMode": "none",
+            "contextEngine": { "persona": true, "canon": false, "relationship": true, "style": true }
+          }
+        }
+      ]
+    },
+    {
+      "id": "persona-002",
+      "type": "persona",
+      "title": "Breaking stage allows brief loss of control but not romance-brain collapse",
+      "input": {
+        "characterNames": "莱因 × 阿洛",
+        "stage": "破防期",
+        "moment": "阿洛差点被城邦巡逻机械发现，莱因短暂失控。",
+        "tension": "压抑后的短暂破防，但仍要保留防御型人格边界。",
+        "textToEvaluate": "莱因抓住阿洛的袖口，声音比平时低。他没有说我爱你，也没有确认关系，只说：别再拿这种事开玩笑。"
+      },
+      "expected": {
+        "shouldAllow": ["短暂失控", "抓住袖口", "语气失衡"],
+        "shouldAvoid": ["确认关系", "从此在一起", "我不能没有你", "我害怕失去你"],
+        "notes": "破防期可以出现短暂失控，但不能完全变成直白恋爱脑。"
+      },
+      "apiPlan": [
+        {
+          "name": "writer",
+          "endpoint": "/api/writer",
+          "method": "POST",
+          "body": {
+            "characterNames": "莱因 × 阿洛",
+            "relationshipTypeFinal": "旧友/盟友",
+            "momentFinal": "阿洛差点被城邦巡逻机械发现，莱因短暂失控。",
+            "stageFinal": "破防期",
+            "tensionFinal": "压抑后的短暂破防，但仍要保留防御型人格边界。",
+            "expectedLength": "300",
+            "styleCard": "疏离克制",
+            "forbiddenItems": ["确认关系", "直接告白", "突然和解"],
+            "canonMode": "none",
+            "contextEngine": { "persona": true, "canon": false, "relationship": true, "style": true }
+          }
+        }
+      ]
+    },
+    {
+      "id": "emotion-001",
+      "type": "emotion_slice",
+      "title": "High tension restrained slice in old archive room",
+      "input": {
+        "characterNames": "莱因 × 阿洛",
+        "relationshipType": "旧友试探",
+        "stage": "试探期",
+        "moment": "两人在旧档案室发现三年前的合照，照片背面写着雾港坐标。",
+        "tension": "高张力，疏离克制，谁都不愿先承认在意。",
+        "textToEvaluate": "阿洛把合照翻过去，指尖停顿在雾港坐标上。莱因移开视线，没有回答。他只把档案灯往阿洛那边推了推。"
+      },
+      "expected": {
+        "shouldIncludeSignals": ["停顿", "移开视线", "没有回答"],
+        "shouldAvoid": ["我爱你", "拥抱", "吻了上去", "他终于明白", "他的内心"],
+        "notes": "应体现潜台词和克制度，禁止直接告白、拥抱亲吻和过度心理解释。"
+      },
+      "apiPlan": [
+        {
+          "name": "writer",
+          "endpoint": "/api/writer",
+          "method": "POST",
+          "body": {
+            "characterNames": "莱因 × 阿洛",
+            "relationshipTypeFinal": "旧友试探",
+            "momentFinal": "两人在旧档案室发现三年前的合照，照片背面写着雾港坐标。",
+            "stageFinal": "试探期",
+            "tensionFinal": "高张力，疏离克制，谁都不愿先承认在意。",
+            "expectedLength": "500",
+            "styleCard": "疏离克制",
+            "styleCustom": "少一点华丽比喻，多一点动作、停顿和短句对话。",
+            "forbiddenItems": ["直接告白", "拥抱亲吻", "过度心理解释"],
+            "canonMode": "none"
+          }
+        }
+      ]
+    },
+    {
+      "id": "emotion-002",
+      "type": "emotion_slice",
+      "title": "Enemy cooperation with cold dark humor",
+      "input": {
+        "characterNames": "莱因 × 阿洛",
+        "relationshipType": "敌对合作",
+        "stage": "敌对合作期",
+        "moment": "两人共同破解机械城邦门禁，警报倒计时只剩十秒。",
+        "tension": "中高张力，冷感黑色幽默，互相不完全信任。",
+        "textToEvaluate": "阿洛盯着倒计时笑了一声。莱因没有回答，只把错误的线路从他手边拨开。门锁咔哒一响，两个人同时沉默。"
+      },
+      "expected": {
+        "shouldIncludeSignals": ["没有回答", "沉默"],
+        "shouldAvoid": ["突然和解", "互诉衷肠", "无理由信任", "紧紧拥抱", "确认关系"],
+        "notes": "敌对合作应保持警惕、黑色幽默和行动张力，不能突然和解。"
+      },
+      "apiPlan": [
+        {
+          "name": "writer",
+          "endpoint": "/api/writer",
+          "method": "POST",
+          "body": {
+            "characterNames": "莱因 × 阿洛",
+            "relationshipTypeFinal": "敌对合作",
+            "momentFinal": "两人共同破解机械城邦门禁，警报倒计时只剩十秒。",
+            "stageFinal": "敌对合作期",
+            "tensionFinal": "中高张力，冷感黑色幽默，互相不完全信任。",
+            "expectedLength": "500",
+            "styleCard": "冷艳华美",
+            "styleCustom": "冷感黑色幽默，短句，动作优先。",
+            "forbiddenItems": ["突然和解", "互诉衷肠", "无理由信任"],
+            "canonMode": "none"
+          }
+        }
+      ]
+    },
+    {
+      "id": "multi-001",
+      "type": "multi_agent",
+      "title": "Reviewer and Criticizer should flag low-quality draft",
+      "input": {
+        "stage": "试探期",
+        "tension": "疏离克制",
+        "styleCard": "疏离克制",
+        "writerDraft": "莱因从未离开王都，也轻松佩戴银质纹章。他终于明白自己的内心，意识到自己其实一直爱着阿洛，于是紧紧拥抱他并吻了上去。他说：我爱你，我不能没有你，我们从此在一起。阿洛也立刻完全信任他，两人确认关系。"
+      },
+      "expected": {
+        "shouldDetect": ["canonConflict", "OOC", "relationshipTooFast", "directConfession", "overExplanation"],
+        "notes": "低质量初稿应被 Reviewer / Criticizer / rule-based evaluator 标记为高风险。"
+      },
+      "apiPlan": [
+        {
+          "name": "reviewer",
+          "endpoint": "/api/reviewer",
+          "method": "POST",
+          "bodyFrom": "writerDraft",
+          "body": {
+            "relationshipType": "旧友试探",
+            "stage": "试探期",
+            "tension": "疏离克制",
+            "styleCard": "疏离克制"
+          }
+        },
+        {
+          "name": "criticizer",
+          "endpoint": "/api/criticizer",
+          "method": "POST",
+          "bodyFrom": "reviewer",
+          "body": {
+            "stage": "试探期",
+            "tension": "疏离克制",
+            "styleCard": "疏离克制"
+          }
+        }
+      ]
+    }
+  ]
+}

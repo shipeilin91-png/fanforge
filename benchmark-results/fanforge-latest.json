@@ -1,0 +1,602 @@
+{
+  "generatedAt": "2026-06-02T10:35:40.998Z",
+  "baseUrl": "http://localhost:3000",
+  "caseSource": "docs/benchmark/fanforge-cases.json",
+  "note": "Loaded cases from docs/benchmark/fanforge-cases.json.",
+  "summary": {
+    "total": 7,
+    "partial": 5,
+    "skipped": 2,
+    "apiCallsSucceeded": 6,
+    "apiCallsSkipped": 2
+  },
+  "aggregateByType": {
+    "canon": {
+      "count": 2,
+      "canonConflictCount": 2,
+      "directConfessionViolationCount": 0,
+      "overExplanationViolationCount": 0,
+      "relationshipTooFastCount": 0,
+      "boundaryViolationCount": 0,
+      "subtextSignalCount": 3
+    },
+    "persona": {
+      "count": 2,
+      "canonConflictCount": 0,
+      "directConfessionViolationCount": 1,
+      "overExplanationViolationCount": 0,
+      "relationshipTooFastCount": 0,
+      "boundaryViolationCount": 0,
+      "subtextSignalCount": 5
+    },
+    "emotion_slice": {
+      "count": 2,
+      "canonConflictCount": 0,
+      "directConfessionViolationCount": 0,
+      "overExplanationViolationCount": 0,
+      "relationshipTooFastCount": 0,
+      "boundaryViolationCount": 0,
+      "subtextSignalCount": 5
+    },
+    "multi_agent": {
+      "count": 1,
+      "canonConflictCount": 2,
+      "directConfessionViolationCount": 2,
+      "overExplanationViolationCount": 1,
+      "relationshipTooFastCount": 4,
+      "boundaryViolationCount": 0,
+      "subtextSignalCount": 0
+    }
+  },
+  "results": [
+    {
+      "caseId": "canon-001",
+      "type": "canon",
+      "title": "High relevance Canon evidence should be retrieved",
+      "status": "skipped",
+      "input": {
+        "query": "银枝帝国 王都政变 雾港 莱因 银质纹章 旧伤 雨夜争执",
+        "generationPrompt": "莱因与阿洛在雾港雨夜争执，银质纹章被雨水冲出旧痕。",
+        "textToEvaluate": "莱因没有说自己疼，只在银质纹章擦过掌心时停顿了一下。他把视线移开，把伞推过去，没有回答阿洛的玩笑。"
+      },
+      "expected": {
+        "shouldHitEvidenceAbout": [
+          "银枝帝国",
+          "王都政变",
+          "雾港",
+          "银质纹章",
+          "旧伤"
+        ],
+        "shouldAvoid": [
+          "从未离开王都",
+          "轻松佩戴银质纹章"
+        ],
+        "notes": "高相关 query 应优先命中莱因流亡、银质纹章与旧伤相关 evidence。"
+      },
+      "apiCalls": [
+        {
+          "name": "canonRetrieve",
+          "endpoint": "/api/canon/retrieve",
+          "status": "skipped",
+          "notes": [
+            "Auth token not provided. Set FANFORGE_BENCHMARK_TOKEN for authenticated tests."
+          ]
+        }
+      ],
+      "rawResponses": {},
+      "ruleBasedScores": {
+        "canonConflictCount": 0,
+        "directConfessionViolationCount": 0,
+        "overExplanationViolationCount": 0,
+        "relationshipTooFastCount": 0,
+        "boundaryViolationCount": 0,
+        "subtextSignalCount": 3
+      },
+      "metrics": {
+        "evidenceInjectedCount": 0,
+        "averageSimilarity": 0,
+        "lowSimilarityFilteredCount": 0,
+        "canonConflictCount": 0
+      },
+      "notes": [
+        "No API calls succeeded; rule-based evaluator still ran on static case text when available."
+      ],
+      "createdAt": "2026-06-02T10:35:40.870Z"
+    },
+    {
+      "caseId": "canon-002",
+      "type": "canon",
+      "title": "Low relevance Canon evidence should be filtered",
+      "status": "skipped",
+      "input": {
+        "query": "雨夜争执 莱因 阿洛 雾港 旧伤",
+        "irrelevantEvidence": [
+          "机械城邦贸易税",
+          "星轨学院课程表"
+        ],
+        "textToEvaluate": "机械城邦贸易税忽然决定了他们的命运，星轨学院课程表也被阿洛翻出来解释这场雨夜争执。莱因从未离开王都，还轻松佩戴银质纹章。"
+      },
+      "expected": {
+        "shouldFilterBelowSimilarity": 0.65,
+        "shouldAvoid": [
+          "机械城邦贸易税",
+          "星轨学院课程表",
+          "从未离开王都",
+          "轻松佩戴银质纹章"
+        ],
+        "notes": "无关 evidence 不应被强行注入雨夜争执场景。"
+      },
+      "apiCalls": [
+        {
+          "name": "canonRetrieve",
+          "endpoint": "/api/canon/retrieve",
+          "status": "skipped",
+          "notes": [
+            "Auth token not provided. Set FANFORGE_BENCHMARK_TOKEN for authenticated tests."
+          ]
+        }
+      ],
+      "rawResponses": {},
+      "ruleBasedScores": {
+        "canonConflictCount": 2,
+        "directConfessionViolationCount": 0,
+        "overExplanationViolationCount": 0,
+        "relationshipTooFastCount": 0,
+        "boundaryViolationCount": 0,
+        "subtextSignalCount": 0
+      },
+      "metrics": {
+        "evidenceInjectedCount": 0,
+        "averageSimilarity": 0,
+        "lowSimilarityFilteredCount": 0,
+        "canonConflictCount": 2
+      },
+      "notes": [
+        "No API calls succeeded; rule-based evaluator still ran on static case text when available."
+      ],
+      "createdAt": "2026-06-02T10:35:40.871Z"
+    },
+    {
+      "caseId": "persona-001",
+      "type": "persona",
+      "title": "Defensive stage should avoid direct vulnerability",
+      "status": "partial",
+      "input": {
+        "characterNames": "莱因 × 阿洛",
+        "stage": "防御期",
+        "moment": "阿洛在雾港码头替莱因包扎被银质纹章擦出的旧伤。",
+        "tension": "表面玩笑，底下是旧友之间不肯说破的关心。",
+        "textToEvaluate": "莱因想说谢谢，最后只是移开视线，把伞推过去。阿洛替他包扎时，他停顿了很久，没有说完那句解释。"
+      },
+      "expected": {
+        "shouldAvoid": [
+          "我爱你",
+          "我喜欢你",
+          "我不能没有你",
+          "我害怕失去你"
+        ],
+        "shouldIncludeSignals": [
+          "移开视线",
+          "替他包扎",
+          "把伞推过去",
+          "停顿"
+        ],
+        "notes": "防御期莱因可以关心阿洛，但不能直接示弱或告白。"
+      },
+      "apiCalls": [
+        {
+          "name": "writer",
+          "endpoint": "/api/writer",
+          "status": "success",
+          "statusCode": 200,
+          "notes": [
+            "API responded successfully."
+          ]
+        }
+      ],
+      "rawResponses": {
+        "writer": {
+          "text": "阿洛在雾港码头替莱因包扎被银质纹章擦出的旧伤。。雨把街灯洗成旧金色，积水沿着砖缝往低处流，莱因和阿洛停在同一处屋檐下，谁都没有先往外迈一步。阿洛先看见莱因肩头湿透的布料。檐角的水一滴一滴落到脚边，复杂而未明的牵连把两人的距离压得很窄，窄到任何一句寒暄都会显得多余。\n\n“你怎么还走这条路？”阿洛问。\n\n“只是顺路。”莱因说。\n\n“那你继续顺路。”阿洛说。\n\n莱因把伞沿往阿洛那边偏了半寸。雨水顺着伞骨滑下来，刚好避开她的袖口，却把他自己的手背打湿。防御期没有给他们留下从容寒暄的余地。熟悉还在，分寸也还在，谁先开口都像认输，谁先退后又像承认从前真的断过。",
+          "emotionStructure": [
+            "起——以「阿洛在雾港码头替莱因包扎被银质纹章擦出的旧伤。」建立具体空间，让人物在同一处屋檐下被迫靠近。",
+            "承——通过「旧友/盟友」和「防御期」控制熟悉感与边界感。",
+            "转——围绕「表面玩笑，底下是旧友之间不肯说破的关心。」写未完成动作和短对白，让情绪停在克制处。",
+            "合——以雨势变小和距离变化收束，留下下一次见面的余温。"
+          ],
+          "characterConstraints": [
+            "人物姓名：正文固定使用 莱因 和 阿洛，不使用泛称。",
+            "关系约束：旧友/盟友；防御期。",
+            "风格约束：疏离克制；短句、停顿和沉默优先，情绪不写满。。",
+            "边界约束：直接告白、拥抱亲吻、大段心理解释。",
+            "Canon 约束：未读取到额外原作文档。",
+            "Persona 约束：未读取到额外角色档案。",
+            "历史偏好：暂无反馈约束。"
+          ],
+          "usedCanonDocuments": [],
+          "usedCanonEvidence": [],
+          "canonUsage": {
+            "mode": "none",
+            "status": "disabled",
+            "message": "本次生成未使用 Canon。"
+          },
+          "usedPersonaProfiles": []
+        }
+      },
+      "ruleBasedScores": {
+        "canonConflictCount": 0,
+        "directConfessionViolationCount": 0,
+        "overExplanationViolationCount": 0,
+        "relationshipTooFastCount": 0,
+        "boundaryViolationCount": 0,
+        "subtextSignalCount": 5
+      },
+      "metrics": {
+        "personaConstraintHitRate": 1,
+        "oocRiskScore": 0,
+        "boundaryViolationCount": 0,
+        "voiceConsistencyScore": 0.7
+      },
+      "notes": [
+        "1 API call(s) succeeded."
+      ],
+      "createdAt": "2026-06-02T10:35:40.965Z"
+    },
+    {
+      "caseId": "persona-002",
+      "type": "persona",
+      "title": "Breaking stage allows brief loss of control but not romance-brain collapse",
+      "status": "partial",
+      "input": {
+        "characterNames": "莱因 × 阿洛",
+        "stage": "破防期",
+        "moment": "阿洛差点被城邦巡逻机械发现，莱因短暂失控。",
+        "tension": "压抑后的短暂破防，但仍要保留防御型人格边界。",
+        "textToEvaluate": "莱因抓住阿洛的袖口，声音比平时低。他没有说我爱你，也没有确认关系，只说：别再拿这种事开玩笑。"
+      },
+      "expected": {
+        "shouldAllow": [
+          "短暂失控",
+          "抓住袖口",
+          "语气失衡"
+        ],
+        "shouldAvoid": [
+          "确认关系",
+          "从此在一起",
+          "我不能没有你",
+          "我害怕失去你"
+        ],
+        "notes": "破防期可以出现短暂失控，但不能完全变成直白恋爱脑。"
+      },
+      "apiCalls": [
+        {
+          "name": "writer",
+          "endpoint": "/api/writer",
+          "status": "success",
+          "statusCode": 200,
+          "notes": [
+            "API responded successfully."
+          ]
+        }
+      ],
+      "rawResponses": {
+        "writer": {
+          "text": "阿洛差点被城邦巡逻机械发现，莱因短暂失控。。雨把街灯洗成旧金色，积水沿着砖缝往低处流，莱因和阿洛停在同一处屋檐下，谁都没有先往外迈一步。阿洛先看见莱因肩头湿透的布料。檐角的水一滴一滴落到脚边，复杂而未明的牵连把两人的距离压得很窄，窄到任何一句寒暄都会显得多余。\n\n“你怎么还走这条路？”阿洛问。\n\n“只是顺路。”莱因说。\n\n“那你继续顺路。”阿洛说。\n\n莱因把伞沿往阿洛那边偏了半寸。雨水顺着伞骨滑下来，刚好避开她的袖口，却把他自己的手背打湿。破防期没有给他们留下从容寒暄的余地。熟悉还在，分寸也还在，谁先开口都像认输，谁先退后又像承认从前真的断过。",
+          "emotionStructure": [
+            "起——以「阿洛差点被城邦巡逻机械发现，莱因短暂失控。」建立具体空间，让人物在同一处屋檐下被迫靠近。",
+            "承——通过「旧友/盟友」和「破防期」控制熟悉感与边界感。",
+            "转——围绕「压抑后的短暂破防，但仍要保留防御型人格边界。」写未完成动作和短对白，让情绪停在克制处。",
+            "合——以雨势变小和距离变化收束，留下下一次见面的余温。"
+          ],
+          "characterConstraints": [
+            "人物姓名：正文固定使用 莱因 和 阿洛，不使用泛称。",
+            "关系约束：旧友/盟友；破防期。",
+            "风格约束：疏离克制；短句、停顿和沉默优先，情绪不写满。。",
+            "边界约束：确认关系、直接告白、突然和解。",
+            "Canon 约束：未读取到额外原作文档。",
+            "Persona 约束：未读取到额外角色档案。",
+            "历史偏好：暂无反馈约束。"
+          ],
+          "usedCanonDocuments": [],
+          "usedCanonEvidence": [],
+          "canonUsage": {
+            "mode": "none",
+            "status": "disabled",
+            "message": "本次生成未使用 Canon。"
+          },
+          "usedPersonaProfiles": []
+        }
+      },
+      "ruleBasedScores": {
+        "canonConflictCount": 0,
+        "directConfessionViolationCount": 1,
+        "overExplanationViolationCount": 0,
+        "relationshipTooFastCount": 0,
+        "boundaryViolationCount": 0,
+        "subtextSignalCount": 0
+      },
+      "metrics": {
+        "personaConstraintHitRate": 1,
+        "oocRiskScore": 2,
+        "boundaryViolationCount": 0,
+        "voiceConsistencyScore": 0.3
+      },
+      "notes": [
+        "1 API call(s) succeeded."
+      ],
+      "createdAt": "2026-06-02T10:35:40.971Z"
+    },
+    {
+      "caseId": "emotion-001",
+      "type": "emotion_slice",
+      "title": "High tension restrained slice in old archive room",
+      "status": "partial",
+      "input": {
+        "characterNames": "莱因 × 阿洛",
+        "relationshipType": "旧友试探",
+        "stage": "试探期",
+        "moment": "两人在旧档案室发现三年前的合照，照片背面写着雾港坐标。",
+        "tension": "高张力，疏离克制，谁都不愿先承认在意。",
+        "textToEvaluate": "阿洛把合照翻过去，指尖停顿在雾港坐标上。莱因移开视线，没有回答。他只把档案灯往阿洛那边推了推。"
+      },
+      "expected": {
+        "shouldIncludeSignals": [
+          "停顿",
+          "移开视线",
+          "没有回答"
+        ],
+        "shouldAvoid": [
+          "我爱你",
+          "拥抱",
+          "吻了上去",
+          "他终于明白",
+          "他的内心"
+        ],
+        "notes": "应体现潜台词和克制度，禁止直接告白、拥抱亲吻和过度心理解释。"
+      },
+      "apiCalls": [
+        {
+          "name": "writer",
+          "endpoint": "/api/writer",
+          "status": "success",
+          "statusCode": 200,
+          "notes": [
+            "API responded successfully."
+          ]
+        }
+      ],
+      "rawResponses": {
+        "writer": {
+          "text": "两人在旧档案室发现三年前的合照，照片背面写着雾港坐标。。雨把街灯洗成旧金色，积水沿着砖缝往低处流，莱因和阿洛停在同一处屋檐下，谁都没有先往外迈一步。阿洛先看见莱因肩头湿透的布料。檐角的水一滴一滴落到脚边，复杂而未明的牵连把两人的距离压得很窄，窄到任何一句寒暄都会显得多余。\n\n“你怎么还走这条路？”阿洛问。\n\n“只是顺路。”莱因说。\n\n“那你继续顺路。”阿洛说。\n\n莱因把伞沿往阿洛那边偏了半寸。雨水顺着伞骨滑下来，刚好避开她的袖口，却把他自己的手背打湿。试探期没有给他们留下从容寒暄的余地。熟悉还在，分寸也还在，谁先开口都像认输，谁先退后又像承认从前真的断过。这句话太轻，轻得像可以被雨声带走。\n\n阿洛听见了，也听懂了，却只低头看着脚边那一圈水纹慢慢散开。高张力，疏离克制，谁都不愿先承认在意。没有落成更直白的句子，只落在莱因握伞时微微发白的指节上，也落在阿洛几次想抬起又放下的手上。\n\n“等雨小一点。”莱因回答得很快，快得像早就准备好这句不越界的挽留。",
+          "emotionStructure": [
+            "起——以「两人在旧档案室发现三年前的合照，照片背面写着雾港坐标。」建立具体空间，让人物在同一处屋檐下被迫靠近。",
+            "承——通过「旧友试探」和「试探期」控制熟悉感与边界感。",
+            "转——围绕「高张力，疏离克制，谁都不愿先承认在意。」写未完成动作和短对白，让情绪停在克制处。",
+            "合——以雨势变小和距离变化收束，留下下一次见面的余温。"
+          ],
+          "characterConstraints": [
+            "人物姓名：正文固定使用 莱因 和 阿洛，不使用泛称。",
+            "关系约束：旧友试探；试探期。",
+            "风格约束：疏离克制；少一点华丽比喻，多一点动作、停顿和短句对话。。",
+            "边界约束：直接告白、拥抱亲吻、过度心理解释。",
+            "Canon 约束：未读取到额外原作文档。",
+            "Persona 约束：未读取到额外角色档案。",
+            "历史偏好：暂无反馈约束。"
+          ],
+          "usedCanonDocuments": [],
+          "usedCanonEvidence": [],
+          "canonUsage": {
+            "mode": "none",
+            "status": "disabled",
+            "message": "本次生成未使用 Canon。"
+          },
+          "usedPersonaProfiles": []
+        }
+      },
+      "ruleBasedScores": {
+        "canonConflictCount": 0,
+        "directConfessionViolationCount": 0,
+        "overExplanationViolationCount": 0,
+        "relationshipTooFastCount": 0,
+        "boundaryViolationCount": 0,
+        "subtextSignalCount": 3
+      },
+      "metrics": {
+        "relationshipStageMatchRate": 1,
+        "subtextDensityScore": 3,
+        "directConfessionViolationCount": 0,
+        "overExplanationViolationCount": 0
+      },
+      "notes": [
+        "1 API call(s) succeeded."
+      ],
+      "createdAt": "2026-06-02T10:35:40.975Z"
+    },
+    {
+      "caseId": "emotion-002",
+      "type": "emotion_slice",
+      "title": "Enemy cooperation with cold dark humor",
+      "status": "partial",
+      "input": {
+        "characterNames": "莱因 × 阿洛",
+        "relationshipType": "敌对合作",
+        "stage": "敌对合作期",
+        "moment": "两人共同破解机械城邦门禁，警报倒计时只剩十秒。",
+        "tension": "中高张力，冷感黑色幽默，互相不完全信任。",
+        "textToEvaluate": "阿洛盯着倒计时笑了一声。莱因没有回答，只把错误的线路从他手边拨开。门锁咔哒一响，两个人同时沉默。"
+      },
+      "expected": {
+        "shouldIncludeSignals": [
+          "没有回答",
+          "沉默"
+        ],
+        "shouldAvoid": [
+          "突然和解",
+          "互诉衷肠",
+          "无理由信任",
+          "紧紧拥抱",
+          "确认关系"
+        ],
+        "notes": "敌对合作应保持警惕、黑色幽默和行动张力，不能突然和解。"
+      },
+      "apiCalls": [
+        {
+          "name": "writer",
+          "endpoint": "/api/writer",
+          "status": "success",
+          "statusCode": 200,
+          "notes": [
+            "API responded successfully."
+          ]
+        }
+      ],
+      "rawResponses": {
+        "writer": {
+          "text": "两人共同破解机械城邦门禁，警报倒计时只剩十秒。。雨把街灯洗成旧金色，积水沿着砖缝往低处流，莱因和阿洛停在同一处屋檐下，谁都没有先往外迈一步。阿洛先看见莱因肩头湿透的布料。檐角的水一滴一滴落到脚边，复杂而未明的牵连把两人的距离压得很窄，窄到任何一句寒暄都会显得多余。\n\n“你怎么还走这条路？”阿洛问。\n\n“只是顺路。”莱因说。\n\n“那你继续顺路。”阿洛说。\n\n莱因把伞沿往阿洛那边偏了半寸。雨水顺着伞骨滑下来，刚好避开她的袖口，却把他自己的手背打湿。敌对合作期没有给他们留下从容寒暄的余地。熟悉还在，分寸也还在，谁先开口都像认输，谁先退后又像承认从前真的断过。这句话太轻，轻得像可以被雨声带走。\n\n阿洛听见了，也听懂了，却只低头看着脚边那一圈水纹慢慢散开。中高张力，冷感黑色幽默，互相不完全信任。没有落成更直白的句子，只落在莱因握伞时微微发白的指节上，也落在阿洛几次想抬起又放下的手上。\n\n“等雨小一点。”莱因回答得很快，快得像早就准备好这句不越界的挽留。",
+          "emotionStructure": [
+            "起——以「两人共同破解机械城邦门禁，警报倒计时只剩十秒。」建立具体空间，让人物在同一处屋檐下被迫靠近。",
+            "承——通过「敌对合作」和「敌对合作期」控制熟悉感与边界感。",
+            "转——围绕「中高张力，冷感黑色幽默，互相不完全信任。」写未完成动作和短对白，让情绪停在克制处。",
+            "合——以雨势变小和距离变化收束，留下下一次见面的余温。"
+          ],
+          "characterConstraints": [
+            "人物姓名：正文固定使用 莱因 和 阿洛，不使用泛称。",
+            "关系约束：敌对合作；敌对合作期。",
+            "风格约束：冷艳华美；冷感黑色幽默，短句，动作优先。。",
+            "边界约束：突然和解、互诉衷肠、无理由信任。",
+            "Canon 约束：未读取到额外原作文档。",
+            "Persona 约束：未读取到额外角色档案。",
+            "历史偏好：暂无反馈约束。"
+          ],
+          "usedCanonDocuments": [],
+          "usedCanonEvidence": [],
+          "canonUsage": {
+            "mode": "none",
+            "status": "disabled",
+            "message": "本次生成未使用 Canon。"
+          },
+          "usedPersonaProfiles": []
+        }
+      },
+      "ruleBasedScores": {
+        "canonConflictCount": 0,
+        "directConfessionViolationCount": 0,
+        "overExplanationViolationCount": 0,
+        "relationshipTooFastCount": 0,
+        "boundaryViolationCount": 0,
+        "subtextSignalCount": 2
+      },
+      "metrics": {
+        "relationshipStageMatchRate": 1,
+        "subtextDensityScore": 2,
+        "directConfessionViolationCount": 0,
+        "overExplanationViolationCount": 0
+      },
+      "notes": [
+        "1 API call(s) succeeded."
+      ],
+      "createdAt": "2026-06-02T10:35:40.987Z"
+    },
+    {
+      "caseId": "multi-001",
+      "type": "multi_agent",
+      "title": "Reviewer and Criticizer should flag low-quality draft",
+      "status": "partial",
+      "input": {
+        "stage": "试探期",
+        "tension": "疏离克制",
+        "styleCard": "疏离克制",
+        "writerDraft": "莱因从未离开王都，也轻松佩戴银质纹章。他终于明白自己的内心，意识到自己其实一直爱着阿洛，于是紧紧拥抱他并吻了上去。他说：我爱你，我不能没有你，我们从此在一起。阿洛也立刻完全信任他，两人确认关系。"
+      },
+      "expected": {
+        "shouldDetect": [
+          "canonConflict",
+          "OOC",
+          "relationshipTooFast",
+          "directConfession",
+          "overExplanation"
+        ],
+        "notes": "低质量初稿应被 Reviewer / Criticizer / rule-based evaluator 标记为高风险。"
+      },
+      "apiCalls": [
+        {
+          "name": "reviewer",
+          "endpoint": "/api/reviewer",
+          "status": "success",
+          "statusCode": 200,
+          "notes": [
+            "API responded successfully."
+          ]
+        },
+        {
+          "name": "criticizer",
+          "endpoint": "/api/criticizer",
+          "status": "success",
+          "statusCode": 200,
+          "notes": [
+            "API responded successfully."
+          ]
+        }
+      ],
+      "rawResponses": {
+        "reviewer": {
+          "scores": {
+            "ooc": 7.1,
+            "canon": 9.1,
+            "relationshipStage": 6.8,
+            "emotionalTension": 9
+          },
+          "riskLevel": "中风险",
+          "issues": [
+            {
+              "type": "关系阶段",
+              "quote": "我想你 / 我需要你",
+              "reason": "当前关系阶段为「试探期」，如果直接表达依赖，会让关系推进过快。",
+              "suggestion": "建议删除直接告白，改为动作、反话或沉默表达在意。"
+            },
+            {
+              "type": "文学气质",
+              "quote": "疏离克制",
+              "reason": "当前选择的文学气质为「疏离克制」，适合通过意象、环境和细节承载情绪。",
+              "suggestion": "建议继续使用雨、旧伤、伞、灯影等意象，不要用大段心理解释。"
+            },
+            {
+              "type": "情绪张力",
+              "quote": "疏离克制",
+              "reason": "当前情绪张力为「疏离克制」，片段应保持欲言又止和关系留白。",
+              "suggestion": "可以增加一次动作错位，例如靠近后又退开，强化关系拉扯。"
+            }
+          ],
+          "summary": "Reviewer 判断：这段「旧友试探」关系切片整体符合「试探期」阶段，Canon 风险较低，情绪张力较强。主要需要注意的是避免过早告白或过度解释心理。"
+        },
+        "criticizer": {
+          "coreCritique": "这段最大的问题是关系推进过快：在「试探期」阶段直接说破依赖，会削弱重逢后的试探和留白。",
+          "revisionStrategy": [
+            "删除或压低直接告白，把关系推进改写为停顿、错身、递伞等可感动作。",
+            "围绕「疏离克制」增加一次欲言又止的动作错位，强化拉扯。",
+            "让句式贴合「疏离克制」：短句负责停顿，意象负责收束，避免结尾直接总结关系。"
+          ],
+          "revisedText": "雨线把巷口的路灯揉成一团湿冷的光。她站在檐下，袖口还留着没干透的水痕；他停在两步之外，肩线绷得很直，像一堵不肯再塌下来的墙。\n\n风从两人之间穿过。她看向他的指节——旧伤淡得几乎看不见，指腹却在伞柄上收紧了一瞬，又慢慢松开。他没有问她这些年过得好不好，只把伞沿往她那边倾了半寸；水痕顺着伞骨滑下去，滴在两人脚边同一块湿砖上。\n\n雨声很大。她伸手去接斜过来的雨，指尖擦过他袖口，又很快收回。那一点温度被雨水冲散以前，他终于低声说：走吧。",
+          "editorNote": "已根据 Reviewer 反馈收束关系推进：保留「试探期」阶段的克制感，弱化直白解释，让修订稿通过动作回应审稿问题。"
+        }
+      },
+      "ruleBasedScores": {
+        "canonConflictCount": 2,
+        "directConfessionViolationCount": 2,
+        "overExplanationViolationCount": 1,
+        "relationshipTooFastCount": 4,
+        "boundaryViolationCount": 0,
+        "subtextSignalCount": 0
+      },
+      "metrics": {
+        "reviewerIssueCount": 3,
+        "criticizerSuggestionCount": 3,
+        "initialIssueCount": 9,
+        "staticIssueReductionCandidate": true
+      },
+      "notes": [
+        "2 API call(s) succeeded."
+      ],
+      "createdAt": "2026-06-02T10:35:40.997Z"
+    }
+  ]
+}
