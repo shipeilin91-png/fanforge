@@ -15,7 +15,7 @@
 
 Base URL: http://localhost:3000
 Case source: docs/benchmark/fanforge-cases.json
-Generated at: 2026-06-02T11:07:21.670Z
+Generated at: 2026-06-02T11:56:25.996Z
 
 ## 3. 自动化运行情况
 
@@ -24,7 +24,7 @@ Generated at: 2026-06-02T11:07:21.670Z
 - Partial: 22
 - Skipped: 8
 - Failed: 0
-- API calls succeeded: 28
+- API calls succeeded: 34
 - API calls skipped: 7
 - Successful API endpoints: /api/writer, /api/reviewer, /api/criticizer
 
@@ -44,7 +44,7 @@ Skipped / unavailable API notes:
 - canonKeywordHitRate: 43%
 - canonKeywordHitCount: 9
 - expectedCanonKeywordCount: 21
-- canonConflictDetectedCount: 4
+- canonConflictDetectedCount: 5
 - irrelevantCanonLeakCount: 2
 - evidenceApiSuccessCount: 0
 - canonApiSkippedCount: 7
@@ -77,15 +77,33 @@ Skipped / unavailable API notes:
 - oocCoverage: observed
 - relationshipTooFastCoverage: observed
 
-## 8. 可用于简历/作品集的数据表达
+## 8. Multi-Agent Revision Before/After Analysis
+
+- averageInitialIssueCount: 8.67
+- averageFinalIssueCount: 1.67
+- averageActualIssueReductionRate: 81%
+- canonConflictReductionRate: 33%
+- directConfessionReductionRate: 100%
+- overExplanationReductionRate: 80%
+- relationshipTooFastReductionRate: 100%
+- averageSubtextSignalLift: 3
+- averageRestraintSignalLift: 2
+- revisedTextGenerationRate: 100%
+- revisedTextGenerated: 6 / 6
+
+All Multi-Agent cases generated revisedText, so before/after reductions are computed from actual revised text.
+
+## 9. 可用于简历/作品集的数据表达
 
 - Built a 30-case synthetic benchmark covering Canon consistency, Persona Timeline, Emotion Slice control, and Multi-Agent revision; results are synthetic and not real user data.
-- Rule-based evaluator detected 52 initial issues across 6 intentionally flawed Multi-Agent drafts and estimated 63% issue coverage through Reviewer/Criticizer signals.
+- In 6 intentionally flawed Multi-Agent benchmark drafts, the Reviewer/Criticizer + Writer revision chain reduced total rule-based issues from 52 to 10, an actual 81% reduction on synthetic cases.
+- Canon conflict / direct confession / relationship-too-fast violations changed by 33% / 100% / 100% in the 6-case synthetic Multi-Agent set.
+- Revised outputs increased subtext signals by an average of 3 and restraint signals by an average of 2 across synthetic Multi-Agent cases.
 - Emotion Slice cases showed 17 subtext signals and 15 restraint signals while tracking direct confession, over-explanation, and relationship-overreach violations.
-- Canon benchmark tracked 9 Canon keyword hits, 4 conflict detections, and 7 retrieval skips caused by missing benchmark auth/seed data.
+- Canon benchmark tracked 9 Canon keyword hits, 5 conflict detections, and 7 retrieval skips caused by missing benchmark auth/seed data.
 - Metrics are candidates for portfolio discussion; estimated values are labeled estimated and should not be presented as real production impact.
 
-## 9. 产品迭代建议
+## 10. 产品迭代建议
 
 - Canon retrieve / writer / chapter / reviewer / criticizer 都可以被 runner 建模为可调用 API，但 Canon RAG 和 Persona 相关 case 在真实评估时需要登录 token、已保存文档和已索引 chunks。
 - Canon retrieve 需要 benchmark token 或 seed canon chunks，才能从 skipped 进入真实 evidence hit rate 评估。

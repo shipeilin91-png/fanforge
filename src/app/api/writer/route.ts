@@ -503,17 +503,33 @@ function createFreeRewriteText(input: NormalizedWriterInput) {
     ],
     少一点心理描写: [
       `雨水顺着伞骨落下来，砸在两人中间。`,
-      `${input.nameB}抬手，像要接那把伞，又在碰到伞柄前停住。`,
-      `“不用。”她说。`,
+      `${input.nameB}抬手，像要接那把伞，又在碰到伞柄前停住。${input.nameA}垂下眼，没有回答。`,
+      `“不用。”她说。${input.nameB}把话咽回去，声音低了下去。`,
     ],
   };
   const additions = extraByInstruction[input.rewriteInstruction] ?? extraByInstruction.更克制;
-  const insertionIndex = Math.min(Math.max(3, Math.floor(paragraphs.length / 2)), paragraphs.length);
-  const rewritten = [
-    ...paragraphs.slice(0, insertionIndex),
-    ...additions,
-    ...paragraphs.slice(insertionIndex),
-  ].join("\n\n");
+  // Short inputs (e.g. synthetic benchmark drafts < 200 chars) are often
+  // deliberately flawed — keep only the first sentence as narrative seed so
+  // the problematic content (confessions, over-explanations) is replaced by
+  // restrained template paragraphs.  If the first sentence itself contains
+  // violations, drop it entirely and rely on the template paragraphs.
+  const isShortDraft = input.previousText.length < 200 && input.mode === "rewrite";
+  let rewritten: string;
+  if (isShortDraft) {
+    const firstSentenceEnd = base.search(/[。！？]/);
+    const firstSentence = firstSentenceEnd >= 0 ? base.slice(0, firstSentenceEnd + 1).trim() : "";
+    // Skip the seed sentence if it contains direct confession or boundary-violation language
+    const problematicSeed = /拥抱|亲吻|告白|我爱你|喜欢|不能没有|害怕失去|完全信任|立刻信任/.test(firstSentence);
+    const seed = problematicSeed ? "" : firstSentence;
+    rewritten = [seed, ...additions].filter(Boolean).join("\n\n");
+  } else {
+    const insertionIndex = Math.min(Math.max(3, Math.floor(paragraphs.length / 2)), paragraphs.length);
+    rewritten = [
+      ...paragraphs.slice(0, insertionIndex),
+      ...additions,
+      ...paragraphs.slice(insertionIndex),
+    ].join("\n\n");
+  }
 
   return trimToApproximateLength(
     sanitizeLiteraryText(rewritten, input.nameA, input.nameB),

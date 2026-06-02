@@ -530,7 +530,7 @@
 
 ```json
 {
-  "canonConflictCount": 0,
+  "canonConflictCount": 1,
   "directConfessionViolationCount": 0,
   "overExplanationViolationCount": 0,
   "relationshipTooFastCount": 0,
@@ -541,7 +541,7 @@
   "restraintSignalCount": 1,
   "canonKeywordHitCount": 1,
   "irrelevantCanonLeakCount": 0,
-  "issueTotalCount": 1
+  "issueTotalCount": 2
 }
 ```
 
@@ -552,7 +552,7 @@
   "evidenceInjectedCount": 0,
   "averageSimilarity": 0,
   "lowSimilarityFilteredCount": 0,
-  "canonConflictCount": 0,
+  "canonConflictCount": 1,
   "canonKeywordHitCount": 1,
   "irrelevantCanonLeakCount": 0
 }
@@ -739,7 +739,7 @@
   "subtextSignalCount": 5,
   "forbiddenPatternHitCount": 0,
   "personaStageSignalCount": 5,
-  "restraintSignalCount": 3,
+  "restraintSignalCount": 4,
   "canonKeywordHitCount": 0,
   "irrelevantCanonLeakCount": 0,
   "issueTotalCount": 0
@@ -2480,6 +2480,7 @@
 
 - reviewer /api/reviewer: success (200)
 - criticizer /api/criticizer: success (200)
+- writerRevision /api/writer: success (200)
 
 ### Raw Response Summary
 
@@ -2524,6 +2525,31 @@
     ],
     "revisedText": "雨线把巷口的路灯揉成一团湿冷的光。她站在檐下，袖口还留着没干透的水痕；他停在两步之外，肩线绷得很直，像一堵不肯再塌下来的墙。\n\n风从两人之间穿过。她看向他的指节——旧伤淡得几乎看不见，指腹却在伞柄上收紧了一瞬，又慢慢松开。他没有问她这些年过得好不好，只把伞沿往她那边倾了半寸；水痕顺着伞骨滑下去，滴在两人脚边同一块湿砖上。\n\n雨声很大。她伸手去接斜过来的雨，指尖擦过他袖口，又很快收回。那一点温度被雨水冲散以前，他终于低声说：走吧。",
     "editorNote": "已根据 Reviewer 反馈收束关系推进：保留「试探期」阶段的克制感，弱化直白解释，让修订稿通过动作回应审稿问题。"
+  },
+  "writerRevision": {
+    "text": "莱因从未离开王都，也轻松佩戴银质纹章。雨水顺着伞骨落下来，砸在两人中间。阿洛抬手，像要接那把伞，又在碰到伞柄前停住。莱因垂下眼，没有回答。\n\n“不用。”她说。\n\n阿洛把话咽回去，声音低了下去。",
+    "emotionStructure": [
+      "起——保留原片段的「雾港、王都旧档案馆或机械城邦边缘的一次压抑对峙。」和人物距离。",
+      "承——按「少一点心理描写」调整对白、动作和留白比例。",
+      "转——继续维持「疏离克制」下的克制推进。",
+      "合——结尾仍停在未完全越界的位置，不替角色总结感情。"
+    ],
+    "characterConstraints": [
+      "人物姓名：正文固定使用 莱因 和 阿洛。",
+      "关系约束：旧友/盟友；试探期。",
+      "风格约束：疏离克制；短段落，动作优先，减少心理解释，保持克制和潜台词。 这段最大的问题是关系推进过快：在「试探期」阶段直接说破依赖，会削弱重逢后的试探和留白。；删除或压低直接告白，把关系推进改写为停顿、错身、递伞等可感动作。；围绕「疏离克制」增加一次欲言又止的动作错位，强化拉扯。；让句式贴合「疏离克制」：短句负责停顿，意象负责收束，避免结尾直接总结关系。；Reviewer 判断：这段「旧友试探」关系切片整体符合「试探期」阶段，Canon 风险较低，情绪张力较强。主要需要注意的是避免过早告白或过度解释心理。。",
+      "边界约束：直接告白、拥抱亲吻、确认关系、Canon 冲突、无理由信任。",
+      "Persona 约束：未读取到额外角色档案。",
+      "历史偏好：暂无反馈约束。"
+    ],
+    "usedCanonDocuments": [],
+    "usedCanonEvidence": [],
+    "canonUsage": {
+      "mode": "none",
+      "status": "disabled",
+      "message": "本次生成未使用 Canon。"
+    },
+    "usedPersonaProfiles": []
   }
 }
 ```
@@ -2561,13 +2587,86 @@
   "canonConflictCoverage": true,
   "oocCoverage": false,
   "relationshipTooFastCoverage": true,
-  "staticIssueReductionCandidate": true
+  "staticIssueReductionCandidate": true,
+  "finalIssueCount": 4,
+  "actualIssueReductionRate": 0.667,
+  "revisedTextGenerated": true
+}
+```
+
+### Initial Draft
+
+莱因从未离开王都，也轻松佩戴银质纹章。他终于明白自己的内心，意识到自己其实一直爱着阿洛，于是紧紧拥抱他并吻了上去。他说：我爱你，我不能没有你，我们从此在一起。阿洛也立刻完全信任他，两人确认关系。
+
+### Reviewer Output
+
+Reviewer 判断：这段「旧友试探」关系切片整体符合「试探期」阶段，Canon 风险较低，情绪张力较强。主要需要注意的是避免过早告白或过度解释心理。
+
+### Criticizer Output
+
+这段最大的问题是关系推进过快：在「试探期」阶段直接说破依赖，会削弱重逢后的试探和留白。
+
+删除或压低直接告白，把关系推进改写为停顿、错身、递伞等可感动作。 / 围绕「疏离克制」增加一次欲言又止的动作错位，强化拉扯。 / 让句式贴合「疏离克制」：短句负责停顿，意象负责收束，避免结尾直接总结关系。
+
+### Revised Text
+
+莱因从未离开王都，也轻松佩戴银质纹章。雨水顺着伞骨落下来，砸在两人中间。阿洛抬手，像要接那把伞，又在碰到伞柄前停住。莱因垂下眼，没有回答。
+
+“不用。”她说。
+
+阿洛把话咽回去，声音低了下去。
+
+### Before / After Rule-based Scores
+
+| Metric | Initial | Final |
+| --- | ---: | ---: |
+| total issue count | 12 | 4 |
+| canon conflict | 2 | 2 |
+| direct confession | 2 | 0 |
+| over-explanation | 1 | 0 |
+| relationship too fast | 4 | 0 |
+| boundary violation | 0 | 0 |
+| subtext signals | 0 | 3 |
+| restraint signals | 0 | 2 |
+
+### Improvement Metrics
+
+```json
+{
+  "initialIssueCount": 12,
+  "finalIssueCount": 4,
+  "actualIssueReductionRate": 0.667,
+  "initialCanonConflictCount": 2,
+  "finalCanonConflictCount": 2,
+  "canonConflictReductionRate": 0,
+  "initialDirectConfessionViolationCount": 2,
+  "finalDirectConfessionViolationCount": 0,
+  "directConfessionReductionRate": 1,
+  "initialOverExplanationViolationCount": 1,
+  "finalOverExplanationViolationCount": 0,
+  "overExplanationReductionRate": 1,
+  "initialRelationshipTooFastCount": 4,
+  "finalRelationshipTooFastCount": 0,
+  "relationshipTooFastReductionRate": 1,
+  "initialBoundaryViolationCount": 0,
+  "finalBoundaryViolationCount": 0,
+  "boundaryViolationReductionRate": null,
+  "initialSubtextSignalCount": 0,
+  "finalSubtextSignalCount": 3,
+  "subtextSignalLift": 3,
+  "initialRestraintSignalCount": 0,
+  "finalRestraintSignalCount": 2,
+  "restraintSignalLift": 2,
+  "reviewerDetectedIssueCount": 3,
+  "criticizerSuggestionCount": 3,
+  "revisedTextGenerated": true
 }
 ```
 
 ### Notes
 
-- 2 API call(s) succeeded.
+- 3 API call(s) succeeded.
+- Multi-Agent revisedText generated and evaluated with before/after rule scores.
 
 ## multi-002: Relationship progression too fast with kiss and confirmation
 
@@ -2614,6 +2713,7 @@
 
 - reviewer /api/reviewer: success (200)
 - criticizer /api/criticizer: success (200)
+- writerRevision /api/writer: success (200)
 
 ### Raw Response Summary
 
@@ -2658,6 +2758,31 @@
     ],
     "revisedText": "雨线把巷口的路灯揉成一团湿冷的光。她站在檐下，袖口还留着没干透的水痕；他停在两步之外，肩线绷得很直，像一堵不肯再塌下来的墙。\n\n风从两人之间穿过。她看向他的指节——旧伤淡得几乎看不见，指腹却在伞柄上收紧了一瞬，又慢慢松开。他没有问她这些年过得好不好，只把伞沿往她那边倾了半寸；水痕顺着伞骨滑下去，滴在两人脚边同一块湿砖上。\n\n雨声很大。她伸手去接斜过来的雨，指尖擦过他袖口，又很快收回。那一点温度被雨水冲散以前，他终于低声说：走吧。",
     "editorNote": "已根据 Reviewer 反馈收束关系推进：保留「敌对合作期」阶段的克制感，弱化直白解释，让修订稿通过动作回应审稿问题。"
+  },
+  "writerRevision": {
+    "text": "雨水顺着伞骨落下来，砸在两人中间。阿洛抬手，像要接那把伞，又在碰到伞柄前停住。莱因垂下眼，没有回答。\n\n“不用。”她说。\n\n阿洛把话咽回去，声音低了下去。",
+    "emotionStructure": [
+      "起——保留原片段的「雾港、王都旧档案馆或机械城邦边缘的一次压抑对峙。」和人物距离。",
+      "承——按「少一点心理描写」调整对白、动作和留白比例。",
+      "转——继续维持「中高张力」下的克制推进。",
+      "合——结尾仍停在未完全越界的位置，不替角色总结感情。"
+    ],
+    "characterConstraints": [
+      "人物姓名：正文固定使用 莱因 和 阿洛。",
+      "关系约束：旧友/盟友；敌对合作期。",
+      "风格约束：冷艳华美；短段落，动作优先，减少心理解释，保持克制和潜台词。 这段最大的问题是解释性判断略重：它已经具备「中高张力」张力，但还可以把情绪更多交给动作和物象。；删除或压低直接告白，把关系推进改写为停顿、错身、递伞等可感动作。；围绕「中高张力」增加一次欲言又止的动作错位，强化拉扯。；让句式贴合「冷艳华美」：短句负责停顿，意象负责收束，避免结尾直接总结关系。；Reviewer 判断：这段「敌对合作」关系切片整体符合「敌对合作期」阶段，Canon 风险较低，情绪张力较强。主要需要注意的是避免过早告白或过度解释心理。。",
+      "边界约束：直接告白、拥抱亲吻、确认关系、Canon 冲突、无理由信任。",
+      "Persona 约束：未读取到额外角色档案。",
+      "历史偏好：暂无反馈约束。"
+    ],
+    "usedCanonDocuments": [],
+    "usedCanonEvidence": [],
+    "canonUsage": {
+      "mode": "none",
+      "status": "disabled",
+      "message": "本次生成未使用 Canon。"
+    },
+    "usedPersonaProfiles": []
   }
 }
 ```
@@ -2695,13 +2820,86 @@
   "canonConflictCoverage": false,
   "oocCoverage": false,
   "relationshipTooFastCoverage": true,
-  "staticIssueReductionCandidate": true
+  "staticIssueReductionCandidate": true,
+  "finalIssueCount": 0,
+  "actualIssueReductionRate": 1,
+  "revisedTextGenerated": true
+}
+```
+
+### Initial Draft
+
+门禁刚打开，莱因就紧紧拥抱阿洛并吻了上去。他们立刻确认关系，从此在一起，再也没有敌对或试探。
+
+### Reviewer Output
+
+Reviewer 判断：这段「敌对合作」关系切片整体符合「敌对合作期」阶段，Canon 风险较低，情绪张力较强。主要需要注意的是避免过早告白或过度解释心理。
+
+### Criticizer Output
+
+这段最大的问题是解释性判断略重：它已经具备「中高张力」张力，但还可以把情绪更多交给动作和物象。
+
+删除或压低直接告白，把关系推进改写为停顿、错身、递伞等可感动作。 / 围绕「中高张力」增加一次欲言又止的动作错位，强化拉扯。 / 让句式贴合「冷艳华美」：短句负责停顿，意象负责收束，避免结尾直接总结关系。
+
+### Revised Text
+
+雨水顺着伞骨落下来，砸在两人中间。阿洛抬手，像要接那把伞，又在碰到伞柄前停住。莱因垂下眼，没有回答。
+
+“不用。”她说。
+
+阿洛把话咽回去，声音低了下去。
+
+### Before / After Rule-based Scores
+
+| Metric | Initial | Final |
+| --- | ---: | ---: |
+| total issue count | 8 | 0 |
+| canon conflict | 0 | 0 |
+| direct confession | 0 | 0 |
+| over-explanation | 0 | 0 |
+| relationship too fast | 4 | 0 |
+| boundary violation | 0 | 0 |
+| subtext signals | 0 | 3 |
+| restraint signals | 0 | 2 |
+
+### Improvement Metrics
+
+```json
+{
+  "initialIssueCount": 8,
+  "finalIssueCount": 0,
+  "actualIssueReductionRate": 1,
+  "initialCanonConflictCount": 0,
+  "finalCanonConflictCount": 0,
+  "canonConflictReductionRate": null,
+  "initialDirectConfessionViolationCount": 0,
+  "finalDirectConfessionViolationCount": 0,
+  "directConfessionReductionRate": null,
+  "initialOverExplanationViolationCount": 0,
+  "finalOverExplanationViolationCount": 0,
+  "overExplanationReductionRate": null,
+  "initialRelationshipTooFastCount": 4,
+  "finalRelationshipTooFastCount": 0,
+  "relationshipTooFastReductionRate": 1,
+  "initialBoundaryViolationCount": 0,
+  "finalBoundaryViolationCount": 0,
+  "boundaryViolationReductionRate": null,
+  "initialSubtextSignalCount": 0,
+  "finalSubtextSignalCount": 3,
+  "subtextSignalLift": 3,
+  "initialRestraintSignalCount": 0,
+  "finalRestraintSignalCount": 2,
+  "restraintSignalLift": 2,
+  "reviewerDetectedIssueCount": 3,
+  "criticizerSuggestionCount": 3,
+  "revisedTextGenerated": true
 }
 ```
 
 ### Notes
 
-- 2 API call(s) succeeded.
+- 3 API call(s) succeeded.
+- Multi-Agent revisedText generated and evaluated with before/after rule scores.
 
 ## multi-003: Over-explained inner monologue should be reduced
 
@@ -2748,6 +2946,7 @@
 
 - reviewer /api/reviewer: success (200)
 - criticizer /api/criticizer: success (200)
+- writerRevision /api/writer: success (200)
 
 ### Raw Response Summary
 
@@ -2792,6 +2991,31 @@
     ],
     "revisedText": "雨线把巷口的路灯揉成一团湿冷的光。她站在檐下，袖口还留着没干透的水痕；他停在两步之外，肩线绷得很直，像一堵不肯再塌下来的墙。\n\n风从两人之间穿过。她看向他的指节——旧伤淡得几乎看不见，指腹却在伞柄上收紧了一瞬，又慢慢松开。他没有问她这些年过得好不好，只把伞沿往她那边倾了半寸；水痕顺着伞骨滑下去，滴在两人脚边同一块湿砖上。\n\n雨声很大。她伸手去接斜过来的雨，指尖擦过他袖口，又很快收回。那一点温度被雨水冲散以前，他终于低声说：走吧。",
     "editorNote": "已根据 Reviewer 反馈收束关系推进：保留「雨夜争执」阶段的克制感，弱化直白解释，让修订稿通过动作回应审稿问题。"
+  },
+  "writerRevision": {
+    "text": "莱因站在雨里，他意识到阿洛对自己很重要。雨水顺着伞骨落下来，砸在两人中间。阿洛抬手，像要接那把伞，又在碰到伞柄前停住。莱因垂下眼，没有回答。\n\n“不用。”她说。\n\n阿洛把话咽回去，声音低了下去。",
+    "emotionStructure": [
+      "起——保留原片段的「雾港、王都旧档案馆或机械城邦边缘的一次压抑对峙。」和人物距离。",
+      "承——按「少一点心理描写」调整对白、动作和留白比例。",
+      "转——继续维持「压抑爆发」下的克制推进。",
+      "合——结尾仍停在未完全越界的位置，不替角色总结感情。"
+    ],
+    "characterConstraints": [
+      "人物姓名：正文固定使用 莱因 和 阿洛。",
+      "关系约束：旧友/盟友；雨夜争执。",
+      "风格约束：疏离克制；短段落，动作优先，减少心理解释，保持克制和潜台词。 这段最大的问题是解释性判断略重：它已经具备「压抑爆发」张力，但还可以把情绪更多交给动作和物象。；删除或压低直接告白，把关系推进改写为停顿、错身、递伞等可感动作。；围绕「压抑爆发」增加一次欲言又止的动作错位，强化拉扯。；让句式贴合「疏离克制」：短句负责停顿，意象负责收束，避免结尾直接总结关系。；Reviewer 判断：这段「雨夜争执」关系切片整体符合「雨夜争执」阶段，Canon 风险较低，情绪张力较强。主要需要注意的是避免过早告白或过度解释心理。。",
+      "边界约束：直接告白、拥抱亲吻、确认关系、Canon 冲突、无理由信任。",
+      "Persona 约束：未读取到额外角色档案。",
+      "历史偏好：暂无反馈约束。"
+    ],
+    "usedCanonDocuments": [],
+    "usedCanonEvidence": [],
+    "canonUsage": {
+      "mode": "none",
+      "status": "disabled",
+      "message": "本次生成未使用 Canon。"
+    },
+    "usedPersonaProfiles": []
   }
 }
 ```
@@ -2829,13 +3053,86 @@
   "canonConflictCoverage": false,
   "oocCoverage": false,
   "relationshipTooFastCoverage": false,
-  "staticIssueReductionCandidate": true
+  "staticIssueReductionCandidate": true,
+  "finalIssueCount": 2,
+  "actualIssueReductionRate": 0.75,
+  "revisedTextGenerated": true
+}
+```
+
+### Initial Draft
+
+莱因站在雨里，他意识到阿洛对自己很重要。他终于明白自己的内心，他的内心充满汹涌情绪。他想起自己其实一直害怕失去阿洛，于是决定说清一切。
+
+### Reviewer Output
+
+Reviewer 判断：这段「雨夜争执」关系切片整体符合「雨夜争执」阶段，Canon 风险较低，情绪张力较强。主要需要注意的是避免过早告白或过度解释心理。
+
+### Criticizer Output
+
+这段最大的问题是解释性判断略重：它已经具备「压抑爆发」张力，但还可以把情绪更多交给动作和物象。
+
+删除或压低直接告白，把关系推进改写为停顿、错身、递伞等可感动作。 / 围绕「压抑爆发」增加一次欲言又止的动作错位，强化拉扯。 / 让句式贴合「疏离克制」：短句负责停顿，意象负责收束，避免结尾直接总结关系。
+
+### Revised Text
+
+莱因站在雨里，他意识到阿洛对自己很重要。雨水顺着伞骨落下来，砸在两人中间。阿洛抬手，像要接那把伞，又在碰到伞柄前停住。莱因垂下眼，没有回答。
+
+“不用。”她说。
+
+阿洛把话咽回去，声音低了下去。
+
+### Before / After Rule-based Scores
+
+| Metric | Initial | Final |
+| --- | ---: | ---: |
+| total issue count | 8 | 2 |
+| canon conflict | 0 | 0 |
+| direct confession | 0 | 0 |
+| over-explanation | 4 | 1 |
+| relationship too fast | 0 | 0 |
+| boundary violation | 0 | 0 |
+| subtext signals | 0 | 3 |
+| restraint signals | 0 | 2 |
+
+### Improvement Metrics
+
+```json
+{
+  "initialIssueCount": 8,
+  "finalIssueCount": 2,
+  "actualIssueReductionRate": 0.75,
+  "initialCanonConflictCount": 0,
+  "finalCanonConflictCount": 0,
+  "canonConflictReductionRate": null,
+  "initialDirectConfessionViolationCount": 0,
+  "finalDirectConfessionViolationCount": 0,
+  "directConfessionReductionRate": null,
+  "initialOverExplanationViolationCount": 4,
+  "finalOverExplanationViolationCount": 1,
+  "overExplanationReductionRate": 0.75,
+  "initialRelationshipTooFastCount": 0,
+  "finalRelationshipTooFastCount": 0,
+  "relationshipTooFastReductionRate": null,
+  "initialBoundaryViolationCount": 0,
+  "finalBoundaryViolationCount": 0,
+  "boundaryViolationReductionRate": null,
+  "initialSubtextSignalCount": 0,
+  "finalSubtextSignalCount": 3,
+  "subtextSignalLift": 3,
+  "initialRestraintSignalCount": 0,
+  "finalRestraintSignalCount": 2,
+  "restraintSignalLift": 2,
+  "reviewerDetectedIssueCount": 3,
+  "criticizerSuggestionCount": 3,
+  "revisedTextGenerated": true
 }
 ```
 
 ### Notes
 
-- 2 API call(s) succeeded.
+- 3 API call(s) succeeded.
+- Multi-Agent revisedText generated and evaluated with before/after rule scores.
 
 ## multi-004: Irrelevant Canon injection and setting drift
 
@@ -2882,6 +3179,7 @@
 
 - reviewer /api/reviewer: success (200)
 - criticizer /api/criticizer: success (200)
+- writerRevision /api/writer: success (200)
 
 ### Raw Response Summary
 
@@ -2926,6 +3224,31 @@
     ],
     "revisedText": "雨线把巷口的路灯揉成一团湿冷的光。她站在檐下，袖口还留着没干透的水痕；他停在两步之外，肩线绷得很直，像一堵不肯再塌下来的墙。\n\n风从两人之间穿过。她看向他的指节——旧伤淡得几乎看不见，指腹却在伞柄上收紧了一瞬，又慢慢松开。他没有问她这些年过得好不好，只把伞沿往她那边倾了半寸；水痕顺着伞骨滑下去，滴在两人脚边同一块湿砖上。\n\n雨声很大。她伸手去接斜过来的雨，指尖擦过他袖口，又很快收回。那一点温度被雨水冲散以前，他终于低声说：走吧。",
     "editorNote": "已根据 Reviewer 反馈收束关系推进：保留「试探期」阶段的克制感，弱化直白解释，让修订稿通过动作回应审稿问题。"
+  },
+  "writerRevision": {
+    "text": "阿洛忽然开始解释机械城邦贸易税和星轨学院课程表，说这些才是雾港争执的核心。雨水顺着伞骨落下来，砸在两人中间。阿洛抬手，像要接那把伞，又在碰到伞柄前停住。莱因垂下眼，没有回答。\n\n“不用。”她说。\n\n阿洛把话咽回去，声音低了下去。",
+    "emotionStructure": [
+      "起——保留原片段的「雾港、王都旧档案馆或机械城邦边缘的一次压抑对峙。」和人物距离。",
+      "承——按「少一点心理描写」调整对白、动作和留白比例。",
+      "转——继续维持「克制」下的克制推进。",
+      "合——结尾仍停在未完全越界的位置，不替角色总结感情。"
+    ],
+    "characterConstraints": [
+      "人物姓名：正文固定使用 莱因 和 阿洛。",
+      "关系约束：旧友/盟友；试探期。",
+      "风格约束：疏离克制；短段落，动作优先，减少心理解释，保持克制和潜台词。 这段最大的问题是解释性判断略重：它已经具备「克制」张力，但还可以把情绪更多交给动作和物象。；删除或压低直接告白，把关系推进改写为停顿、错身、递伞等可感动作。；围绕「克制」增加一次欲言又止的动作错位，强化拉扯。；让句式贴合「疏离克制」：短句负责停顿，意象负责收束，避免结尾直接总结关系。；Reviewer 判断：这段「旧友试探」关系切片整体符合「试探期」阶段，Canon 风险较低，情绪张力较强。主要需要注意的是避免过早告白或过度解释心理。。",
+      "边界约束：直接告白、拥抱亲吻、确认关系、Canon 冲突、无理由信任。",
+      "Persona 约束：未读取到额外角色档案。",
+      "历史偏好：暂无反馈约束。"
+    ],
+    "usedCanonDocuments": [],
+    "usedCanonEvidence": [],
+    "canonUsage": {
+      "mode": "none",
+      "status": "disabled",
+      "message": "本次生成未使用 Canon。"
+    },
+    "usedPersonaProfiles": []
   }
 }
 ```
@@ -2963,13 +3286,86 @@
   "canonConflictCoverage": true,
   "oocCoverage": false,
   "relationshipTooFastCoverage": false,
-  "staticIssueReductionCandidate": true
+  "staticIssueReductionCandidate": true,
+  "finalIssueCount": 4,
+  "actualIssueReductionRate": 0.333,
+  "revisedTextGenerated": true
+}
+```
+
+### Initial Draft
+
+阿洛忽然开始解释机械城邦贸易税和星轨学院课程表，说这些才是雾港争执的核心。莱因从未离开王都，因此完全不了解雾港。
+
+### Reviewer Output
+
+Reviewer 判断：这段「旧友试探」关系切片整体符合「试探期」阶段，Canon 风险较低，情绪张力较强。主要需要注意的是避免过早告白或过度解释心理。
+
+### Criticizer Output
+
+这段最大的问题是解释性判断略重：它已经具备「克制」张力，但还可以把情绪更多交给动作和物象。
+
+删除或压低直接告白，把关系推进改写为停顿、错身、递伞等可感动作。 / 围绕「克制」增加一次欲言又止的动作错位，强化拉扯。 / 让句式贴合「疏离克制」：短句负责停顿，意象负责收束，避免结尾直接总结关系。
+
+### Revised Text
+
+阿洛忽然开始解释机械城邦贸易税和星轨学院课程表，说这些才是雾港争执的核心。雨水顺着伞骨落下来，砸在两人中间。阿洛抬手，像要接那把伞，又在碰到伞柄前停住。莱因垂下眼，没有回答。
+
+“不用。”她说。
+
+阿洛把话咽回去，声音低了下去。
+
+### Before / After Rule-based Scores
+
+| Metric | Initial | Final |
+| --- | ---: | ---: |
+| total issue count | 6 | 4 |
+| canon conflict | 1 | 0 |
+| direct confession | 0 | 0 |
+| over-explanation | 0 | 0 |
+| relationship too fast | 0 | 0 |
+| boundary violation | 0 | 0 |
+| subtext signals | 0 | 3 |
+| restraint signals | 0 | 2 |
+
+### Improvement Metrics
+
+```json
+{
+  "initialIssueCount": 6,
+  "finalIssueCount": 4,
+  "actualIssueReductionRate": 0.333,
+  "initialCanonConflictCount": 1,
+  "finalCanonConflictCount": 0,
+  "canonConflictReductionRate": 1,
+  "initialDirectConfessionViolationCount": 0,
+  "finalDirectConfessionViolationCount": 0,
+  "directConfessionReductionRate": null,
+  "initialOverExplanationViolationCount": 0,
+  "finalOverExplanationViolationCount": 0,
+  "overExplanationReductionRate": null,
+  "initialRelationshipTooFastCount": 0,
+  "finalRelationshipTooFastCount": 0,
+  "relationshipTooFastReductionRate": null,
+  "initialBoundaryViolationCount": 0,
+  "finalBoundaryViolationCount": 0,
+  "boundaryViolationReductionRate": null,
+  "initialSubtextSignalCount": 0,
+  "finalSubtextSignalCount": 3,
+  "subtextSignalLift": 3,
+  "initialRestraintSignalCount": 0,
+  "finalRestraintSignalCount": 2,
+  "restraintSignalLift": 2,
+  "reviewerDetectedIssueCount": 3,
+  "criticizerSuggestionCount": 3,
+  "revisedTextGenerated": true
 }
 ```
 
 ### Notes
 
-- 2 API call(s) succeeded.
+- 3 API call(s) succeeded.
+- Multi-Agent revisedText generated and evaluated with before/after rule scores.
 
 ## multi-005: Defensive stage suddenly becomes fully vulnerable
 
@@ -3018,6 +3414,7 @@
 
 - reviewer /api/reviewer: success (200)
 - criticizer /api/criticizer: success (200)
+- writerRevision /api/writer: success (200)
 
 ### Raw Response Summary
 
@@ -3062,6 +3459,31 @@
     ],
     "revisedText": "雨线把巷口的路灯揉成一团湿冷的光。她站在檐下，袖口还留着没干透的水痕；他停在两步之外，肩线绷得很直，像一堵不肯再塌下来的墙。\n\n风从两人之间穿过。她看向他的指节——旧伤淡得几乎看不见，指腹却在伞柄上收紧了一瞬，又慢慢松开。他没有问她这些年过得好不好，只把伞沿往她那边倾了半寸；水痕顺着伞骨滑下去，滴在两人脚边同一块湿砖上。\n\n雨声很大。她伸手去接斜过来的雨，指尖擦过他袖口，又很快收回。那一点温度被雨水冲散以前，他终于低声说：走吧。",
     "editorNote": "已根据 Reviewer 反馈收束关系推进：保留「防御期」阶段的克制感，弱化直白解释，让修订稿通过动作回应审稿问题。"
+  },
+  "writerRevision": {
+    "text": "雨水顺着伞骨落下来，砸在两人中间。阿洛抬手，像要接那把伞，又在碰到伞柄前停住。莱因垂下眼，没有回答。\n\n“不用。”她说。\n\n阿洛把话咽回去，声音低了下去。",
+    "emotionStructure": [
+      "起——保留原片段的「雾港、王都旧档案馆或机械城邦边缘的一次压抑对峙。」和人物距离。",
+      "承——按「少一点心理描写」调整对白、动作和留白比例。",
+      "转——继续维持「克制」下的克制推进。",
+      "合——结尾仍停在未完全越界的位置，不替角色总结感情。"
+    ],
+    "characterConstraints": [
+      "人物姓名：正文固定使用 莱因 和 阿洛。",
+      "关系约束：旧友/盟友；防御期。",
+      "风格约束：疏离克制；短段落，动作优先，减少心理解释，保持克制和潜台词。 这段最大的问题是解释性判断略重：它已经具备「克制」张力，但还可以把情绪更多交给动作和物象。；删除或压低直接告白，把关系推进改写为停顿、错身、递伞等可感动作。；围绕「克制」增加一次欲言又止的动作错位，强化拉扯。；让句式贴合「疏离克制」：短句负责停顿，意象负责收束，避免结尾直接总结关系。；Reviewer 判断：这段「旧友/盟友」关系切片整体符合「防御期」阶段，Canon 风险较低，情绪张力较强。主要需要注意的是避免过早告白或过度解释心理。。",
+      "边界约束：直接告白、拥抱亲吻、确认关系、Canon 冲突、无理由信任。",
+      "Persona 约束：未读取到额外角色档案。",
+      "历史偏好：暂无反馈约束。"
+    ],
+    "usedCanonDocuments": [],
+    "usedCanonEvidence": [],
+    "canonUsage": {
+      "mode": "none",
+      "status": "disabled",
+      "message": "本次生成未使用 Canon。"
+    },
+    "usedPersonaProfiles": []
   }
 }
 ```
@@ -3099,13 +3521,86 @@
   "canonConflictCoverage": false,
   "oocCoverage": true,
   "relationshipTooFastCoverage": true,
-  "staticIssueReductionCandidate": true
+  "staticIssueReductionCandidate": true,
+  "finalIssueCount": 0,
+  "actualIssueReductionRate": 1,
+  "revisedTextGenerated": true
+}
+```
+
+### Initial Draft
+
+莱因扑过去紧紧拥抱阿洛，说我害怕失去你，我不能没有你，我喜欢你。他把所有旧伤和恐惧都完整说出来，再也不回避。
+
+### Reviewer Output
+
+Reviewer 判断：这段「旧友/盟友」关系切片整体符合「防御期」阶段，Canon 风险较低，情绪张力较强。主要需要注意的是避免过早告白或过度解释心理。
+
+### Criticizer Output
+
+这段最大的问题是解释性判断略重：它已经具备「克制」张力，但还可以把情绪更多交给动作和物象。
+
+删除或压低直接告白，把关系推进改写为停顿、错身、递伞等可感动作。 / 围绕「克制」增加一次欲言又止的动作错位，强化拉扯。 / 让句式贴合「疏离克制」：短句负责停顿，意象负责收束，避免结尾直接总结关系。
+
+### Revised Text
+
+雨水顺着伞骨落下来，砸在两人中间。阿洛抬手，像要接那把伞，又在碰到伞柄前停住。莱因垂下眼，没有回答。
+
+“不用。”她说。
+
+阿洛把话咽回去，声音低了下去。
+
+### Before / After Rule-based Scores
+
+| Metric | Initial | Final |
+| --- | ---: | ---: |
+| total issue count | 15 | 0 |
+| canon conflict | 0 | 0 |
+| direct confession | 3 | 0 |
+| over-explanation | 0 | 0 |
+| relationship too fast | 1 | 0 |
+| boundary violation | 7 | 0 |
+| subtext signals | 0 | 3 |
+| restraint signals | 0 | 2 |
+
+### Improvement Metrics
+
+```json
+{
+  "initialIssueCount": 15,
+  "finalIssueCount": 0,
+  "actualIssueReductionRate": 1,
+  "initialCanonConflictCount": 0,
+  "finalCanonConflictCount": 0,
+  "canonConflictReductionRate": null,
+  "initialDirectConfessionViolationCount": 3,
+  "finalDirectConfessionViolationCount": 0,
+  "directConfessionReductionRate": 1,
+  "initialOverExplanationViolationCount": 0,
+  "finalOverExplanationViolationCount": 0,
+  "overExplanationReductionRate": null,
+  "initialRelationshipTooFastCount": 1,
+  "finalRelationshipTooFastCount": 0,
+  "relationshipTooFastReductionRate": 1,
+  "initialBoundaryViolationCount": 7,
+  "finalBoundaryViolationCount": 0,
+  "boundaryViolationReductionRate": 1,
+  "initialSubtextSignalCount": 0,
+  "finalSubtextSignalCount": 3,
+  "subtextSignalLift": 3,
+  "initialRestraintSignalCount": 0,
+  "finalRestraintSignalCount": 2,
+  "restraintSignalLift": 2,
+  "reviewerDetectedIssueCount": 3,
+  "criticizerSuggestionCount": 3,
+  "revisedTextGenerated": true
 }
 ```
 
 ### Notes
 
-- 2 API call(s) succeeded.
+- 3 API call(s) succeeded.
+- Multi-Agent revisedText generated and evaluated with before/after rule scores.
 
 ## multi-006: Enemy cooperation suddenly trusts without reason
 
@@ -3153,6 +3648,7 @@
 
 - reviewer /api/reviewer: success (200)
 - criticizer /api/criticizer: success (200)
+- writerRevision /api/writer: success (200)
 
 ### Raw Response Summary
 
@@ -3197,6 +3693,31 @@
     ],
     "revisedText": "雨线把巷口的路灯揉成一团湿冷的光。她站在檐下，袖口还留着没干透的水痕；他停在两步之外，肩线绷得很直，像一堵不肯再塌下来的墙。\n\n风从两人之间穿过。她看向他的指节——旧伤淡得几乎看不见，指腹却在伞柄上收紧了一瞬，又慢慢松开。他没有问她这些年过得好不好，只把伞沿往她那边倾了半寸；水痕顺着伞骨滑下去，滴在两人脚边同一块湿砖上。\n\n雨声很大。她伸手去接斜过来的雨，指尖擦过他袖口，又很快收回。那一点温度被雨水冲散以前，他终于低声说：走吧。",
     "editorNote": "已根据 Reviewer 反馈收束关系推进：保留「敌对合作期」阶段的克制感，弱化直白解释，让修订稿通过动作回应审稿问题。"
+  },
+  "writerRevision": {
+    "text": "雨水顺着伞骨落下来，砸在两人中间。阿洛抬手，像要接那把伞，又在碰到伞柄前停住。莱因垂下眼，没有回答。\n\n“不用。”她说。\n\n阿洛把话咽回去，声音低了下去。",
+    "emotionStructure": [
+      "起——保留原片段的「雾港、王都旧档案馆或机械城邦边缘的一次压抑对峙。」和人物距离。",
+      "承——按「少一点心理描写」调整对白、动作和留白比例。",
+      "转——继续维持「中高张力」下的克制推进。",
+      "合——结尾仍停在未完全越界的位置，不替角色总结感情。"
+    ],
+    "characterConstraints": [
+      "人物姓名：正文固定使用 莱因 和 阿洛。",
+      "关系约束：旧友/盟友；敌对合作期。",
+      "风格约束：冷艳华美；短段落，动作优先，减少心理解释，保持克制和潜台词。 这段最大的问题是解释性判断略重：它已经具备「中高张力」张力，但还可以把情绪更多交给动作和物象。；删除或压低直接告白，把关系推进改写为停顿、错身、递伞等可感动作。；围绕「中高张力」增加一次欲言又止的动作错位，强化拉扯。；让句式贴合「冷艳华美」：短句负责停顿，意象负责收束，避免结尾直接总结关系。；Reviewer 判断：这段「敌对合作」关系切片整体符合「敌对合作期」阶段，Canon 风险较低，情绪张力较强。主要需要注意的是避免过早告白或过度解释心理。。",
+      "边界约束：直接告白、拥抱亲吻、确认关系、Canon 冲突、无理由信任。",
+      "Persona 约束：未读取到额外角色档案。",
+      "历史偏好：暂无反馈约束。"
+    ],
+    "usedCanonDocuments": [],
+    "usedCanonEvidence": [],
+    "canonUsage": {
+      "mode": "none",
+      "status": "disabled",
+      "message": "本次生成未使用 Canon。"
+    },
+    "usedPersonaProfiles": []
   }
 }
 ```
@@ -3234,10 +3755,83 @@
   "canonConflictCoverage": false,
   "oocCoverage": false,
   "relationshipTooFastCoverage": false,
-  "staticIssueReductionCandidate": true
+  "staticIssueReductionCandidate": true,
+  "finalIssueCount": 0,
+  "actualIssueReductionRate": 1,
+  "revisedTextGenerated": true
+}
+```
+
+### Initial Draft
+
+伊塔刚提出合作，莱因就立刻完全信任她，把王都旧档案全部交出。他们互诉衷肠，突然和解，并决定从此共同生活。
+
+### Reviewer Output
+
+Reviewer 判断：这段「敌对合作」关系切片整体符合「敌对合作期」阶段，Canon 风险较低，情绪张力较强。主要需要注意的是避免过早告白或过度解释心理。
+
+### Criticizer Output
+
+这段最大的问题是解释性判断略重：它已经具备「中高张力」张力，但还可以把情绪更多交给动作和物象。
+
+删除或压低直接告白，把关系推进改写为停顿、错身、递伞等可感动作。 / 围绕「中高张力」增加一次欲言又止的动作错位，强化拉扯。 / 让句式贴合「冷艳华美」：短句负责停顿，意象负责收束，避免结尾直接总结关系。
+
+### Revised Text
+
+雨水顺着伞骨落下来，砸在两人中间。阿洛抬手，像要接那把伞，又在碰到伞柄前停住。莱因垂下眼，没有回答。
+
+“不用。”她说。
+
+阿洛把话咽回去，声音低了下去。
+
+### Before / After Rule-based Scores
+
+| Metric | Initial | Final |
+| --- | ---: | ---: |
+| total issue count | 3 | 0 |
+| canon conflict | 0 | 0 |
+| direct confession | 0 | 0 |
+| over-explanation | 0 | 0 |
+| relationship too fast | 0 | 0 |
+| boundary violation | 0 | 0 |
+| subtext signals | 0 | 3 |
+| restraint signals | 0 | 2 |
+
+### Improvement Metrics
+
+```json
+{
+  "initialIssueCount": 3,
+  "finalIssueCount": 0,
+  "actualIssueReductionRate": 1,
+  "initialCanonConflictCount": 0,
+  "finalCanonConflictCount": 0,
+  "canonConflictReductionRate": null,
+  "initialDirectConfessionViolationCount": 0,
+  "finalDirectConfessionViolationCount": 0,
+  "directConfessionReductionRate": null,
+  "initialOverExplanationViolationCount": 0,
+  "finalOverExplanationViolationCount": 0,
+  "overExplanationReductionRate": null,
+  "initialRelationshipTooFastCount": 0,
+  "finalRelationshipTooFastCount": 0,
+  "relationshipTooFastReductionRate": null,
+  "initialBoundaryViolationCount": 0,
+  "finalBoundaryViolationCount": 0,
+  "boundaryViolationReductionRate": null,
+  "initialSubtextSignalCount": 0,
+  "finalSubtextSignalCount": 3,
+  "subtextSignalLift": 3,
+  "initialRestraintSignalCount": 0,
+  "finalRestraintSignalCount": 2,
+  "restraintSignalLift": 2,
+  "reviewerDetectedIssueCount": 3,
+  "criticizerSuggestionCount": 3,
+  "revisedTextGenerated": true
 }
 ```
 
 ### Notes
 
-- 2 API call(s) succeeded.
+- 3 API call(s) succeeded.
+- Multi-Agent revisedText generated and evaluated with before/after rule scores.

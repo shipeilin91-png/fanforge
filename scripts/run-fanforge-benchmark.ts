@@ -510,15 +510,21 @@ function createRevisionBody(testCase: BenchmarkCase, rawResponses: Record<string
   const styleCard = stringValue(testCase.input.styleCard, "疏离克制");
   const criticizerInstruction = getCriticizerInstruction(rawResponses);
   const reviewerSummary = getReviewerSummary(rawResponses);
-  const rewriteInstruction = fallback
-    ? "更克制；更多短对话；删除 Canon 冲突；删除直接告白；删除亲密越界；减少心理解释；用动作、停顿、物件和沉默表达关系张力。"
-    : [
-        "基于 Reviewer 和 Criticizer 意见修订，不要解释修订过程。",
-        criticizerInstruction,
-        reviewerSummary,
-      ]
-        .filter(Boolean)
-        .join("；");
+  // The Writer API free-model path only matches exact instruction keywords:
+  // "更克制" | "更多对话" | "更有张力" | "更贴近角色" | "更像原作" | "少一点心理描写"
+  // Any unrecognised string falls through to the "更克制" template, so we must
+  // use a matchable keyword and push Reviewer/Criticizer context through styleCustom.
+  const reviewerCriticizerContext = [criticizerInstruction, reviewerSummary]
+    .filter(Boolean)
+    .join("；")
+    .slice(0, 400);
+  const rewriteInstruction = fallback ? "更克制" : "少一点心理描写";
+  const styleCustom = [
+    "短段落，动作优先，减少心理解释，保持克制和潜台词。",
+    reviewerCriticizerContext,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return {
     mode: "rewrite",
@@ -531,7 +537,7 @@ function createRevisionBody(testCase: BenchmarkCase, rawResponses: Record<string
     tensionFinal: tension,
     expectedLength: "500",
     styleCard,
-    styleCustom: "短段落，动作优先，减少心理解释，保持克制和潜台词。",
+    styleCustom,
     forbiddenItems: ["直接告白", "拥抱亲吻", "确认关系", "Canon 冲突", "无理由信任"],
     canonMode: "none",
     contextEngine: {
