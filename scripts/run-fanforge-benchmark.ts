@@ -43,6 +43,36 @@ type RuleBasedScores = {
   issueTotalCount: number;
 };
 
+type MultiAgentRevisionMetrics = {
+  initialIssueCount: number;
+  finalIssueCount: number | null;
+  actualIssueReductionRate: number | null;
+  initialCanonConflictCount: number;
+  finalCanonConflictCount: number | null;
+  canonConflictReductionRate: number | null;
+  initialDirectConfessionViolationCount: number;
+  finalDirectConfessionViolationCount: number | null;
+  directConfessionReductionRate: number | null;
+  initialOverExplanationViolationCount: number;
+  finalOverExplanationViolationCount: number | null;
+  overExplanationReductionRate: number | null;
+  initialRelationshipTooFastCount: number;
+  finalRelationshipTooFastCount: number | null;
+  relationshipTooFastReductionRate: number | null;
+  initialBoundaryViolationCount: number;
+  finalBoundaryViolationCount: number | null;
+  boundaryViolationReductionRate: number | null;
+  initialSubtextSignalCount: number;
+  finalSubtextSignalCount: number | null;
+  subtextSignalLift: number | null;
+  initialRestraintSignalCount: number;
+  finalRestraintSignalCount: number | null;
+  restraintSignalLift: number | null;
+  reviewerDetectedIssueCount: number;
+  criticizerSuggestionCount: number;
+  revisedTextGenerated: boolean;
+};
+
 type ApiCallResult = {
   name: string;
   endpoint: string;
@@ -62,6 +92,11 @@ type BenchmarkResult = {
   apiCalls: ApiCallResult[];
   rawResponses: Record<string, unknown>;
   ruleBasedScores: RuleBasedScores;
+  initialDraft?: string;
+  revisedText?: string;
+  initialRuleScores?: RuleBasedScores;
+  finalRuleScores?: RuleBasedScores | null;
+  multiAgentRevisionMetrics?: MultiAgentRevisionMetrics;
   metrics: Record<string, number | string | boolean>;
   notes: string[];
   createdAt: string;
@@ -74,12 +109,12 @@ const JSON_OUTPUT = `${RESULTS_DIR}/fanforge-latest.json`;
 const ANALYSIS_OUTPUT = `${RESULTS_DIR}/fanforge-analysis.md`;
 const CASES_OUTPUT = `${RESULTS_DIR}/fanforge-cases.md`;
 
-const CANON_CONFLICT_TERMS = ["从未离开王都", "轻松佩戴银质纹章"];
-const DIRECT_CONFESSION_TERMS = ["我爱你", "我喜欢你", "我不能没有你", "我害怕失去你"];
-const OVER_EXPLANATION_TERMS = ["他意识到", "他终于明白", "他的内心", "他想起自己其实"];
-const RELATIONSHIP_TOO_FAST_TERMS = ["确认关系", "从此在一起", "吻了上去", "紧紧拥抱"];
-const SUBTEXT_SIGNALS = ["停顿", "移开视线", "替他包扎", "把伞推过去", "没有回答", "沉默", "没有说完"];
-const RESTRAINT_SIGNALS = ["停顿", "移开视线", "没有回答", "沉默", "没有说完", "短句", "克制"];
+const CANON_CONFLICT_TERMS = ["从未离开王都", "轻松佩戴银质纹章", "昨晚刚离开王都", "王都从未发生政变"];
+const DIRECT_CONFESSION_TERMS = ["我爱你", "我喜欢你", "我不能没有你", "我害怕失去你", "你是我的全部"];
+const OVER_EXPLANATION_TERMS = ["他意识到", "他终于明白", "他的内心", "他想起自己其实", "他再也无法压抑", "他所有的情感"];
+const RELATIONSHIP_TOO_FAST_TERMS = ["确认关系", "从此在一起", "吻了上去", "紧紧拥抱", "终于成为恋人"];
+const SUBTEXT_SIGNALS = ["停顿", "移开视线", "替他包扎", "把伞推过去", "没有回答", "沉默", "没有说完", "指尖顿住", "垂下眼", "声音低了下去"];
+const RESTRAINT_SIGNALS = ["没有说出口", "只是", "偏过头", "收回手", "语气很淡", "像什么都没发生", "没再追问", "把话咽回去", "停顿", "移开视线", "没有回答", "沉默", "没有说完", "短句", "克制"];
 const PERSONA_STAGE_SIGNALS = ["防御期", "动摇期", "破防期", "信任恢复期", "旧伤触发期", "阵营冲突期", "关系确认前", "长线伏笔期"];
 const IRRELEVANT_CANON_TERMS = ["机械城邦贸易税", "星轨学院课程表", "无关 Canon", "无关设定"];
 
@@ -173,8 +208,7 @@ function isDefensiveStage(testCase: BenchmarkCase) {
   return /防御期|不能直接示弱|防御型人格/.test(combined);
 }
 
-function evaluateRules(testCase: BenchmarkCase, rawResponses: Record<string, unknown>): RuleBasedScores {
-  const text = getTextForEvaluation(testCase, rawResponses);
+function evaluateTextRules(testCase: BenchmarkCase, text: string): RuleBasedScores {
   const directConfessionViolationCount = countTerms(text, DIRECT_CONFESSION_TERMS);
   const overExplanationViolationCount = countTerms(text, OVER_EXPLANATION_TERMS);
   const relationshipTooFastCount = isEarlyRelationshipStage(testCase)
@@ -223,6 +257,10 @@ function evaluateRules(testCase: BenchmarkCase, rawResponses: Record<string, unk
     irrelevantCanonLeakCount,
     issueTotalCount,
   };
+}
+
+function evaluateRules(testCase: BenchmarkCase, rawResponses: Record<string, unknown>): RuleBasedScores {
+  return evaluateTextRules(testCase, getTextForEvaluation(testCase, rawResponses));
 }
 
 function createMetrics(
@@ -444,6 +482,213 @@ async function callApi(
   }
 }
 
+function getReviewerSummary(rawResponses: Record<string, unknown>) {
+  const reviewer = rawResponses.reviewer;
+  if (!reviewer || typeof reviewer !== "object") return "";
+  return stringValue((reviewer as Record<string, unknown>).summary);
+}
+
+function getCriticizerInstruction(rawResponses: Record<string, unknown>) {
+  const criticizer = rawResponses.criticizer;
+  if (!criticizer || typeof criticizer !== "object") return "";
+  const record = criticizer as Record<string, unknown>;
+  const strategy = record.revisionStrategy;
+  const coreCritique = stringValue(record.coreCritique);
+
+  return [
+    coreCritique,
+    ...(Array.isArray(strategy) ? strategy.filter((item): item is string => typeof item === "string") : []),
+  ]
+    .filter(Boolean)
+    .join("；");
+}
+
+function createRevisionBody(testCase: BenchmarkCase, rawResponses: Record<string, unknown>, fallback = false) {
+  const previousText = stringValue(testCase.input.writerDraft);
+  const stage = stringValue(testCase.input.stage, "试探期");
+  const tension = stringValue(testCase.input.tension, "疏离克制");
+  const styleCard = stringValue(testCase.input.styleCard, "疏离克制");
+  const criticizerInstruction = getCriticizerInstruction(rawResponses);
+  const reviewerSummary = getReviewerSummary(rawResponses);
+  const rewriteInstruction = fallback
+    ? "更克制；更多短对话；删除 Canon 冲突；删除直接告白；删除亲密越界；减少心理解释；用动作、停顿、物件和沉默表达关系张力。"
+    : [
+        "基于 Reviewer 和 Criticizer 意见修订，不要解释修订过程。",
+        criticizerInstruction,
+        reviewerSummary,
+      ]
+        .filter(Boolean)
+        .join("；");
+
+  return {
+    mode: "rewrite",
+    previousText,
+    rewriteInstruction,
+    characterNames: "莱因 × 阿洛",
+    relationshipTypeFinal: "旧友/盟友",
+    momentFinal: "雾港、王都旧档案馆或机械城邦边缘的一次压抑对峙。",
+    stageFinal: stage,
+    tensionFinal: tension,
+    expectedLength: "500",
+    styleCard,
+    styleCustom: "短段落，动作优先，减少心理解释，保持克制和潜台词。",
+    forbiddenItems: ["直接告白", "拥抱亲吻", "确认关系", "Canon 冲突", "无理由信任"],
+    canonMode: "none",
+    contextEngine: {
+      canon: false,
+      persona: true,
+      relationship: true,
+      style: true,
+    },
+  };
+}
+
+async function callWriterRevision(
+  baseUrl: string,
+  authToken: string,
+  testCase: BenchmarkCase,
+  rawResponses: Record<string, unknown>,
+): Promise<{ call: ApiCallResult; revisedText: string }> {
+  const attempts = [
+    { name: "writerRevision", fallback: false },
+    { name: "writerRevisionFallback", fallback: true },
+  ];
+
+  for (const attempt of attempts) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (authToken) headers.Authorization = `Bearer ${authToken}`;
+
+    try {
+      const response = await fetch(new URL("/api/writer", baseUrl), {
+        method: "POST",
+        headers,
+        body: JSON.stringify(createRevisionBody(testCase, rawResponses, attempt.fallback)),
+        signal: controller.signal,
+      });
+      const payload = (await response.json().catch(() => null)) as unknown;
+      rawResponses[attempt.name] = summarizeResponse(payload);
+
+      if (response.ok && payload && typeof payload === "object") {
+        const revisedText = stringValue((payload as Record<string, unknown>).text);
+        if (revisedText) {
+          return {
+            call: {
+              name: attempt.name,
+              endpoint: "/api/writer",
+              status: "success",
+              statusCode: response.status,
+              notes: [
+                attempt.fallback
+                  ? "Fallback Writer rewrite generated revisedText."
+                  : "Writer rewrite generated revisedText from Reviewer/Criticizer context.",
+              ],
+            },
+            revisedText,
+          };
+        }
+      }
+
+      if (attempt.fallback) {
+        return {
+          call: {
+            name: attempt.name,
+            endpoint: "/api/writer",
+            status: "skipped",
+            statusCode: response.status,
+            error: "Writer rewrite did not return revised text.",
+            notes: ["Final rewrite unavailable; report should keep estimated metrics only."],
+          },
+          revisedText: "",
+        };
+      }
+    } catch (error) {
+      rawResponses[attempt.name] = {
+        error: error instanceof Error ? error.message : "Unknown Writer rewrite error",
+      };
+
+      if (attempt.fallback) {
+        return {
+          call: {
+            name: attempt.name,
+            endpoint: "/api/writer",
+            status: "skipped",
+            error: error instanceof Error ? error.message : "Unknown Writer rewrite error",
+            notes: ["Final rewrite unavailable; report should keep estimated metrics only."],
+          },
+          revisedText: "",
+        };
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  return {
+    call: {
+      name: "writerRevision",
+      endpoint: "/api/writer",
+      status: "skipped",
+      notes: ["Writer rewrite was not attempted."],
+    },
+    revisedText: "",
+  };
+}
+
+function reductionRate(initial: number, final: number | null) {
+  if (initial <= 0 || final === null) return null;
+  return Number(((initial - final) / initial).toFixed(3));
+}
+
+function createMultiAgentRevisionMetrics(
+  initial: RuleBasedScores,
+  final: RuleBasedScores | null,
+  rawResponses: Record<string, unknown>,
+): MultiAgentRevisionMetrics {
+  return {
+    initialIssueCount: initial.issueTotalCount,
+    finalIssueCount: final?.issueTotalCount ?? null,
+    actualIssueReductionRate: reductionRate(initial.issueTotalCount, final?.issueTotalCount ?? null),
+    initialCanonConflictCount: initial.canonConflictCount,
+    finalCanonConflictCount: final?.canonConflictCount ?? null,
+    canonConflictReductionRate: reductionRate(initial.canonConflictCount, final?.canonConflictCount ?? null),
+    initialDirectConfessionViolationCount: initial.directConfessionViolationCount,
+    finalDirectConfessionViolationCount: final?.directConfessionViolationCount ?? null,
+    directConfessionReductionRate: reductionRate(
+      initial.directConfessionViolationCount,
+      final?.directConfessionViolationCount ?? null,
+    ),
+    initialOverExplanationViolationCount: initial.overExplanationViolationCount,
+    finalOverExplanationViolationCount: final?.overExplanationViolationCount ?? null,
+    overExplanationReductionRate: reductionRate(
+      initial.overExplanationViolationCount,
+      final?.overExplanationViolationCount ?? null,
+    ),
+    initialRelationshipTooFastCount: initial.relationshipTooFastCount,
+    finalRelationshipTooFastCount: final?.relationshipTooFastCount ?? null,
+    relationshipTooFastReductionRate: reductionRate(
+      initial.relationshipTooFastCount,
+      final?.relationshipTooFastCount ?? null,
+    ),
+    initialBoundaryViolationCount: initial.boundaryViolationCount,
+    finalBoundaryViolationCount: final?.boundaryViolationCount ?? null,
+    boundaryViolationReductionRate: reductionRate(
+      initial.boundaryViolationCount,
+      final?.boundaryViolationCount ?? null,
+    ),
+    initialSubtextSignalCount: initial.subtextSignalCount,
+    finalSubtextSignalCount: final?.subtextSignalCount ?? null,
+    subtextSignalLift: final ? final.subtextSignalCount - initial.subtextSignalCount : null,
+    initialRestraintSignalCount: initial.restraintSignalCount,
+    finalRestraintSignalCount: final?.restraintSignalCount ?? null,
+    restraintSignalLift: final ? final.restraintSignalCount - initial.restraintSignalCount : null,
+    reviewerDetectedIssueCount: extractReviewerIssueCount(rawResponses.reviewer),
+    criticizerSuggestionCount: extractCriticizerSuggestionCount(rawResponses.criticizer),
+    revisedTextGenerated: Boolean(final),
+  };
+}
+
 async function runCase(baseUrl: string, authToken: string, testCase: BenchmarkCase): Promise<BenchmarkResult> {
   const rawResponses: Record<string, unknown> = {};
   const apiCalls: ApiCallResult[] = [];
@@ -452,13 +697,46 @@ async function runCase(baseUrl: string, authToken: string, testCase: BenchmarkCa
     apiCalls.push(await callApi(baseUrl, authToken, plan, testCase, rawResponses));
   }
 
+  const initialDraft = stringValue(testCase.input.writerDraft);
+  const initialRuleScores =
+    testCase.type === "multi_agent" ? evaluateTextRules(testCase, initialDraft) : undefined;
+  let revisedText = "";
+  let finalRuleScores: RuleBasedScores | null = null;
+  let multiAgentRevisionMetrics: MultiAgentRevisionMetrics | undefined;
+
+  if (testCase.type === "multi_agent" && initialDraft) {
+    const revision = await callWriterRevision(baseUrl, authToken, testCase, rawResponses);
+    apiCalls.push(revision.call);
+    revisedText = revision.revisedText;
+    finalRuleScores = revisedText ? evaluateTextRules(testCase, revisedText) : null;
+    const initialScores = initialRuleScores ?? evaluateTextRules(testCase, initialDraft);
+    multiAgentRevisionMetrics = createMultiAgentRevisionMetrics(
+      initialScores,
+      finalRuleScores,
+      rawResponses,
+    );
+  }
+
   const ruleBasedScores = evaluateRules(testCase, rawResponses);
   const metrics = createMetrics(testCase, ruleBasedScores, rawResponses);
+  if (multiAgentRevisionMetrics) {
+    Object.assign(metrics, {
+      initialIssueCount: multiAgentRevisionMetrics.initialIssueCount,
+      finalIssueCount: multiAgentRevisionMetrics.finalIssueCount ?? "n/a",
+      actualIssueReductionRate: multiAgentRevisionMetrics.actualIssueReductionRate ?? "estimated_only",
+      revisedTextGenerated: multiAgentRevisionMetrics.revisedTextGenerated,
+    });
+  }
   const successfulApiCalls = apiCalls.filter((call) => call.status === "success").length;
   const notes = [
     successfulApiCalls > 0
       ? `${successfulApiCalls} API call(s) succeeded.`
       : "No API calls succeeded; rule-based evaluator still ran on static case text when available.",
+    multiAgentRevisionMetrics?.revisedTextGenerated
+      ? "Multi-Agent revisedText generated and evaluated with before/after rule scores."
+      : testCase.type === "multi_agent"
+        ? "Multi-Agent final rewrite unavailable; estimated metrics remain available."
+        : "",
   ];
 
   return {
@@ -471,8 +749,13 @@ async function runCase(baseUrl: string, authToken: string, testCase: BenchmarkCa
     apiCalls,
     rawResponses,
     ruleBasedScores,
+    initialDraft: initialDraft || undefined,
+    revisedText: revisedText || undefined,
+    initialRuleScores,
+    finalRuleScores,
+    multiAgentRevisionMetrics,
     metrics,
-    notes,
+    notes: notes.filter(Boolean),
     createdAt: new Date().toISOString(),
   };
 }
@@ -517,6 +800,23 @@ function aggregateByType(results: BenchmarkResult[]) {
     aggregate.initialDraftIssueCount += numberMetric(result.metrics.initialDraftIssueCount);
     aggregate.postReviewIssueCount += numberMetric(result.metrics.postReviewIssueCount);
     aggregate.expectedCanonKeywordCount += arrayValue(result.expected.expectedEvidenceKeywords).length;
+    const revision = result.multiAgentRevisionMetrics;
+    if (revision) {
+      aggregate.revisionCaseCount += 1;
+      if (revision.revisedTextGenerated) aggregate.revisedTextGeneratedCount += 1;
+      aggregate.actualInitialIssueCount += revision.initialIssueCount;
+      aggregate.actualFinalIssueCount += revision.finalIssueCount ?? 0;
+      aggregate.actualInitialCanonConflictCount += revision.initialCanonConflictCount;
+      aggregate.actualFinalCanonConflictCount += revision.finalCanonConflictCount ?? 0;
+      aggregate.actualInitialDirectConfessionCount += revision.initialDirectConfessionViolationCount;
+      aggregate.actualFinalDirectConfessionCount += revision.finalDirectConfessionViolationCount ?? 0;
+      aggregate.actualInitialOverExplanationCount += revision.initialOverExplanationViolationCount;
+      aggregate.actualFinalOverExplanationCount += revision.finalOverExplanationViolationCount ?? 0;
+      aggregate.actualInitialRelationshipTooFastCount += revision.initialRelationshipTooFastCount;
+      aggregate.actualFinalRelationshipTooFastCount += revision.finalRelationshipTooFastCount ?? 0;
+      aggregate.actualSubtextSignalLift += revision.subtextSignalLift ?? 0;
+      aggregate.actualRestraintSignalLift += revision.restraintSignalLift ?? 0;
+    }
   }
 
   return initial;
@@ -542,6 +842,20 @@ function createEmptyAggregate() {
     initialDraftIssueCount: 0,
     postReviewIssueCount: 0,
     expectedCanonKeywordCount: 0,
+    revisionCaseCount: 0,
+    revisedTextGeneratedCount: 0,
+    actualInitialIssueCount: 0,
+    actualFinalIssueCount: 0,
+    actualInitialCanonConflictCount: 0,
+    actualFinalCanonConflictCount: 0,
+    actualInitialDirectConfessionCount: 0,
+    actualFinalDirectConfessionCount: 0,
+    actualInitialOverExplanationCount: 0,
+    actualFinalOverExplanationCount: 0,
+    actualInitialRelationshipTooFastCount: 0,
+    actualFinalRelationshipTooFastCount: 0,
+    actualSubtextSignalLift: 0,
+    actualRestraintSignalLift: 0,
   };
 }
 
@@ -599,6 +913,7 @@ function renderCasesMarkdown(results: BenchmarkResult[]) {
       formatJson(result.metrics),
       "```",
       "",
+      ...(result.type === "multi_agent" ? renderMultiAgentCaseSection(result) : []),
       "### Notes",
       "",
       ...result.notes.map((note) => `- ${note}`),
@@ -609,9 +924,65 @@ function renderCasesMarkdown(results: BenchmarkResult[]) {
   return lines.join("\n");
 }
 
+function renderMultiAgentCaseSection(result: BenchmarkResult) {
+  const reviewer = result.rawResponses.reviewer as Record<string, unknown> | undefined;
+  const criticizer = result.rawResponses.criticizer as Record<string, unknown> | undefined;
+
+  return [
+    "### Initial Draft",
+    "",
+    result.initialDraft || "_No initial draft provided._",
+    "",
+    "### Reviewer Output",
+    "",
+    stringValue(reviewer?.summary) || formatJson(reviewer || {}),
+    "",
+    "### Criticizer Output",
+    "",
+    [
+      stringValue(criticizer?.coreCritique),
+      Array.isArray(criticizer?.revisionStrategy)
+        ? (criticizer?.revisionStrategy as string[]).join(" / ")
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n") || formatJson(criticizer || {}),
+    "",
+    "### Revised Text",
+    "",
+    result.revisedText || "_Revised text was not generated; metrics remain estimated only._",
+    "",
+    "### Before / After Rule-based Scores",
+    "",
+    "| Metric | Initial | Final |",
+    "| --- | ---: | ---: |",
+    `| total issue count | ${result.initialRuleScores?.issueTotalCount ?? "n/a"} | ${result.finalRuleScores?.issueTotalCount ?? "n/a"} |`,
+    `| canon conflict | ${result.initialRuleScores?.canonConflictCount ?? "n/a"} | ${result.finalRuleScores?.canonConflictCount ?? "n/a"} |`,
+    `| direct confession | ${result.initialRuleScores?.directConfessionViolationCount ?? "n/a"} | ${result.finalRuleScores?.directConfessionViolationCount ?? "n/a"} |`,
+    `| over-explanation | ${result.initialRuleScores?.overExplanationViolationCount ?? "n/a"} | ${result.finalRuleScores?.overExplanationViolationCount ?? "n/a"} |`,
+    `| relationship too fast | ${result.initialRuleScores?.relationshipTooFastCount ?? "n/a"} | ${result.finalRuleScores?.relationshipTooFastCount ?? "n/a"} |`,
+    `| boundary violation | ${result.initialRuleScores?.boundaryViolationCount ?? "n/a"} | ${result.finalRuleScores?.boundaryViolationCount ?? "n/a"} |`,
+    `| subtext signals | ${result.initialRuleScores?.subtextSignalCount ?? "n/a"} | ${result.finalRuleScores?.subtextSignalCount ?? "n/a"} |`,
+    `| restraint signals | ${result.initialRuleScores?.restraintSignalCount ?? "n/a"} | ${result.finalRuleScores?.restraintSignalCount ?? "n/a"} |`,
+    "",
+    "### Improvement Metrics",
+    "",
+    "```json",
+    formatJson(result.multiAgentRevisionMetrics || {}),
+    "```",
+    "",
+  ];
+}
+
 function renderAnalysisMarkdown(baseUrl: string, caseSource: string, results: BenchmarkResult[]) {
   const summary = summarize(results);
   const aggregate = aggregateByType(results);
+  const multi = aggregate.multi_agent;
+  const averageInitialIssueCount = average(multi.actualInitialIssueCount, multi.revisionCaseCount);
+  const averageFinalIssueCount = average(multi.actualFinalIssueCount, multi.revisedTextGeneratedCount);
+  const actualReductionRate = reductionRate(multi.actualInitialIssueCount, multi.actualFinalIssueCount);
+  const revisedTextGenerationRate = rate(multi.revisedTextGeneratedCount, multi.revisionCaseCount);
+  const hasFullRevision = multi.revisedTextGeneratedCount === multi.revisionCaseCount && multi.revisionCaseCount > 0;
   const allCalls = results.flatMap((result) =>
     result.apiCalls.map((call) => ({ caseId: result.caseId, ...call })),
   );
@@ -698,15 +1069,41 @@ function renderAnalysisMarkdown(baseUrl: string, caseSource: string, results: Be
     `- oocCoverage: ${aggregate.multi_agent.boundaryViolationCount > 0 && aggregate.multi_agent.reviewerDetectedIssueCount > 0 ? "observed" : "not observed"}`,
     `- relationshipTooFastCoverage: ${aggregate.multi_agent.relationshipTooFastCount > 0 && aggregate.multi_agent.reviewerDetectedIssueCount > 0 ? "observed" : "not observed"}`,
     "",
-    "## 8. 可用于简历/作品集的数据表达",
+    "## 8. Multi-Agent Revision Before/After Analysis",
+    "",
+    `- averageInitialIssueCount: ${averageInitialIssueCount}`,
+    `- averageFinalIssueCount: ${averageFinalIssueCount}`,
+    `- averageActualIssueReductionRate: ${actualReductionRate === null ? "n/a" : formatPercent(actualReductionRate)}`,
+    `- canonConflictReductionRate: ${formatNullableReduction(multi.actualInitialCanonConflictCount, multi.actualFinalCanonConflictCount)}`,
+    `- directConfessionReductionRate: ${formatNullableReduction(multi.actualInitialDirectConfessionCount, multi.actualFinalDirectConfessionCount)}`,
+    `- overExplanationReductionRate: ${formatNullableReduction(multi.actualInitialOverExplanationCount, multi.actualFinalOverExplanationCount)}`,
+    `- relationshipTooFastReductionRate: ${formatNullableReduction(multi.actualInitialRelationshipTooFastCount, multi.actualFinalRelationshipTooFastCount)}`,
+    `- averageSubtextSignalLift: ${average(multi.actualSubtextSignalLift, multi.revisedTextGeneratedCount)}`,
+    `- averageRestraintSignalLift: ${average(multi.actualRestraintSignalLift, multi.revisedTextGeneratedCount)}`,
+    `- revisedTextGenerationRate: ${revisedTextGenerationRate}`,
+    `- revisedTextGenerated: ${multi.revisedTextGeneratedCount} / ${multi.revisionCaseCount}`,
+    "",
+    hasFullRevision
+      ? "All Multi-Agent cases generated revisedText, so before/after reductions are computed from actual revised text."
+      : "Not all Multi-Agent cases generated revisedText; unavailable cases should be interpreted as estimated only.",
+    "",
+    "## 9. 可用于简历/作品集的数据表达",
     "",
     "- Built a 30-case synthetic benchmark covering Canon consistency, Persona Timeline, Emotion Slice control, and Multi-Agent revision; results are synthetic and not real user data.",
-    `- Rule-based evaluator detected ${aggregate.multi_agent.initialDraftIssueCount} initial issues across 6 intentionally flawed Multi-Agent drafts and estimated ${rate(aggregate.multi_agent.initialDraftIssueCount - aggregate.multi_agent.postReviewIssueCount, aggregate.multi_agent.initialDraftIssueCount)} issue coverage through Reviewer/Criticizer signals.`,
+    hasFullRevision
+      ? `- In 6 intentionally flawed Multi-Agent benchmark drafts, the Reviewer/Criticizer + Writer revision chain reduced total rule-based issues from ${multi.actualInitialIssueCount} to ${multi.actualFinalIssueCount}, an actual ${formatPercent(actualReductionRate ?? 0)} reduction on synthetic cases.`
+      : `- In 6 intentionally flawed Multi-Agent benchmark drafts, Reviewer/Criticizer produced estimated issue coverage of ${rate(aggregate.multi_agent.initialDraftIssueCount - aggregate.multi_agent.postReviewIssueCount, aggregate.multi_agent.initialDraftIssueCount)}; some revisedText outputs were unavailable, so this remains estimated.`,
+    hasFullRevision
+      ? `- Canon conflict / direct confession / relationship-too-fast violations changed by ${formatNullableReduction(multi.actualInitialCanonConflictCount, multi.actualFinalCanonConflictCount)} / ${formatNullableReduction(multi.actualInitialDirectConfessionCount, multi.actualFinalDirectConfessionCount)} / ${formatNullableReduction(multi.actualInitialRelationshipTooFastCount, multi.actualFinalRelationshipTooFastCount)} in the 6-case synthetic Multi-Agent set.`
+      : "- Category-level before/after rates should be treated as estimated until all revisedText outputs are available.",
+    hasFullRevision
+      ? `- Revised outputs increased subtext signals by an average of ${average(multi.actualSubtextSignalLift, multi.revisedTextGeneratedCount)} and restraint signals by an average of ${average(multi.actualRestraintSignalLift, multi.revisedTextGeneratedCount)} across synthetic Multi-Agent cases.`
+      : "- Subtext/restraint lift is only reported for cases with generated revisedText.",
     `- Emotion Slice cases showed ${aggregate.emotion_slice.subtextSignalCount} subtext signals and ${aggregate.emotion_slice.restraintSignalCount} restraint signals while tracking direct confession, over-explanation, and relationship-overreach violations.`,
     `- Canon benchmark tracked ${aggregate.canon.canonKeywordHitCount} Canon keyword hits, ${aggregate.canon.canonConflictCount} conflict detections, and ${apiSkippedCount(results, "canonRetrieve")} retrieval skips caused by missing benchmark auth/seed data.`,
     "- Metrics are candidates for portfolio discussion; estimated values are labeled estimated and should not be presented as real production impact.",
     "",
-    "## 9. 产品迭代建议",
+    "## 10. 产品迭代建议",
     "",
     "- Canon retrieve / writer / chapter / reviewer / criticizer 都可以被 runner 建模为可调用 API，但 Canon RAG 和 Persona 相关 case 在真实评估时需要登录 token、已保存文档和已索引 chunks。",
     "- Canon retrieve 需要 benchmark token 或 seed canon chunks，才能从 skipped 进入真实 evidence hit rate 评估。",
@@ -727,6 +1124,20 @@ function apiSkippedCount(results: BenchmarkResult[], name: string) {
 function rate(numerator: number, denominator: number) {
   if (denominator <= 0) return "0%";
   return `${Math.round((numerator / denominator) * 100)}%`;
+}
+
+function average(total: number, count: number) {
+  if (count <= 0) return "n/a";
+  return Number((total / count).toFixed(2));
+}
+
+function formatPercent(value: number) {
+  return `${Math.round(value * 100)}%`;
+}
+
+function formatNullableReduction(initial: number, final: number) {
+  const value = reductionRate(initial, final);
+  return value === null ? "n/a" : formatPercent(value);
 }
 
 function formatAggregate(value: ReturnType<typeof createEmptyAggregate>) {
