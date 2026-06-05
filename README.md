@@ -8,6 +8,10 @@ FanForge is a Canon-aware AI co-writing platform for fanfiction creators. It hel
 
 Live Demo: https://fanforge-three.vercel.app
 
+Portfolio: https://bcnjcsfiizh3.feishu.cn/wiki/MC4Bwt4lli6XnUkP18Nckjtonl5
+
+Mainland China access note: Vercel may be unstable in mainland China; screenshots and project explanation are available in the portfolio.
+
 ## Core Highlights
 
 - **Canon RAG with Gemini Embedding + Supabase pgvector**: saved Canon documents are chunked, embedded into 1536-dimensional vectors, retrieved by similarity, and injected into generation prompts as evidence.
@@ -263,6 +267,15 @@ A recommended path for reviewers:
 - Supabase Auth / Database, admin dashboard, daily free quota, BYOK model settings, and draft saving are implemented.
 - Next step: real user testing with fanfiction creators and improving Persona Timeline / Canon conflict detection.
 
+## Benchmark Results
+
+- Synthetic benchmark validates the Multi-Agent revision and quality-control workflow.
+- Rule-based issues reduced by 81%.
+- Relationship-too-fast and character-boundary violations reduced by 100%.
+- Over-explanation reduced by 80%.
+- Canon conflicts reduced by 33%.
+- These results come from synthetic benchmark cases and do not represent real user data.
+
 ## Current Boundaries
 
 FanForge is an online MVP, not a fully commercialized product.
@@ -272,6 +285,7 @@ Current limitations:
 - API Key encryption and production-grade secret handling still need to be hardened.
 - Payment and subscription systems are not implemented yet.
 - Canon RAG is a working prototype, but reranking, hybrid search, and deeper conflict detection are still planned.
+- Benchmark results are based on synthetic cases for portfolio validation, not live-user production data.
 - Mobile and PWA experience needs more polish.
 - FanForge Free Model is designed for onboarding and workflow validation.
 - Admin analytics should be upgraded to a server-side service-role API for production use.
